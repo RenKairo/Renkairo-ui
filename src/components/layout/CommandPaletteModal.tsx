@@ -1,22 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileCode, Terminal, Play, Save, Moon, Image } from 'lucide-react';
+import { Search, FileCode, Terminal, Save, FolderOpen, RotateCw, Image, FolderSync } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 
 export const CommandPaletteModal: React.FC = () => {
-  const { isCommandPaletteOpen, setCommandPaletteOpen, openFile, saveCurrentFile, setActiveTerminalTab, wallpaperOpacity, setWallpaperOpacity } = useIDEStore();
+  const { 
+    isCommandPaletteOpen, 
+    setCommandPaletteOpen, 
+    openFile, 
+    saveCurrentFile, 
+    setActiveTerminalTab, 
+    wallpaperOpacity, 
+    setWallpaperOpacity,
+    openFolder,
+    changeScopeFolder,
+    refreshTree,
+    fileTree
+  } = useIDEStore();
+
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const actions = [
-    { id: 'open_server', title: 'Open server.py', category: 'File', icon: FileCode, action: () => openFile('backend/api/server.py', 'server.py') },
-    { id: 'open_docker', title: 'Open docker-compose.yml', category: 'File', icon: FileCode, action: () => openFile('docker-compose.yml', 'docker-compose.yml') },
-    { id: 'open_routes', title: 'Open routes.ts', category: 'File', icon: FileCode, action: () => openFile('frontend/src/routes.ts', 'routes.ts') },
+  // Dynamically collect files from tree for quick search
+  const flattenFiles = (nodes: typeof fileTree): { path: string; name: string }[] => {
+    const list: { path: string; name: string }[] = [];
+    const traverse = (items: typeof fileTree) => {
+      for (const item of items) {
+        if (!item.is_dir) {
+          list.push({ path: item.path, name: item.name });
+        }
+        if (item.children) traverse(item.children);
+      }
+    };
+    traverse(nodes);
+    return list;
+  };
+
+  const projectFiles = flattenFiles(fileTree).slice(0, 15);
+
+  const fileActions = projectFiles.map((f) => ({
+    id: `file_${f.path}`,
+    title: f.name,
+    subtitle: f.path,
+    category: 'File',
+    icon: FileCode,
+    action: () => openFile(f.path, f.name)
+  }));
+
+  const standardActions = [
+    { id: 'open_folder', title: 'File: Open Folder From Local Machine...', category: 'Workspace', icon: FolderOpen, action: () => openFolder() },
+    { id: 'change_scope', title: 'File: Change Folder Scope...', category: 'Workspace', icon: FolderSync, action: () => changeScopeFolder() },
+    { id: 'refresh_tree', title: 'View: Refresh File Explorer', category: 'Explorer', icon: RotateCw, action: () => refreshTree() },
     { id: 'save', title: 'File: Save Current File', category: 'Action', icon: Save, action: () => saveCurrentFile() },
-    { id: 'new_terminal', title: 'Terminal: Create New Session', category: 'Action', icon: Terminal, action: () => setActiveTerminalTab('TERMINAL') },
-    { id: 'run_project', title: 'Run Project: uvicorn server:app', category: 'Execution', icon: Play, action: () => setActiveTerminalTab('TERMINAL') },
+    { id: 'new_terminal', title: 'Terminal: Open Terminal Session', category: 'Action', icon: Terminal, action: () => setActiveTerminalTab('TERMINAL') },
     { id: 'wallpaper_opacity', title: `Toggle Wallpaper Opacity (${wallpaperOpacity}%)`, category: 'Aesthetics', icon: Image, action: () => setWallpaperOpacity(wallpaperOpacity >= 40 ? 15 : wallpaperOpacity + 10) }
   ];
 
+  const actions = [...standardActions, ...fileActions];
   const filtered = actions.filter(a => a.title.toLowerCase().includes(query.toLowerCase()));
 
   useEffect(() => {
@@ -25,13 +64,17 @@ export const CommandPaletteModal: React.FC = () => {
         e.preventDefault();
         setCommandPaletteOpen(!isCommandPaletteOpen);
       }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        openFolder();
+      }
       if (e.key === 'Escape' && isCommandPaletteOpen) {
         setCommandPaletteOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCommandPaletteOpen, setCommandPaletteOpen]);
+  }, [isCommandPaletteOpen, setCommandPaletteOpen, openFolder]);
 
   if (!isCommandPaletteOpen) return null;
 

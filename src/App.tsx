@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TopCommandBar } from './components/layout/TopCommandBar';
 import { ActivityBar } from './components/layout/ActivityBar';
 import { FileExplorer } from './components/explorer/FileExplorer';
@@ -8,9 +8,14 @@ import { ObservabilityDeck } from './components/sidebar/ObservabilityDeck';
 import { StatusBar } from './components/layout/StatusBar';
 import { CommandPaletteModal } from './components/layout/CommandPaletteModal';
 import { useIDEStore } from './store/ideStore';
+import { fileWatcher } from './services/fileWatcher';
 
 export const App: React.FC = () => {
   const { activeActivity } = useIDEStore();
+
+  useEffect(() => {
+    fileWatcher.init();
+  }, []);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0B0D11] text-[#E2E8F0] overflow-hidden select-none font-sans">

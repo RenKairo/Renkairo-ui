@@ -4,15 +4,16 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run build && npx electron electron/main.js",
+    "dev:fast": "npx electron electron/main.js",
+    "dev:web": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "server": "node backend/server.js",
-    "start": "concurrently \"npm run server\" \"npm run dev\"",
+    "start": "concurrently -k \"npm run server\" \"npm run dev\"",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "electron:dev": "concurrently \"npm run server\" \"npm run dev\" \"electron electron/main.js\"",
     "build:exe": "npm run build && electron-builder --win"
   },
   "build": {
