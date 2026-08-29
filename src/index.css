@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-base: #0B0D11;
+    --bg-panel: #12151C;
+    --bg-card: #181B24;
+    --border-color: #232734;
+    --accent-coral: #FF4D4D;
+    --accent-crimson: #D9383A;
+    --accent-cyan: #38BDF8;
+    --accent-amber: #F59E0B;
+    --accent-emerald: #10B981;
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: #E2E8F0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B0D11;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #232734;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #343A4D;
+}
+
+/* Glass & Cyber Glow Effects */
+.cyber-glow-coral {
+  box-shadow: 0 0 12px rgba(255, 77, 77, 0.25);
+}
+
+.cyber-glow-cyan {
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+}
+
+.cyber-border-coral {
+  border-color: rgba(255, 77, 77, 0.4);
+}
+
+.cyber-gradient-bg {
+  background: linear-gradient(135deg, rgba(255, 77, 77, 0.08) 0%, rgba(56, 189, 248, 0.05) 100%);
+}
+
+/* Monaco Editor Custom Styling */
+.monaco-editor {
+  background-color: transparent !important;
+}
+
+.monaco-editor .margin {
+  background-color: #12151C !important;
+}
+
+.xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

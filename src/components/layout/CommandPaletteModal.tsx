@@ -1,0 +1,103 @@
+import React, { useState, useEffect } from 'react';
+import { Search, FileCode, Terminal, Play, Save, Moon, Image } from 'lucide-react';
+import { useIDEStore } from '../../store/ideStore';
+
+export const CommandPaletteModal: React.FC = () => {
+  const { isCommandPaletteOpen, setCommandPaletteOpen, openFile, saveCurrentFile, setActiveTerminalTab, wallpaperOpacity, setWallpaperOpacity } = useIDEStore();
+  const [query, setQuery] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const actions = [
+    { id: 'open_server', title: 'Open server.py', category: 'File', icon: FileCode, action: () => openFile('backend/api/server.py', 'server.py') },
+    { id: 'open_docker', title: 'Open docker-compose.yml', category: 'File', icon: FileCode, action: () => openFile('docker-compose.yml', 'docker-compose.yml') },
+    { id: 'open_routes', title: 'Open routes.ts', category: 'File', icon: FileCode, action: () => openFile('frontend/src/routes.ts', 'routes.ts') },
+    { id: 'save', title: 'File: Save Current File', category: 'Action', icon: Save, action: () => saveCurrentFile() },
+    { id: 'new_terminal', title: 'Terminal: Create New Session', category: 'Action', icon: Terminal, action: () => setActiveTerminalTab('TERMINAL') },
+    { id: 'run_project', title: 'Run Project: uvicorn server:app', category: 'Execution', icon: Play, action: () => setActiveTerminalTab('TERMINAL') },
+    { id: 'wallpaper_opacity', title: `Toggle Wallpaper Opacity (${wallpaperOpacity}%)`, category: 'Aesthetics', icon: Image, action: () => setWallpaperOpacity(wallpaperOpacity >= 40 ? 15 : wallpaperOpacity + 10) }
+  ];
+
+  const filtered = actions.filter(a => a.title.toLowerCase().includes(query.toLowerCase()));
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(!isCommandPaletteOpen);
+      }
+      if (e.key === 'Escape' && isCommandPaletteOpen) {
+        setCommandPaletteOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCommandPaletteOpen, setCommandPaletteOpen]);
+
+  if (!isCommandPaletteOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center pt-20 px-4 select-none">
+      <div 
+        className="w-full max-w-xl bg-[#12151C] border border-[#232734] rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Search Header */}
+        <div className="p-3 border-b border-[#232734] flex items-center space-x-3 bg-[#0B0D11]/60">
+          <Search className="w-4 h-4 text-[#38BDF8]" />
+          <input
+            type="text"
+            autoFocus
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
+            placeholder="Type a command or search files..."
+            className="w-full bg-transparent text-sm text-gray-100 placeholder-gray-500 focus:outline-none font-mono"
+          />
+          <span className="text-[10px] bg-[#181B24] border border-[#232734] px-2 py-0.5 rounded text-gray-400 font-mono">
+            ESC
+          </span>
+        </div>
+
+        {/* Results List */}
+        <div className="max-h-80 overflow-y-auto p-1 divide-y divide-[#232734]/30">
+          {filtered.length === 0 ? (
+            <div className="p-4 text-center text-xs text-gray-500 font-mono">
+              No matching files or commands found
+            </div>
+          ) : (
+            filtered.map((item, idx) => {
+              const Icon = item.icon;
+              const isSelected = idx === selectedIndex;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    item.action();
+                    setCommandPaletteOpen(false);
+                  }}
+                  onMouseEnter={() => setSelectedIndex(idx)}
+                  className={`w-full px-3 py-2.5 rounded-lg flex items-center justify-between text-xs transition-colors ${
+                    isSelected ? 'bg-[#181B24] text-white border border-[#38BDF8]/30' : 'text-gray-300 hover:bg-[#181B24]/50'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Icon className={`w-4 h-4 ${isSelected ? 'text-[#FF4D4D]' : 'text-gray-400'}`} />
+                    <span className="font-mono">{item.title}</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#0B0D11] text-gray-400 border border-[#232734]">
+                    {item.category}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-2 border-t border-[#232734] bg-[#0B0D11] text-[10px] text-gray-500 flex justify-between px-3 font-mono">
+          <span>Navigation: <kbd className="text-gray-300">↑</kbd> <kbd className="text-gray-300">↓</kbd></span>
+          <span>Execute: <kbd className="text-gray-300">↵</kbd></span>
+        </div>
+      </div>
+    </div>
+  );
+};
