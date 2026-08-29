@@ -1,6 +1,8 @@
 import { FileNode, SystemMetrics } from '../types/ide';
 
-const API_BASE = '/api';
+const API_BASE = typeof window !== 'undefined' && window.location.protocol === 'file:'
+  ? 'http://localhost:8000/api'
+  : '/api';
 
 export const fetchFileTree = async (path: string = '.'): Promise<{ root: string; tree: FileNode[] }> => {
   try {

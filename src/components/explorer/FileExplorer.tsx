@@ -113,7 +113,7 @@ export const FileExplorer: React.FC = () => {
   }, []);
 
   const handleCreateFile = async () => {
-    const fileName = prompt('Enter new file name:');
+    const fileName = typeof window.prompt === 'function' ? window.prompt('Enter new file name:') : 'new_file.txt';
     if (!fileName) return;
     const targetPath = selectedPath ? `${selectedPath}/${fileName}` : fileName;
     await performNodeAction('create_file', targetPath);
@@ -121,7 +121,7 @@ export const FileExplorer: React.FC = () => {
   };
 
   const handleCreateFolder = async () => {
-    const folderName = prompt('Enter new folder name:');
+    const folderName = typeof window.prompt === 'function' ? window.prompt('Enter new folder name:') : 'new_folder';
     if (!folderName) return;
     const targetPath = selectedPath ? `${selectedPath}/${folderName}` : folderName;
     await performNodeAction('create_dir', targetPath);
@@ -130,7 +130,8 @@ export const FileExplorer: React.FC = () => {
 
   const handleDelete = async () => {
     if (!selectedPath) return;
-    if (confirm(`Delete ${selectedPath}?`)) {
+    const confirmDelete = typeof window.confirm === 'function' ? window.confirm(`Delete ${selectedPath}?`) : true;
+    if (confirmDelete) {
       await performNodeAction('delete', selectedPath);
       await loadTree();
     }

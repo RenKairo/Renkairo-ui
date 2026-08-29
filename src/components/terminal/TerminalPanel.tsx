@@ -60,8 +60,10 @@ export const TerminalPanel: React.FC = () => {
     xtermInstance.current = term;
 
     // Establish WebSocket Connection to Backend
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/ws/terminal`;
+    const isFile = window.location.protocol === 'file:';
+    const wsUrl = isFile
+      ? 'ws://localhost:8000/api/ws/terminal'
+      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ws/terminal`;
     const ws = new WebSocket(wsUrl);
     wsInstance.current = ws;
 
