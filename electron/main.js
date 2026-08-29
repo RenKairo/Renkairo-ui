@@ -1,5 +1,9 @@
-const { app, BrowserWindow } = require('electron');
-const path = require('path');
+import { app, BrowserWindow } from 'electron';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -9,11 +13,11 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: '#0B0D11',
     title: 'RenKairo IDE - Next-Gen Cloud & AI Engineering Canvas',
-    show: true,
+    show: false,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      webSecurity: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true,
     },
   });
 
@@ -30,11 +34,9 @@ function createWindow() {
         win.loadURL('http://localhost:5173');
       })
       .catch(() => {
-        if (attempts < 4) {
-          console.log(`[Electron] Connecting to dev server (attempt ${attempts + 1})...`);
-          setTimeout(() => loadDevServer(attempts + 1), 500);
+        if (attempts < 2) {
+          setTimeout(() => loadDevServer(attempts + 1), 400);
         } else {
-          console.log('[Electron] Dev server offline. Loading production build dist/index.html...');
           win.loadFile(distPath);
         }
       });
