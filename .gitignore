@@ -3,8 +3,6 @@ node_modules/
 .pnpm-store/
 
 # Production builds
-dist/
-dist_electron/
 build/
 
 # Rust / Tauri target builds
