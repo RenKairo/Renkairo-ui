@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Peer, MediaConnection } from 'peerjs';
+import { Peer, MediaConnection, DataConnection } from 'peerjs';
 
 export interface Participant {
   peerId: string;
@@ -26,8 +26,23 @@ export interface UsePeerScreenShareReturn {
 const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' }
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' }
 ];
+
+// Helper: Create a lightweight dummy canvas stream for receive-only WebRTC calls
+function createDummyStream(): MediaStream {
+  const canvas = document.createElement('canvas');
+  canvas.width = 16;
+  canvas.height = 16;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#0B0D11';
+    ctx.fillRect(0, 0, 16, 16);
+  }
+  return canvas.captureStream(1);
+}
 
 export function usePeerScreenShare(): UsePeerScreenShareReturn {
   const [isHost, setIsHost] = useState(false);
@@ -41,10 +56,17 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
 
   const peerRef = useRef<Peer | null>(null);
   const activeCallsRef = useRef<MediaConnection[]>([]);
+  const dataConnectionsRef = useRef<DataConnection[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const disconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Teardown / Reset all connections & streams
   const endSession = useCallback(() => {
+    if (disconnectTimerRef.current) {
+      clearTimeout(disconnectTimerRef.current);
+      disconnectTimerRef.current = null;
+    }
+
     // 1. Stop all local screen capture tracks
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
@@ -53,19 +75,25 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
       localStreamRef.current = null;
     }
 
-    // 2. Close active PeerJS calls
+    // 2. Close active PeerJS media calls
     activeCallsRef.current.forEach((call) => {
       try { call.close(); } catch (e) {}
     });
     activeCallsRef.current = [];
 
-    // 3. Destroy Peer instance
+    // 3. Close data connections
+    dataConnectionsRef.current.forEach((conn) => {
+      try { conn.close(); } catch (e) {}
+    });
+    dataConnectionsRef.current = [];
+
+    // 4. Destroy Peer instance
     if (peerRef.current) {
       try { peerRef.current.destroy(); } catch (e) {}
       peerRef.current = null;
     }
 
-    // 4. Reset React states
+    // 5. Reset React states
     setIsHost(false);
     setIsConnected(false);
     setIsConnecting(false);
@@ -83,7 +111,7 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
     };
   }, [endSession]);
 
-  // Host Mode: Captures screen and listens for viewer calls
+  // Host Mode: Captures screen and listens for viewer calls & data links
   const startHostSession = useCallback(async (): Promise<string> => {
     endSession();
     setError(null);
@@ -160,7 +188,6 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
           setIsConnected(true);
           setIsConnecting(false);
 
-          // Add Host to participants list
           setParticipants([
             {
               peerId: id,
@@ -174,14 +201,27 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
           resolve(id);
         });
 
-        // Listen for incoming viewer calls
+        // Listen for incoming viewer data connections (for heartbeat & status)
+        peer.on('connection', (conn) => {
+          dataConnectionsRef.current.push(conn);
+
+          conn.on('open', () => {
+            conn.send({ type: 'welcome', hostId: roomId });
+          });
+
+          conn.on('close', () => {
+            dataConnectionsRef.current = dataConnectionsRef.current.filter((c) => c !== conn);
+          });
+        });
+
+        // Listen for incoming viewer media calls
         peer.on('call', (call) => {
           activeCallsRef.current.push(call);
 
-          // Answer incoming viewer with our local screen stream
-          call.answer(stream);
+          // Answer incoming viewer with local screen stream
+          call.answer(stream!);
 
-          // Add joining viewer to participants list dynamically
+          // Dynamically add joining viewer to participants list
           setParticipants((prev) => {
             if (prev.some((p) => p.peerId === call.peer)) return prev;
             return [
@@ -196,9 +236,19 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
             ];
           });
 
+          // Handle ICE connection state changes for Host side
+          if (call.peerConnection) {
+            call.peerConnection.oniceconnectionstatechange = () => {
+              const state = call.peerConnection?.iceConnectionState;
+              if (state === 'failed' || state === 'closed') {
+                activeCallsRef.current = activeCallsRef.current.filter((c) => c !== call);
+                setParticipants((prev) => prev.filter((p) => p.peerId !== call.peer));
+              }
+            };
+          }
+
           call.on('close', () => {
             activeCallsRef.current = activeCallsRef.current.filter((c) => c !== call);
-            // Remove disconnected viewer from participants list
             setParticipants((prev) => prev.filter((p) => p.peerId !== call.peer));
           });
 
@@ -274,12 +324,21 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
             }
           ]);
 
-          // 2. Call the Host Room ID with an empty receive-only stream
-          const emptyStream = new MediaStream();
-          const call = peer.call(cleanRoomId, emptyStream);
+          // 2. Open Data Channel for P2P heartbeat
+          const dataConn = peer.connect(cleanRoomId);
+          dataConnectionsRef.current.push(dataConn);
+
+          // 3. Initiate Media Call with a lightweight dummy stream to ensure SDP m-lines format cleanly
+          const dummyStream = createDummyStream();
+          const call = peer.call(cleanRoomId, dummyStream);
           activeCallsRef.current.push(call);
 
           call.on('stream', (remoteMediaStream) => {
+            if (disconnectTimerRef.current) {
+              clearTimeout(disconnectTimerRef.current);
+              disconnectTimerRef.current = null;
+            }
+
             setRemoteStream(remoteMediaStream);
             setIsConnected(true);
             setIsConnecting(false);
@@ -304,12 +363,33 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
             resolve();
           });
 
-          // Monitor ICE connection state changes
+          // 4. Robust ICE Connection State Monitor (with 5s grace period for transient 'disconnected' states)
           if (call.peerConnection) {
             call.peerConnection.oniceconnectionstatechange = () => {
               const state = call.peerConnection?.iceConnectionState;
-              if (state === 'disconnected' || state === 'failed' || state === 'closed') {
-                setError('P2P connection dropped or host disconnected.');
+              console.log('[WebRTC ICE Connection State]:', state);
+
+              if (state === 'connected' || state === 'completed') {
+                if (disconnectTimerRef.current) {
+                  clearTimeout(disconnectTimerRef.current);
+                  disconnectTimerRef.current = null;
+                }
+                setIsConnected(true);
+              } else if (state === 'disconnected') {
+                // Give a 5-second grace period before dropping connection
+                if (!disconnectTimerRef.current) {
+                  disconnectTimerRef.current = setTimeout(() => {
+                    setError('P2P connection dropped or host went offline.');
+                    setIsConnected(false);
+                    setParticipants([]);
+                  }, 5000);
+                }
+              } else if (state === 'failed' || state === 'closed') {
+                if (disconnectTimerRef.current) {
+                  clearTimeout(disconnectTimerRef.current);
+                  disconnectTimerRef.current = null;
+                }
+                setError('P2P WebRTC connection failed.');
                 setIsConnected(false);
                 setParticipants([]);
               }
