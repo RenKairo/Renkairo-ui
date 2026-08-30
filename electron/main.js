@@ -92,13 +92,28 @@ function startBackendServer() {
     })
     .catch(() => {
       try {
-        const serverPath = path.join(ROOT_DIR, 'backend/server.js');
+        let serverPath = path.join(ROOT_DIR, 'backend/server.js');
+        if (!fs.existsSync(serverPath) && app.isPackaged) {
+          const altPath = path.join(app.getAppPath(), 'backend/server.js');
+          if (fs.existsSync(altPath)) {
+            serverPath = altPath;
+          }
+        }
+
         if (fs.existsSync(serverPath)) {
-          backendProcess = spawn('node', [serverPath], {
-            cwd: ROOT_DIR,
+          const nodeBinary = app.isPackaged ? process.execPath : 'node';
+          const env = app.isPackaged
+            ? { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: '8000' }
+            : { ...process.env, PORT: '8000' };
+
+          backendProcess = spawn(nodeBinary, [serverPath], {
+            cwd: app.isPackaged ? path.dirname(serverPath) : ROOT_DIR,
+            env: env,
             stdio: ['ignore', 'inherit', 'inherit']
           });
           console.log('[Electron] Started backend server on port 8000');
+        } else {
+          console.warn('[Electron] Backend server script not found at:', serverPath);
         }
       } catch (err) {
         console.error('[Electron] Backend server auto-start warning:', err);
