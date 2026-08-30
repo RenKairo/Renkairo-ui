@@ -14,11 +14,11 @@ function startBackendServer() {
     const serverPath = path.join(ROOT_DIR, 'backend/server.js');
     backendProcess = spawn('node', [serverPath], {
       cwd: ROOT_DIR,
-      stdio: 'ignore'
+      stdio: 'inherit'
     });
-    console.log('[Electron] Started backend server on port 8000');
+    console.log('[Electron] Started backend server process on port 8000');
   } catch (err) {
-    console.error('[Electron] Backend server auto-start warning:', err);
+    console.error('[Electron] Backend server auto-start error:', err);
   }
 }
 
