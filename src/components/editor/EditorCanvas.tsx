@@ -2,6 +2,7 @@ import React from 'react';
 import Editor from '@monaco-editor/react';
 import { X, Plus, SplitSquareHorizontal, MoreHorizontal, ChevronRight } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
+import { openExternalTerminal } from '../../services/api';
 
 export const EditorCanvas: React.FC = () => {
   const { 
@@ -12,7 +13,11 @@ export const EditorCanvas: React.FC = () => {
     updateTabContent, 
     setCursorPos,
     wallpaperOpacity,
-    saveCurrentFile
+    saveCurrentFile,
+    setActiveTerminalTab,
+    fontSize,
+    tabSize,
+    minimapEnabled
   } = useIDEStore();
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
@@ -81,6 +86,29 @@ export const EditorCanvas: React.FC = () => {
 
         {/* Tab Bar Actions */}
         <div className="flex items-center space-x-1 text-gray-400 pr-2">
+          {/* Run Code Button */}
+          <button 
+            onClick={() => {
+              saveCurrentFile();
+              setActiveTerminalTab('TERMINAL');
+            }} 
+            title="Run Code (Java, Python, Node, C++)" 
+            className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 rounded flex items-center space-x-1 font-mono text-[11px] font-semibold transition-all focus:outline-none"
+          >
+            <span className="text-emerald-400">▶</span>
+            <span>Run Code</span>
+          </button>
+
+          {/* Open Windows Terminal Button */}
+          <button 
+            onClick={() => openExternalTerminal()} 
+            title="Open Windows Terminal App on Desktop" 
+            className="px-2 py-1 bg-[#181B24] border border-[#232734] hover:border-[#38BDF8]/50 text-[#38BDF8] hover:text-white rounded flex items-center space-x-1 font-mono text-[11px] transition-all focus:outline-none"
+          >
+            <span>🖥️</span>
+            <span className="hidden sm:inline">Windows Terminal</span>
+          </button>
+
           <button title="Split Editor" className="p-1 hover:text-white hover:bg-[#12151C] rounded transition-colors">
             <SplitSquareHorizontal className="w-3.5 h-3.5" />
           </button>
@@ -129,12 +157,12 @@ export const EditorCanvas: React.FC = () => {
               );
             }}
             options={{
-              fontSize: 13,
+              fontSize: fontSize,
               fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-              minimap: { enabled: true },
+              minimap: { enabled: minimapEnabled },
               scrollBeyondLastLine: false,
               automaticLayout: true,
-              tabSize: 4,
+              tabSize: tabSize,
               lineNumbers: 'on',
               glyphMargin: false,
               folding: true,

@@ -27,7 +27,6 @@ function buildTree(currentPath, basePath) {
       const rel = path.relative(basePath, full).replace(/\\/g, '/');
       const stat = fs.statSync(full);
       if (stat.isDirectory()) {
-        tree.append ? null : null;
         tree.push({
           name: entry,
           path: rel,
@@ -52,7 +51,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0' });
 });
 
-// File System APIs
+// File System APIs - Real OS File System Reading & Writing
 app.get('/api/fs/tree', (req, res) => {
   const reqPath = req.query.path || '.';
   const target = path.resolve(ROOT_DIR, reqPath);
@@ -138,66 +137,102 @@ app.get('/api/system/metrics', (req, res) => {
   });
 });
 
+// Endpoint to launch native Windows Terminal (wt.exe or cmd.exe) on Desktop
+app.post('/api/open-external-terminal', (req, res) => {
+  try {
+    if (process.platform === 'win32') {
+      // Try launching Windows Terminal (wt.exe) or fallback to cmd.exe
+      const proc = spawn('cmd.exe', ['/c', 'start', 'wt.exe', '-d', ROOT_DIR], { detached: true, stdio: 'ignore' });
+      proc.on('error', () => {
+        spawn('cmd.exe', ['/c', 'start', 'cmd.exe', '/k', `cd /d "${ROOT_DIR}"`], { detached: true, stdio: 'ignore' });
+      });
+    } else if (process.platform === 'darwin') {
+      spawn('open', ['-a', 'Terminal', ROOT_DIR], { detached: true });
+    } else {
+      spawn('x-terminal-emulator', ['--working-directory', ROOT_DIR], { detached: true });
+    }
+    res.json({ status: 'ok', message: 'External terminal launched' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/api/ws/terminal' });
 
-wss.on('connection', (ws) => {
-  ws.send('\r\n\x1b[1;36mRenKairo Cloud Shell v1.0.0\x1b[0m [\x1b[32mActive Session\x1b[0m]\r\n');
-  ws.send('Type commands below. Connected to backend server.\r\n\r\n');
-  const prompt = '\r\n\x1b[1;31m(renkairo)\x1b[0m \x1b[1;34mdeveloper@Renkairo\x1b[0m \x1b[33mplatform %\x1b[0m ';
-  ws.send(prompt);
+// REAL Interactive Shell Terminal Process per WebSocket Session
+wss.on('connection', (ws, req) => {
+  const isWin = process.platform === 'win32';
+  const urlParams = new URLSearchParams((req.url || '').split('?')[1] || '');
+  const shellType = urlParams.get('shell') || 'powershell';
 
-  let inputBuffer = '';
+  let shell = isWin ? 'powershell.exe' : (process.env.SHELL || 'bash');
+  let args = isWin ? ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass'] : ['-i'];
 
-  ws.on('message', (message) => {
-    const data = message.toString();
-    try {
-      const parsed = JSON.parse(data);
-      if (parsed.type === 'resize') return;
-    } catch (e) {}
-
-    for (let i = 0; i < data.length; i++) {
-      const char = data[i];
-      if (char === '\r' || char === '\n') {
-        ws.send('\r\n');
-        const cmd = inputBuffer.trim();
-        inputBuffer = '';
-        if (cmd) {
-          if (cmd === 'clear' || cmd === 'cls') {
-            ws.send('\x1b[2J\x1b[3J\x1b[H');
-          } else if (cmd === 'help') {
-            ws.send('RenKairo Shell Commands:\r\n  python -m uvicorn server:app --reload\r\n  npm run dev\r\n  ls -la\r\n  git status\r\n  clear\r\n');
-          } else {
-            const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
-            const proc = spawn(shell, [process.platform === 'win32' ? '-Command' : '-c', cmd], { cwd: ROOT_DIR });
-
-            proc.stdout.on('data', (d) => {
-              ws.send(d.toString().replace(/\n/g, '\r\n'));
-            });
-            proc.stderr.on('data', (d) => {
-              ws.send(`\x1b[31m${d.toString().replace(/\n/g, '\r\n')}\x1b[0m`);
-            });
-            proc.on('close', () => {
-              ws.send(prompt);
-            });
-            return;
-          }
-        }
-        ws.send(prompt);
-      } else if (char === '\x7f' || char === '\x08') {
-        if (inputBuffer.length > 0) {
-          inputBuffer = inputBuffer.slice(0, -1);
-          ws.send('\b \b');
-        }
-      } else {
-        inputBuffer += char;
-        ws.send(char);
-      }
+  if (isWin) {
+    if (shellType === 'cmd') {
+      shell = 'cmd.exe';
+      args = ['/k'];
+    } else if (shellType === 'python') {
+      shell = 'python';
+      args = ['-i'];
+    } else if (shellType === 'node') {
+      shell = 'node';
+      args = [];
+    } else if (shellType === 'bash') {
+      shell = 'bash.exe';
+      args = ['-i'];
     }
+  }
+
+  const shellProc = spawn(shell, args, {
+    cwd: ROOT_DIR,
+    env: { ...process.env, TERM: 'xterm-256color' },
+    shell: true
+  });
+
+  // Direct Stream Output from real Shell Process to Xterm UI
+  shellProc.stdout?.on('data', (chunk) => {
+    if (ws.readyState === ws.OPEN) {
+      ws.send(chunk.toString());
+    }
+  });
+
+  shellProc.stderr?.on('data', (chunk) => {
+    if (ws.readyState === ws.OPEN) {
+      ws.send(chunk.toString());
+    }
+  });
+
+  // Pass raw keystrokes and commands directly to real Shell stdin
+  ws.on('message', (message) => {
+    try {
+      const data = message.toString();
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.type === 'resize') return;
+      } catch (e) {}
+
+      if (shellProc.stdin && !shellProc.stdin.destroyed) {
+        shellProc.stdin.write(data);
+      }
+    } catch (err) {}
+  });
+
+  shellProc.on('exit', () => {
+    if (ws.readyState === ws.OPEN) {
+      ws.send('\r\n\x1b[31mShell session closed.\x1b[0m\r\n');
+    }
+  });
+
+  ws.on('close', () => {
+    try {
+      shellProc.kill();
+    } catch (e) {}
   });
 });
 
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
-  console.log(`[RenKairo Backend] Server running on http://localhost:${PORT}`);
+  console.log(`[RenKairo Backend] Real Shell Server running on http://localhost:${PORT}`);
 });

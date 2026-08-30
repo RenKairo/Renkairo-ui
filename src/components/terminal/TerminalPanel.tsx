@@ -24,7 +24,7 @@ export const TerminalPanel: React.FC = () => {
   } = useIDEStore();
 
   const terminalRef = useRef<HTMLDivElement>(null);
-  const [shellType, setShellType] = useState('zsh - backend');
+  const [shellType, setShellType] = useState('powershell');
   const xtermInstance = useRef<XTerm | null>(null);
   const wsInstance = useRef<WebSocket | null>(null);
 
@@ -59,11 +59,12 @@ export const TerminalPanel: React.FC = () => {
     fitAddon.fit();
     xtermInstance.current = term;
 
-    // Establish WebSocket Connection to Backend
+    // Establish WebSocket Connection to Backend with shell profile query parameter
     const isFile = window.location.protocol === 'file:';
-    const wsUrl = isFile
+    const baseUrl = isFile
       ? 'ws://localhost:8000/api/ws/terminal'
       : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ws/terminal`;
+    const wsUrl = `${baseUrl}?shell=${encodeURIComponent(shellType)}`;
     const ws = new WebSocket(wsUrl);
     wsInstance.current = ws;
 
@@ -95,7 +96,7 @@ export const TerminalPanel: React.FC = () => {
       ws.close();
       term.dispose();
     };
-  }, [activeTerminalTab]);
+  }, [activeTerminalTab, shellType]);
 
   const tabs: { id: TerminalTab; label: string; badge?: number }[] = [
     { id: 'TERMINAL', label: 'TERMINAL' },
@@ -143,10 +144,19 @@ export const TerminalPanel: React.FC = () => {
         {/* Terminal Controls */}
         <div className="flex items-center space-x-2 text-gray-400">
           {/* Shell Selector Dropdown */}
-          <div className="flex items-center space-x-1 bg-[#181B24] border border-[#232734] rounded px-2 py-0.5 text-[10px] font-mono text-gray-300">
+          <div className="flex items-center space-x-1 bg-[#181B24] border border-[#232734] rounded px-1.5 py-0.5 text-[10px] font-mono text-gray-300">
             <Terminal className="w-3 h-3 text-[#38BDF8]" />
-            <span>{shellType}</span>
-            <ChevronDown className="w-3 h-3 text-gray-500" />
+            <select
+              value={shellType}
+              onChange={(e) => setShellType(e.target.value)}
+              className="bg-transparent text-gray-200 focus:outline-none font-mono cursor-pointer"
+            >
+              <option value="powershell" className="bg-[#12151C] text-white">⚙️ PowerShell</option>
+              <option value="cmd" className="bg-[#12151C] text-white">💻 Command Prompt (CMD)</option>
+              <option value="python" className="bg-[#12151C] text-white">🐍 Python REPL</option>
+              <option value="node" className="bg-[#12151C] text-white">🟢 Node.js REPL</option>
+              <option value="bash" className="bg-[#12151C] text-white">🐧 Git Bash / WSL</option>
+            </select>
           </div>
 
           <button onClick={clearTerminal} title="Clear Console" className="p-1 hover:text-white transition-colors">

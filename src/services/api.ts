@@ -150,6 +150,16 @@ export const performNodeAction = async (
   }
 };
 
+export const openExternalTerminal = async (): Promise<boolean> => {
+  try {
+    const res = await fetch(`${API_BASE}/open-external-terminal`, { method: 'POST' });
+    return res.ok;
+  } catch (err) {
+    console.error('Failed to open external terminal', err);
+    return false;
+  }
+};
+
 export const fetchMetrics = async (): Promise<SystemMetrics> => {
   try {
     const res = await fetch(`${API_BASE}/system/metrics`);

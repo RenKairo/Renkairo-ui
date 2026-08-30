@@ -1,9 +1,26 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
+import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const ROOT_DIR = path.resolve(__dirname, '..');
+
+let backendProcess = null;
+
+function startBackendServer() {
+  try {
+    const serverPath = path.join(ROOT_DIR, 'backend/server.js');
+    backendProcess = spawn('node', [serverPath], {
+      cwd: ROOT_DIR,
+      stdio: 'ignore'
+    });
+    console.log('[Electron] Started backend server on port 8000');
+  } catch (err) {
+    console.error('[Electron] Backend server auto-start warning:', err);
+  }
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -46,6 +63,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  startBackendServer();
   createWindow();
 
   app.on('activate', () => {
@@ -54,5 +72,8 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  if (backendProcess) {
+    try { backendProcess.kill(); } catch (e) {}
+  }
   if (process.platform !== 'darwin') app.quit();
 });

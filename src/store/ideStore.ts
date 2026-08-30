@@ -28,6 +28,14 @@ interface IDEState {
   // Customization & Aesthetics
   wallpaperOpacity: number;
   setWallpaperOpacity: (opacity: number) => void;
+  fontSize: number;
+  setFontSize: (size: number) => void;
+  tabSize: number;
+  setTabSize: (size: number) => void;
+  minimapEnabled: boolean;
+  setMinimapEnabled: (enabled: boolean) => void;
+  formatOnSave: boolean;
+  setFormatOnSave: (format: boolean) => void;
   isCommandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
   
@@ -178,6 +186,15 @@ async def health():
 
   wallpaperOpacity: 18,
   setWallpaperOpacity: (opacity) => set({ wallpaperOpacity: opacity }),
+
+  fontSize: 13,
+  setFontSize: (size) => set({ fontSize: size }),
+  tabSize: 4,
+  setTabSize: (size) => set({ tabSize: size }),
+  minimapEnabled: true,
+  setMinimapEnabled: (enabled) => set({ minimapEnabled: enabled }),
+  formatOnSave: true,
+  setFormatOnSave: (format) => set({ formatOnSave: format }),
 
   isCommandPaletteOpen: false,
   setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
