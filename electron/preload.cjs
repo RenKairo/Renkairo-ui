@@ -17,5 +17,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     deleteItem: (targetPath) => ipcRenderer.invoke('fs:deleteItem', targetPath),
     renameItem: (oldPath, newPath) => ipcRenderer.invoke('fs:renameItem', oldPath, newPath),
     moveItem: (srcPath, destPath) => ipcRenderer.invoke('fs:moveItem', srcPath, destPath),
+    searchCodebase: (options) => ipcRenderer.invoke('fs:searchCodebase', options),
   }
 });

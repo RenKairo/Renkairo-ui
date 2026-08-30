@@ -228,6 +228,208 @@ app.post('/api/fs/file', (req, res) => {
   }
 });
 
+app.post('/api/fs/search', (req, res) => {
+  const { query, includes, isCaseSensitive, isWholeWord, isRegex, root: rootParam } = req.body;
+  const basePath = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    const results = searchCodebaseInBackend({
+      query,
+      includes,
+      isCaseSensitive,
+      isWholeWord,
+      isRegex,
+      rootPath: basePath
+    });
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const BINARY_EXTENSIONS = new Set([
+  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ico', 'svgz',
+  'exe', 'dll', 'so', 'dylib', 'bin', 'iso', 'img',
+  'zip', 'tar', 'gz', 'bz2', '7z', 'rar', 'xz',
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+  'mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac',
+  'mp4', 'mkv', 'avi', 'mov', 'wmv', 'webm',
+  'woff', 'woff2', 'ttf', 'otf', 'eot',
+  'wasm', 'pyc', 'class', 'db', 'sqlite', 'sqlite3', 'parquet', 'arrow'
+]);
+
+function searchCodebaseInBackend({ query, includes, isCaseSensitive, isWholeWord, isRegex, rootPath }) {
+  if (!query || !query.trim()) {
+    return { results: [], totalMatches: 0, totalFiles: 0, capped: false };
+  }
+
+  const targetRoot = rootPath || currentWorkspace;
+  if (!targetRoot || !fs.existsSync(targetRoot)) {
+    return { results: [], totalMatches: 0, totalFiles: 0, capped: false };
+  }
+
+  let includePatterns = [];
+  if (includes && includes.trim()) {
+    includePatterns = includes.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  }
+
+  let regex = null;
+  try {
+    let pattern = query;
+    if (!isRegex) {
+      pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    if (isWholeWord) {
+      pattern = `\\b${pattern}\\b`;
+    }
+    const flags = isCaseSensitive ? 'g' : 'gi';
+    regex = new RegExp(pattern, flags);
+  } catch (err) {
+    return { results: [], totalMatches: 0, totalFiles: 0, capped: false, error: 'Invalid Regular Expression' };
+  }
+
+  const gitignorePatterns = new Set();
+  const gitignorePath = path.join(targetRoot, '.gitignore');
+  if (fs.existsSync(gitignorePath)) {
+    try {
+      const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
+      gitignoreContent.split(/\r?\n/).forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#')) {
+          gitignorePatterns.add(trimmed.replace(/^\//, '').replace(/\/$/, ''));
+        }
+      });
+    } catch (e) {}
+  }
+
+  const results = [];
+  let totalMatches = 0;
+  let totalFiles = 0;
+  let capped = false;
+
+  const MAX_MATCHES = 500;
+  const MAX_FILES = 50;
+
+  function matchesInclude(filename, relPath) {
+    if (includePatterns.length === 0) return true;
+    const lowerName = filename.toLowerCase();
+    const lowerRel = relPath.toLowerCase();
+
+    return includePatterns.some(pattern => {
+      if (pattern.startsWith('*.')) {
+        const ext = pattern.slice(1);
+        return lowerName.endsWith(ext);
+      }
+      if (pattern.includes('*')) {
+        const globRegex = new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+        return globRegex.test(lowerName) || globRegex.test(lowerRel);
+      }
+      return lowerName.includes(pattern) || lowerRel.includes(pattern);
+    });
+  }
+
+  function walkDir(currentDir) {
+    if (capped) return;
+
+    let entries;
+    try {
+      entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    } catch (e) {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (capped) break;
+
+      const name = entry.name;
+      if (IGNORED.has(name) || gitignorePatterns.has(name) || name.startsWith('.')) {
+        continue;
+      }
+
+      const fullPath = path.join(currentDir, name);
+      let relPath = path.relative(targetRoot, fullPath).replace(/\\/g, '/');
+
+      if (entry.isDirectory()) {
+        walkDir(fullPath);
+      } else if (entry.isFile()) {
+        const ext = path.extname(name).replace('.', '').toLowerCase();
+        if (BINARY_EXTENSIONS.has(ext)) continue;
+
+        if (!matchesInclude(name, relPath)) continue;
+
+        try {
+          const stat = fs.statSync(fullPath);
+          if (stat.size > 5 * 1024 * 1024) continue;
+
+          const sampleSize = Math.min(stat.size, 1024);
+          if (sampleSize > 0) {
+            const fd = fs.openSync(fullPath, 'r');
+            const buffer = Buffer.alloc(sampleSize);
+            fs.readSync(fd, buffer, 0, sampleSize, 0);
+            fs.closeSync(fd);
+            let isBinary = false;
+            for (let i = 0; i < sampleSize; i++) {
+              if (buffer[i] === 0x00) { isBinary = true; break; }
+            }
+            if (isBinary) continue;
+          }
+
+          const content = fs.readFileSync(fullPath, 'utf-8');
+          const lines = content.split(/\r?\n/);
+          const fileMatches = [];
+
+          for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+            if (totalMatches >= MAX_MATCHES) {
+              capped = true;
+              break;
+            }
+
+            const lineText = lines[lineIdx];
+            regex.lastIndex = 0;
+            
+            const matchIndices = [];
+            let match;
+            while ((match = regex.exec(lineText)) !== null) {
+              matchIndices.push([match.index, match.index + match[0].length]);
+              if (match[0].length === 0) break;
+              if (!regex.global) break;
+            }
+
+            if (matchIndices.length > 0) {
+              fileMatches.push({
+                line: lineIdx + 1,
+                text: lineText.length > 300 ? lineText.slice(0, 300) + '...' : lineText,
+                matchIndices
+              });
+              totalMatches += matchIndices.length;
+            }
+          }
+
+          if (fileMatches.length > 0) {
+            results.push({
+              path: relPath,
+              fullPath: fullPath,
+              matches: fileMatches
+            });
+            totalFiles++;
+            if (totalFiles >= MAX_FILES) {
+              capped = true;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  walkDir(targetRoot);
+
+  return {
+    results,
+    totalMatches,
+    totalFiles,
+    capped
+  };
+}
+
 app.post('/api/fs/nodes', (req, res) => {
   const { action, path: reqPath, target_path: destPath, root: rootParam, content } = req.body;
   const basePath = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
@@ -567,6 +769,15 @@ wssTerminal.on('connection', (ws, req) => {
 });
 
 const PORT = process.env.PORT || 8000;
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`[RenKairo Backend] Port ${PORT} already in use. Reusing active server instance.`);
+  } else {
+    console.error('[RenKairo Backend Error]:', err);
+  }
+});
+
 server.listen(PORT, () => {
   console.log(`[RenKairo Backend] Real Shell Server running on http://localhost:${PORT}`);
 });

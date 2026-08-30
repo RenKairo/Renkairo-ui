@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"vite\" \"npx electron electron/main.js\"",
-    "dev:live": "concurrently -k \"vite\" \"npx electron electron/main.js\"",
+    "dev": "concurrently -k \"npm run server\" \"vite\" \"npx electron electron/main.js\"",
+    "dev:live": "concurrently -k \"npm run server\" \"vite\" \"npx electron electron/main.js\"",
     "dev:build": "npm run build && npx electron electron/main.js",
     "dev:fast": "npx electron electron/main.js",
     "dev:web": "vite",

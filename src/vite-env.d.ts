@@ -18,6 +18,20 @@ export interface ElectronFS {
   deleteItem: (targetPath: string) => Promise<boolean>;
   renameItem: (oldPath: string, newPath: string) => Promise<boolean>;
   moveItem: (srcPath: string, destPath: string) => Promise<boolean>;
+  searchCodebase?: (options: {
+    query: string;
+    includes?: string;
+    isCaseSensitive?: boolean;
+    isWholeWord?: boolean;
+    isRegex?: boolean;
+    rootPath?: string;
+  }) => Promise<{
+    results: any[];
+    totalMatches: number;
+    totalFiles: number;
+    capped: boolean;
+    error?: string;
+  }>;
 }
 
 export interface ElectronAPI {

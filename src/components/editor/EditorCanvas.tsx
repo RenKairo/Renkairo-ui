@@ -21,6 +21,7 @@ export const EditorCanvas: React.FC = () => {
   const { 
     tabs, 
     activeTabId, 
+    targetLine,
     closeTab, 
     setActiveTabId, 
     updateTabContent, 
@@ -56,6 +57,19 @@ export const EditorCanvas: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, []);
+
+  const editorRef = React.useRef<any>(null);
+
+  // Jump to line when targetLine is set
+  React.useEffect(() => {
+    if (editorRef.current && activeTab && targetLine && targetLine.tabId === activeTab.id) {
+      try {
+        editorRef.current.revealLineInCenter(targetLine.line);
+        editorRef.current.setPosition({ lineNumber: targetLine.line, column: 1 });
+        editorRef.current.focus();
+      } catch (e) {}
+    }
+  }, [targetLine, activeTabId]);
 
   // Parse path breadcrumb
   const breadcrumbs = activeTab 
@@ -281,6 +295,16 @@ export const EditorCanvas: React.FC = () => {
             theme="vs-dark"
             onChange={(val) => updateTabContent(activeTab.id, val || '')}
             onMount={(editor) => {
+              editorRef.current = editor;
+              if (targetLine && targetLine.tabId === activeTab.id) {
+                setTimeout(() => {
+                  try {
+                    editor.revealLineInCenter(targetLine.line);
+                    editor.setPosition({ lineNumber: targetLine.line, column: 1 });
+                    editor.focus();
+                  } catch (e) {}
+                }, 50);
+              }
               editor.onDidChangeCursorPosition((e) => {
                 setCursorPos(e.position.lineNumber, e.position.column);
               });
