@@ -707,10 +707,22 @@ wssTerminal.on('connection', (ws, req) => {
       cols: 80,
       rows: 24,
       cwd: targetCwd,
+      useConpty: false,
       env: { ...process.env, TERM: 'xterm-256color' }
     });
   } catch (err) {
-    console.error('[Terminal PTY Spawn Error]:', err);
+    console.warn('[Terminal PTY ConPTY Spawn Warning, attempting standard fallback...]:', err);
+    try {
+      ptyProcess = pty.spawn(shell, args, {
+        name: 'xterm-256color',
+        cols: 80,
+        rows: 24,
+        cwd: targetCwd,
+        env: { ...process.env, TERM: 'xterm-256color' }
+      });
+    } catch (e) {
+      console.error('[Terminal PTY Spawn Error]:', e);
+    }
   }
 
   if (ptyProcess) {

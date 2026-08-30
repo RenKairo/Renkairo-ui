@@ -40,6 +40,7 @@ export interface ElectronAPI {
   openFileDialog: (defaultPath?: string) => Promise<string | null>;
   showItemInFolder: (fullPath: string) => Promise<boolean>;
   openPath: (fullPath: string) => Promise<string>;
+  getDesktopSources?: () => Promise<{ id: string; name: string }[]>;
   fs: ElectronFS;
 }
 

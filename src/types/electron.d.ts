@@ -4,6 +4,7 @@ export interface ElectronAPI {
   openFileDialog: (defaultPath?: string) => Promise<string | null>;
   showItemInFolder: (fullPath: string) => Promise<boolean>;
   openPath: (fullPath: string) => Promise<string | boolean>;
+  getDesktopSources?: () => Promise<{ id: string; name: string }[]>;
   fs?: {
     selectFolder: () => Promise<{ name: string; path: string; tree: any[] } | null>;
     readDirectoryChildren: (dirRelOrFullPath: string) => Promise<any[]>;

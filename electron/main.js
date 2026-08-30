@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, desktopCapturer, session } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
@@ -615,8 +615,37 @@ ipcMain.handle('shell:openPath', async (event, fullPath) => {
   return false;
 });
 
+ipcMain.handle('desktopCapturer:getSources', async () => {
+  try {
+    const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
+    return sources.map(s => ({ id: s.id, name: s.name }));
+  } catch (err) {
+    console.error('[Desktop Capturer Error]:', err);
+    return [];
+  }
+});
+
 // App Lifecycle
 app.whenReady().then(() => {
+  if (session.defaultSession && typeof session.defaultSession.setDisplayMediaHandler === 'function') {
+    try {
+      session.defaultSession.setDisplayMediaHandler((request, callback) => {
+        desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+          if (sources.length > 0) {
+            callback({ video: sources[0], audio: 'loopback' });
+          } else {
+            callback({});
+          }
+        }).catch((err) => {
+          console.error('[Electron DisplayMediaHandler Error]:', err);
+          callback({});
+        });
+      });
+    } catch (e) {
+      console.warn('[Electron setDisplayMediaHandler Warning]:', e);
+    }
+  }
+
   startBackendServer();
   createWindow();
 
