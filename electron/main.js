@@ -86,18 +86,24 @@ function readNativeDirectoryChildren(dirPath, rootPath = activeRootWorkspacePath
 }
 
 function startBackendServer() {
-  try {
-    const serverPath = path.join(ROOT_DIR, 'backend/server.js');
-    if (fs.existsSync(serverPath)) {
-      backendProcess = spawn('node', [serverPath], {
-        cwd: ROOT_DIR,
-        stdio: 'ignore'
-      });
-      console.log('[Electron] Started backend server on port 8000');
-    }
-  } catch (err) {
-    console.error('[Electron] Backend server auto-start warning:', err);
-  }
+  fetch('http://localhost:8000/health')
+    .then(() => {
+      console.log('[Electron] Backend server already running on port 8000');
+    })
+    .catch(() => {
+      try {
+        const serverPath = path.join(ROOT_DIR, 'backend/server.js');
+        if (fs.existsSync(serverPath)) {
+          backendProcess = spawn('node', [serverPath], {
+            cwd: ROOT_DIR,
+            stdio: 'ignore'
+          });
+          console.log('[Electron] Started backend server on port 8000');
+        }
+      } catch (err) {
+        console.error('[Electron] Backend server auto-start warning:', err);
+      }
+    });
 }
 
 function createWindow() {
@@ -124,15 +130,28 @@ function createWindow() {
 
   const distPath = path.join(__dirname, '../dist/index.html');
   
-  // Try connecting to Vite dev server for instant HMR auto-updates; fallback to dist/index.html
-  fetch('http://localhost:5173')
-    .then(() => {
-      win.loadURL('http://localhost:5173');
-      console.log('[Electron] Connected to Vite Dev Server (Live HMR auto-update enabled)');
-    })
-    .catch(() => {
-      win.loadFile(distPath);
-    });
+  if (app.isPackaged) {
+    win.loadFile(distPath);
+  } else {
+    // Retry connecting to Vite dev server for instant HMR auto-updates; fallback to dist/index.html
+    const loadDevServer = (attempts = 0) => {
+      fetch('http://localhost:5173')
+        .then(() => {
+          win.loadURL('http://localhost:5173');
+          console.log('[Electron] Connected to Vite Dev Server (Live HMR auto-update enabled)');
+        })
+        .catch(() => {
+          if (attempts < 20) {
+            setTimeout(() => loadDevServer(attempts + 1), 300);
+          } else {
+            console.log('[Electron] Dev server offline. Loading production build dist/index.html...');
+            win.loadFile(distPath);
+          }
+        });
+    };
+
+    loadDevServer();
+  }
 }
 
 // ----------------------------------------------------
