@@ -64,7 +64,7 @@ export const ObservabilityDeck: React.FC = () => {
   const tabs: RightSidebarTab[] = ['OVERVIEW', 'SERVERS', 'DOCKER', 'COMPUTE'];
 
   return (
-    <aside className="w-80 bg-[#0B0D11] border-l border-[#232734] flex flex-col select-none h-full overflow-y-auto z-10 font-sans">
+    <aside className="w-full bg-[#0B0D11] border-l border-[#232734] flex flex-col select-none h-full overflow-y-auto z-10 font-sans">
       {/* Header Tabs */}
       <div className="h-9 px-2 border-b border-[#232734] flex items-center justify-between text-xs bg-[#0B0D11]">
         <div className="flex items-center space-x-1">

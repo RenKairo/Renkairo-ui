@@ -668,8 +668,14 @@ wssTerminal.on('connection', (ws, req) => {
   const shellType = urlParams.get('shell') || 'powershell';
   const reqCwd = urlParams.get('cwd');
 
+  const compactPath = urlParams.get('compact_path') === '1' || urlParams.get('compact_path') === 'true';
+
+  const psPrompt = compactPath
+    ? 'Remove-Item alias:where -Force -ErrorAction SilentlyContinue; function global:prompt { $p = Split-Path -Leaf (Get-Location); if (-not $p) { $p = (Get-Location).Path }; "PS $p> " }'
+    : 'Remove-Item alias:where -Force -ErrorAction SilentlyContinue; function global:prompt { "PS " + $executionContext.SessionState.Path.CurrentLocation + "> " }';
+
   let shell = isWin ? 'powershell.exe' : (process.env.SHELL || 'bash');
-  let args = isWin ? ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass', '-Command', 'Remove-Item alias:where -Force -ErrorAction SilentlyContinue'] : ['-i'];
+  let args = isWin ? ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass', '-Command', psPrompt] : ['-i'];
 
   if (isWin) {
     if (shellType === 'cmd') {
@@ -686,7 +692,7 @@ wssTerminal.on('connection', (ws, req) => {
       args = ['-i'];
     } else if (shellType === 'powershell') {
       shell = 'powershell.exe';
-      args = ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass', '-Command', 'Remove-Item alias:where -Force -ErrorAction SilentlyContinue'];
+      args = ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass', '-Command', psPrompt];
     }
   }
 

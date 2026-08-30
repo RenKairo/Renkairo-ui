@@ -19,6 +19,10 @@ interface IDEState {
   // Navigation & Layout State
   activeActivity: ActivityView;
   setActiveActivity: (view: ActivityView) => void;
+  leftSidebarWidth: number;
+  setLeftSidebarWidth: (width: number) => void;
+  rightSidebarWidth: number;
+  setRightSidebarWidth: (width: number) => void;
 
   // Real Workspace & Local Folder State (Starts with NO folder)
   workspacePath: string | null;
@@ -72,7 +76,13 @@ interface IDEState {
   isCommandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
 
-  // Bottom Dock Terminal & Diagnostics State
+  // Terminal Customization & Diagnostics State
+  terminalHeight: number;
+  setTerminalHeight: (height: number) => void;
+  terminalCopyOnSelect: boolean;
+  setTerminalCopyOnSelect: (enabled: boolean) => void;
+  terminalCompactPath: boolean;
+  setTerminalCompactPath: (enabled: boolean) => void;
   activeTerminalTab: TerminalTab;
   setActiveTerminalTab: (tab: TerminalTab) => void;
   problems: ProblemItem[];
@@ -89,6 +99,26 @@ interface IDEState {
 export const useIDEStore = create<IDEState>((set, get) => ({
   activeActivity: 'explorer',
   setActiveActivity: (view) => set({ activeActivity: view }),
+  leftSidebarWidth: (() => {
+    const saved = localStorage.getItem('renkairo_left_sidebar_width');
+    return saved ? Math.max(160, Math.min(Number(saved), 700)) : 260;
+  })(),
+  setLeftSidebarWidth: (width) => {
+    try {
+      localStorage.setItem('renkairo_left_sidebar_width', String(width));
+    } catch (e) {}
+    set({ leftSidebarWidth: width });
+  },
+  rightSidebarWidth: (() => {
+    const saved = localStorage.getItem('renkairo_right_sidebar_width');
+    return saved ? Math.max(180, Math.min(Number(saved), 750)) : 300;
+  })(),
+  setRightSidebarWidth: (width) => {
+    try {
+      localStorage.setItem('renkairo_right_sidebar_width', String(width));
+    } catch (e) {}
+    set({ rightSidebarWidth: width });
+  },
 
   // App starts with NO folder open
   workspacePath: null,
@@ -392,6 +422,33 @@ export const useIDEStore = create<IDEState>((set, get) => ({
 
   isCommandPaletteOpen: false,
   setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+
+  terminalHeight: (() => {
+    const saved = localStorage.getItem('renkairo_term_height');
+    return saved ? Math.max(36, Math.min(Number(saved), 800)) : 220;
+  })(),
+  setTerminalHeight: (height) => {
+    try {
+      localStorage.setItem('renkairo_term_height', String(height));
+    } catch (e) {}
+    set({ terminalHeight: height });
+  },
+
+  terminalCopyOnSelect: localStorage.getItem('renkairo_term_copy_on_select') !== 'false',
+  setTerminalCopyOnSelect: (enabled) => {
+    try {
+      localStorage.setItem('renkairo_term_copy_on_select', String(enabled));
+    } catch (e) {}
+    set({ terminalCopyOnSelect: enabled });
+  },
+
+  terminalCompactPath: localStorage.getItem('renkairo_term_compact_path') === 'true',
+  setTerminalCompactPath: (enabled) => {
+    try {
+      localStorage.setItem('renkairo_term_compact_path', String(enabled));
+    } catch (e) {}
+    set({ terminalCompactPath: enabled });
+  },
 
   activeTerminalTab: 'TERMINAL',
   setActiveTerminalTab: (tab) => set({ activeTerminalTab: tab }),

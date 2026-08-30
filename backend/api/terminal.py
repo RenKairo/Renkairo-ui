@@ -13,6 +13,9 @@ async def websocket_terminal(websocket: WebSocket):
     is_win = sys.platform == "win32"
     query_params = dict(websocket.query_params)
     shell_type = query_params.get("shell", "powershell")
+    compact_path = query_params.get("compact_path", "0") in ("1", "true", "True")
+
+    ps_prompt = "Remove-Item alias:where -Force -ErrorAction SilentlyContinue; function global:prompt { $p = Split-Path -Leaf (Get-Location); if (-not $p) { $p = (Get-Location).Path }; 'PS ' + $p + '> ' }" if compact_path else "Remove-Item alias:where -Force -ErrorAction SilentlyContinue; function global:prompt { 'PS ' + $executionContext.SessionState.Path.CurrentLocation + '> ' }"
 
     if is_win:
         if shell_type == "cmd":
@@ -24,7 +27,7 @@ async def websocket_terminal(websocket: WebSocket):
         elif shell_type == "bash":
             cmd = ["bash.exe", "-i"]
         else:
-            cmd = ["powershell.exe", "-NoExit", "-NoLogo", "-ExecutionPolicy", "Bypass", "-Command", "Remove-Item alias:where -Force -ErrorAction SilentlyContinue"]
+            cmd = ["powershell.exe", "-NoExit", "-NoLogo", "-ExecutionPolicy", "Bypass", "-Command", ps_prompt]
     else:
         shell = os.environ.get("SHELL", "bash")
         cmd = [shell, "-i"]
