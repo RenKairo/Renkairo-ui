@@ -23,6 +23,7 @@
     "appId": "com.renkairo.ide",
     "productName": "RenKairo IDE",
     "npmRebuild": false,
+    "asar": false,
     "directories": {
       "output": "dist_electron"
     },

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, desktopCapturer, session } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, desktopCapturer, session, utilityProcess } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
@@ -92,28 +92,34 @@ function startBackendServer() {
     })
     .catch(() => {
       try {
-        let serverPath = path.join(ROOT_DIR, 'backend/server.js');
-        if (!fs.existsSync(serverPath) && app.isPackaged) {
-          const altPath = path.join(app.getAppPath(), 'backend/server.js');
-          if (fs.existsSync(altPath)) {
-            serverPath = altPath;
+        const candidatePaths = [
+          path.join(ROOT_DIR, 'backend/server.js'),
+          path.join(app.getAppPath(), 'backend/server.js'),
+          path.join(process.resourcesPath, 'app/backend/server.js'),
+          path.join(process.resourcesPath, 'app.asar.unpacked/backend/server.js'),
+          path.join(process.resourcesPath, 'backend/server.js')
+        ];
+
+        const serverPath = candidatePaths.find((p) => fs.existsSync(p));
+
+        if (serverPath) {
+          console.log('[Electron] Located backend server script at:', serverPath);
+          if (utilityProcess && typeof utilityProcess.fork === 'function') {
+            backendProcess = utilityProcess.fork(serverPath, [], {
+              cwd: path.dirname(serverPath),
+              env: { ...process.env, PORT: '8000' }
+            });
+            console.log('[Electron] Started backend server via utilityProcess on port 8000');
+          } else {
+            backendProcess = spawn('node', [serverPath], {
+              cwd: path.dirname(serverPath),
+              env: { ...process.env, PORT: '8000' },
+              stdio: ['ignore', 'inherit', 'inherit']
+            });
+            console.log('[Electron] Started backend server via node spawn on port 8000');
           }
-        }
-
-        if (fs.existsSync(serverPath)) {
-          const nodeBinary = app.isPackaged ? process.execPath : 'node';
-          const env = app.isPackaged
-            ? { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: '8000' }
-            : { ...process.env, PORT: '8000' };
-
-          backendProcess = spawn(nodeBinary, [serverPath], {
-            cwd: app.isPackaged ? path.dirname(serverPath) : ROOT_DIR,
-            env: env,
-            stdio: ['ignore', 'inherit', 'inherit']
-          });
-          console.log('[Electron] Started backend server on port 8000');
         } else {
-          console.warn('[Electron] Backend server script not found at:', serverPath);
+          console.error('[Electron] Backend server script not found in candidate paths:', candidatePaths);
         }
       } catch (err) {
         console.error('[Electron] Backend server auto-start warning:', err);
