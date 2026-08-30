@@ -466,7 +466,7 @@ wssTerminal.on('connection', (ws, req) => {
   const shellType = urlParams.get('shell') || 'powershell';
 
   let shell = isWin ? 'powershell.exe' : (process.env.SHELL || 'bash');
-  let args = isWin ? ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass'] : ['-i'];
+  let args = isWin ? ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass', '-Command', 'Remove-Item alias:where -Force -ErrorAction SilentlyContinue'] : ['-i'];
 
   if (isWin) {
     if (shellType === 'cmd') {
@@ -481,6 +481,9 @@ wssTerminal.on('connection', (ws, req) => {
     } else if (shellType === 'bash') {
       shell = 'bash.exe';
       args = ['-i'];
+    } else if (shellType === 'powershell') {
+      shell = 'powershell.exe';
+      args = ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass', '-Command', 'Remove-Item alias:where -Force -ErrorAction SilentlyContinue'];
     }
   }
 

@@ -24,7 +24,7 @@ async def websocket_terminal(websocket: WebSocket):
         elif shell_type == "bash":
             cmd = ["bash.exe", "-i"]
         else:
-            cmd = ["powershell.exe", "-NoExit", "-NoLogo", "-ExecutionPolicy", "Bypass"]
+            cmd = ["powershell.exe", "-NoExit", "-NoLogo", "-ExecutionPolicy", "Bypass", "-Command", "Remove-Item alias:where -Force -ErrorAction SilentlyContinue"]
     else:
         shell = os.environ.get("SHELL", "bash")
         cmd = [shell, "-i"]
