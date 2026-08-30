@@ -1,18 +1,44 @@
 import { create } from 'zustand';
 import { ActivityView, FileNode, ProblemItem, RightSidebarTab, SystemMetrics, TabItem, TerminalTab, WorkloadItem } from '../types/ide';
-import { fetchFileContent, fetchFileTree, fetchMetrics, saveFileContent } from '../services/api';
+import { 
+  createFile, 
+  createFolder, 
+  deleteItem, 
+  moveItem, 
+  openLocalFolderPicker, 
+  readFile, 
+  refreshDirectoryTree, 
+  renameItem, 
+  writeFile 
+} from '../services/fileSystem';
+import { fetchMetrics } from '../services/api';
 
 interface IDEState {
   // Navigation & Layout State
   activeActivity: ActivityView;
   setActiveActivity: (view: ActivityView) => void;
-  
-  // File Explorer Tree State
+
+  // Real Workspace & Local Folder State (Starts with NO folder)
+  workspacePath: string | null;
   rootName: string;
   fileTree: FileNode[];
   selectedPath: string | null;
   setSelectedPath: (path: string | null) => void;
-  loadTree: () => Promise<void>;
+
+  // Folder Opening & Loading Animation State
+  isFolderOpening: boolean;
+
+  // Folder Opening & Scope Switching
+  openFolder: () => Promise<void>;
+  changeScopeFolder: () => Promise<void>;
+  refreshTree: () => Promise<void>;
+
+  // Direct File & Folder Modification
+  createNewFile: (parentRelPath: string, fileName: string) => Promise<void>;
+  createNewFolder: (parentRelPath: string, folderName: string) => Promise<void>;
+  renameNode: (oldRelPath: string, newName: string, isDir: boolean) => Promise<void>;
+  deleteNode: (relPath: string) => Promise<void>;
+  moveNode: (srcRelPath: string, targetDirRelPath: string, isDir: boolean) => Promise<void>;
 
   // Open Tabs & Editor State
   tabs: TabItem[];
@@ -21,10 +47,12 @@ interface IDEState {
   setCursorPos: (line: number, col: number) => void;
   openFile: (path: string, name: string) => Promise<void>;
   closeTab: (id: string) => void;
+  closeAllTabs: () => void;
   setActiveTabId: (id: string) => void;
   updateTabContent: (id: string, content: string) => void;
+  updateTabContentSilently: (id: string, content: string) => void;
   saveCurrentFile: () => Promise<void>;
-  
+
   // Customization & Aesthetics
   wallpaperOpacity: number;
   setWallpaperOpacity: (opacity: number) => void;
@@ -38,12 +66,12 @@ interface IDEState {
   setFormatOnSave: (format: boolean) => void;
   isCommandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
-  
+
   // Bottom Dock Terminal & Diagnostics State
   activeTerminalTab: TerminalTab;
   setActiveTerminalTab: (tab: TerminalTab) => void;
   problems: ProblemItem[];
-  
+
   // Right Observability Sidebar State
   activeRightTab: RightSidebarTab;
   setActiveRightTab: (tab: RightSidebarTab) => void;
@@ -57,68 +85,154 @@ export const useIDEStore = create<IDEState>((set, get) => ({
   activeActivity: 'explorer',
   setActiveActivity: (view) => set({ activeActivity: view }),
 
-  rootName: 'RENKAIRO-PLATFORM',
+  // App starts with NO folder open
+  workspacePath: null,
+  rootName: '',
   fileTree: [],
   selectedPath: null,
   setSelectedPath: (path) => set({ selectedPath: path }),
-  
-  loadTree: async () => {
-    const { root, tree } = await fetchFileTree('.');
-    set({ rootName: root, fileTree: tree });
+
+  isFolderOpening: false,
+
+  openFolder: async () => {
+    set({ isFolderOpening: true });
+    try {
+      const result = await openLocalFolderPicker();
+      if (result) {
+        set({
+          workspacePath: result.path,
+          rootName: result.name,
+          fileTree: result.tree,
+          selectedPath: null,
+          tabs: [],
+          activeTabId: null
+        });
+      }
+    } finally {
+      set({ isFolderOpening: false });
+    }
   },
 
-  tabs: [
-    {
-      id: 'tab_server_py',
-      title: 'server.py',
-      path: 'backend/api/server.py',
-      language: 'python',
-      isDirty: false,
-      content: `from fastapi import FastAPI, Depends, HTTPException
-from core.config import settings
-from core.database import get_db
-from services.auth import auth_router
-from services.projects import project_router
-from services.compute import compute_router
-
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description="RenKairo Backend API",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-)
-
-app.include_router(auth_router, prefix="/auth", tags=["Auth"])
-app.include_router(project_router, prefix="/projects", tags=["Projects"])
-app.include_router(compute_router, prefix="/compute", tags=["Compute"])
-
-@app.get("/health")
-async def health():
-    return {"status": "ok", "version": settings.APP_VERSION}`
-    },
-    {
-      id: 'tab_docker_compose',
-      title: 'docker-compose.yml',
-      path: 'docker-compose.yml',
-      language: 'yaml',
-      isDirty: false,
-      content: `version: '3.8'\nservices:\n  backend:\n    build: ./backend\n    ports:\n      - "8000:8000"\n    environment:\n      - ENV=production`
-    },
-    {
-      id: 'tab_routes_ts',
-      title: 'routes.ts',
-      path: 'frontend/src/routes.ts',
-      language: 'typescript',
-      isDirty: false,
-      content: `export const ROUTES = {\n  HOME: '/',\n  EXPLORER: '/explorer',\n  SETTINGS: '/settings'\n};`
+  changeScopeFolder: async () => {
+    set({ isFolderOpening: true });
+    try {
+      const result = await openLocalFolderPicker();
+      if (result) {
+        set({
+          workspacePath: result.path,
+          rootName: result.name,
+          fileTree: result.tree,
+          selectedPath: null,
+          tabs: [],
+          activeTabId: null
+        });
+      }
+    } finally {
+      set({ isFolderOpening: false });
     }
-  ],
-  activeTabId: 'tab_server_py',
-  cursorPos: { line: 22, col: 45 },
+  },
+
+  refreshTree: async () => {
+    const tree = await refreshDirectoryTree();
+    const { tabs } = get();
+
+    // Freshly reload all open tabs from disk
+    const updatedTabs = await Promise.all(
+      tabs.map(async (tab) => {
+        try {
+          const freshContent = await readFile(tab.path, true);
+          return {
+            ...tab,
+            content: freshContent,
+            isDirty: false
+          };
+        } catch (e) {
+          return tab;
+        }
+      })
+    );
+
+    set({ fileTree: tree, tabs: updatedTabs });
+  },
+
+  createNewFile: async (parentRelPath: string, fileName: string) => {
+    const success = await createFile(parentRelPath, fileName);
+    if (success) {
+      await get().refreshTree();
+      const targetPath = parentRelPath ? `${parentRelPath}/${fileName}` : fileName;
+      get().openFile(targetPath, fileName);
+    }
+  },
+
+  createNewFolder: async (parentRelPath: string, folderName: string) => {
+    const success = await createFolder(parentRelPath, folderName);
+    if (success) {
+      await get().refreshTree();
+    }
+  },
+
+  renameNode: async (oldRelPath: string, newName: string, isDir: boolean) => {
+    const success = await renameItem(oldRelPath, newName, isDir);
+    if (success) {
+      const { tabs } = get();
+      const parent = oldRelPath.includes('/') ? oldRelPath.substring(0, oldRelPath.lastIndexOf('/')) : '';
+      const newRelPath = parent ? `${parent}/${newName}` : newName;
+
+      // Update open tabs if renamed file is open
+      set({
+        tabs: tabs.map((t) =>
+          t.path === oldRelPath
+            ? { ...t, path: newRelPath, title: newName }
+            : t.path.startsWith(oldRelPath + '/')
+            ? { ...t, path: t.path.replace(oldRelPath, newRelPath) }
+            : t
+        )
+      });
+      await get().refreshTree();
+    }
+  },
+
+  deleteNode: async (relPath: string) => {
+    const success = await deleteItem(relPath);
+    if (success) {
+      const { tabs, selectedPath } = get();
+      // Close tabs for deleted files
+      const remainingTabs = tabs.filter((t) => t.path !== relPath && !t.path.startsWith(relPath + '/'));
+      set({
+        tabs: remainingTabs,
+        activeTabId: remainingTabs.length > 0 ? remainingTabs[remainingTabs.length - 1].id : null,
+        selectedPath: selectedPath === relPath ? null : selectedPath
+      });
+      await get().refreshTree();
+    }
+  },
+
+  moveNode: async (srcRelPath: string, targetDirRelPath: string, isDir: boolean) => {
+    const success = await moveItem(srcRelPath, targetDirRelPath, isDir);
+    if (success) {
+      const itemName = srcRelPath.split(/[/\\]/).pop()!;
+      const newPath = targetDirRelPath ? `${targetDirRelPath}/${itemName}` : itemName;
+      const { tabs } = get();
+      set({
+        tabs: tabs.map((t) =>
+          t.path === srcRelPath
+            ? { ...t, path: newPath }
+            : t.path.startsWith(srcRelPath + '/')
+            ? { ...t, path: t.path.replace(srcRelPath, newPath) }
+            : t
+        )
+      });
+      await get().refreshTree();
+    }
+  },
+
+  // Editor Tabs
+  tabs: [],
+  activeTabId: null,
+  cursorPos: { line: 1, col: 1 },
   setCursorPos: (line, col) => set({ cursorPos: { line, col } }),
 
-  openFile: async (path, name) => {
+  openFile: async (path: string, name: string) => {
     const { tabs } = get();
     const existing = tabs.find((t) => t.path === path);
     if (existing) {
@@ -126,19 +240,25 @@ async def health():
       return;
     }
 
-    const content = await fetchFileContent(path);
+    const content = await readFile(path);
     let language = 'plaintext';
-    if (name.endsWith('.py')) language = 'python';
-    else if (name.endsWith('.ts') || name.endsWith('.tsx')) language = 'typescript';
-    else if (name.endsWith('.js') || name.endsWith('.jsx')) language = 'javascript';
-    else if (name.endsWith('.json')) language = 'json';
-    else if (name.endsWith('.yml') || name.endsWith('.yaml')) language = 'yaml';
-    else if (name.endsWith('.md')) language = 'markdown';
-    else if (name.endsWith('.css')) language = 'css';
-    else if (name.endsWith('.html')) language = 'html';
+    const lower = name.toLowerCase();
+    if (lower.endsWith('.py')) language = 'python';
+    else if (lower.endsWith('.ts') || lower.endsWith('.tsx')) language = 'typescript';
+    else if (lower.endsWith('.js') || lower.endsWith('.jsx') || lower.endsWith('.cjs') || lower.endsWith('.mjs')) language = 'javascript';
+    else if (lower.endsWith('.json')) language = 'json';
+    else if (lower.endsWith('.yml') || lower.endsWith('.yaml')) language = 'yaml';
+    else if (lower.endsWith('.md')) language = 'markdown';
+    else if (lower.endsWith('.css') || lower.endsWith('.scss')) language = 'css';
+    else if (lower.endsWith('.html')) language = 'html';
+    else if (lower.endsWith('.sh') || lower.endsWith('.bash') || lower.endsWith('.ps1')) language = 'shell';
+    else if (lower.endsWith('.sql')) language = 'sql';
+    else if (lower.endsWith('.rs')) language = 'rust';
+    else if (lower.endsWith('.go')) language = 'go';
+    else if (lower.endsWith('.java')) language = 'java';
 
     const newTab: TabItem = {
-      id: `tab_${Date.now()}`,
+      id: `tab_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       title: name,
       path: path,
       content: content,
@@ -162,7 +282,13 @@ async def health():
     set({ tabs: remaining, activeTabId: nextActiveId });
   },
 
-  setActiveTabId: (id) => set({ activeTabId: id }),
+  closeAllTabs: () => {
+    set({ tabs: [], activeTabId: null });
+  },
+
+  setActiveTabId: (id) => {
+    set({ activeTabId: id });
+  },
 
   updateTabContent: (id, content) => {
     const { tabs } = get();
@@ -171,12 +297,19 @@ async def health():
     });
   },
 
+  updateTabContentSilently: (id, content) => {
+    const { tabs } = get();
+    set({
+      tabs: tabs.map((t) => (t.id === id ? { ...t, content, isDirty: false } : t))
+    });
+  },
+
   saveCurrentFile: async () => {
     const { tabs, activeTabId } = get();
     const activeTab = tabs.find((t) => t.id === activeTabId);
-    if (!activeTab || !activeTab.isDirty) return;
+    if (!activeTab) return;
 
-    const success = await saveFileContent(activeTab.path, activeTab.content);
+    const success = await writeFile(activeTab.path, activeTab.content);
     if (success) {
       set({
         tabs: tabs.map((t) => (t.id === activeTabId ? { ...t, isDirty: false } : t))
@@ -184,7 +317,7 @@ async def health():
     }
   },
 
-  wallpaperOpacity: 18,
+  wallpaperOpacity: 15,
   setWallpaperOpacity: (opacity) => set({ wallpaperOpacity: opacity }),
 
   fontSize: 13,
@@ -202,77 +335,32 @@ async def health():
   activeTerminalTab: 'TERMINAL',
   setActiveTerminalTab: (tab) => set({ activeTerminalTab: tab }),
 
-  problems: [
-    {
-      id: 'p1',
-      severity: 'error',
-      file: 'backend/server.py',
-      line: 14,
-      col: 1,
-      message: 'Unused import statement "HTTPException"',
-      code: 'PY-W0611'
-    },
-    {
-      id: 'p2',
-      severity: 'warning',
-      file: 'backend/api/fs.py',
-      line: 42,
-      col: 12,
-      message: 'Type hint for target_path should use Optional[str]',
-      code: 'PY-T001'
-    },
-    {
-      id: 'p3',
-      severity: 'warning',
-      file: 'frontend/src/App.tsx',
-      line: 88,
-      col: 5,
-      message: 'Missing key prop in list element mapping',
-      code: 'REACT-KEY'
-    }
-  ],
+  problems: [],
 
   activeRightTab: 'OVERVIEW',
   setActiveRightTab: (tab) => set({ activeRightTab: tab }),
 
   metrics: {
     timestamp: Date.now(),
-    cpu: { usage: 23, cores: 16, model: 'AMD Ryzen 9' },
-    ram: { usage: 42, used_gb: 13.4, total_gb: 32.0 },
+    cpu: { usage: 18, cores: 16, model: 'Local Machine' },
+    ram: { usage: 36, used_gb: 11.5, total_gb: 32.0 },
     gpu: {
-      model: 'NVIDIA A100',
-      usage: 58,
-      vram_used_gb: 32.1,
-      vram_total_gb: 48.0,
-      vram_percent: 67
+      model: 'GPU Device',
+      usage: 42,
+      vram_used_gb: 16.0,
+      vram_total_gb: 24.0,
+      vram_percent: 66
     },
-    storage: { percent: 25, used_gb: 256.0, total_gb: 1000.0 },
-    network: { mbps: 128, percent: 12 }
+    storage: { percent: 28, used_gb: 280.0, total_gb: 1000.0 },
+    network: { mbps: 95, percent: 10 }
   },
 
   metricsHistory: {
-    cpu: [15, 18, 22, 20, 25, 23, 28, 24, 21, 23],
-    ram: [38, 40, 39, 41, 42, 40, 43, 42, 41, 42]
+    cpu: [12, 14, 18, 16, 20, 18, 22, 19, 17, 18],
+    ram: [34, 35, 35, 36, 36, 35, 37, 36, 36, 36]
   },
 
-  workloads: [
-    {
-      id: 'w1',
-      name: 'Model Training',
-      status: 'In Progress',
-      framework: 'PyTorch',
-      target: 'GPU 2',
-      progress: 68
-    },
-    {
-      id: 'w2',
-      name: 'Data Processing',
-      status: 'Queued',
-      framework: 'Python',
-      target: 'CPU',
-      progress: 0
-    }
-  ],
+  workloads: [],
 
   loadMetrics: async () => {
     const data = await fetchMetrics();

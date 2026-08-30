@@ -78,3 +78,35 @@ export interface WorkloadItem {
   target: string;
   progress: number;
 }
+
+export interface RecentWorkspace {
+  name: string;
+  path: string;
+  lastOpened: number;
+}
+
+export interface QuickPlace {
+  name: string;
+  path: string;
+  icon: string;
+}
+
+export interface SystemDrive {
+  name: string;
+  path: string;
+}
+
+export interface FolderBrowseResult {
+  currentPath: string;
+  parentPath: string | null;
+  folders: { name: string; path: string; is_dir: boolean }[];
+  drives: SystemDrive[];
+  quickPlaces: QuickPlace[];
+}
+
+export interface ClipboardItem {
+  path: string;
+  isDir: boolean;
+  action: 'copy' | 'cut';
+}
+

@@ -4,38 +4,120 @@ import { WebSocketServer } from 'ws';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, '..');
+
+// Default workspace root is the parent directory (RenKairo)
+let currentWorkspace = path.resolve(__dirname, '..');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
-const IGNORED = new Set(['node_modules', '.git', '__pycache__', '.venv', 'dist', '.vite']);
+const IGNORED = new Set([
+  'node_modules',
+  '.git',
+  '__pycache__',
+  '.venv',
+  'dist',
+  'dist_electron',
+  '.vite',
+  '.DS_Store',
+  '$RECYCLE.BIN',
+  'System Volume Information'
+]);
 
-function buildTree(currentPath, basePath) {
+function normalizePath(p) {
+  if (!p) return '';
+  let resolved = p.replace(/^~(?=$|\/|\\)/, os.homedir());
+  return path.normalize(resolved);
+}
+
+function resolveWorkspacePath(reqPath, baseDir = currentWorkspace) {
+  if (!reqPath || reqPath === '.' || reqPath === '') return baseDir;
+  const normalized = normalizePath(reqPath);
+  if (path.isAbsolute(normalized)) return normalized;
+  return path.resolve(baseDir, normalized);
+}
+
+function getSystemDrives() {
+  if (process.platform === 'win32') {
+    const drives = [];
+    for (let i = 65; i <= 90; i++) {
+      const driveLetter = String.fromCharCode(i);
+      const drivePath = `${driveLetter}:\\`;
+      try {
+        if (fs.existsSync(drivePath)) {
+          drives.push({ name: `${driveLetter}:`, path: drivePath });
+        }
+      } catch (e) {}
+    }
+    return drives.length > 0 ? drives : [{ name: 'C:', path: 'C:\\' }];
+  } else {
+    return [{ name: 'Root (/)', path: '/' }];
+  }
+}
+
+function getQuickPlaces() {
+  const home = os.homedir();
+  const places = [
+    { name: 'Home', path: home, icon: 'home' },
+    { name: 'Documents', path: path.join(home, 'Documents'), icon: 'folder' },
+    { name: 'Desktop', path: path.join(home, 'Desktop'), icon: 'monitor' },
+    { name: 'Downloads', path: path.join(home, 'Downloads'), icon: 'download' },
+  ];
+
+  const projectsPath = path.join(home, 'Documents', 'Projects');
+  if (fs.existsSync(projectsPath)) {
+    places.push({ name: 'Projects', path: projectsPath, icon: 'folder-git' });
+  }
+
+  if (fs.existsSync(currentWorkspace)) {
+    places.push({ name: 'Current Workspace', path: currentWorkspace, icon: 'code' });
+  }
+
+  return places.filter((p) => {
+    try {
+      return fs.existsSync(p.path);
+    } catch (e) {
+      return false;
+    }
+  });
+}
+
+function buildTree(currentPath, basePath, maxDepth = 6, currentDepth = 0) {
   const tree = [];
+  if (currentDepth > maxDepth) return tree;
+
   try {
-    const entries = fs.readdirSync(currentPath).sort();
+    const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+
+    // Sort: directories first (alphabetically), then files (alphabetically)
+    entries.sort((a, b) => {
+      if (a.isDirectory() && !b.isDirectory()) return -1;
+      if (!a.isDirectory() && b.isDirectory()) return 1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
+
     for (const entry of entries) {
-      if (IGNORED.has(entry)) continue;
-      const full = path.join(currentPath, entry);
+      if (IGNORED.has(entry.name) || entry.name.startsWith('$')) continue;
+
+      const full = path.join(currentPath, entry.name);
       const rel = path.relative(basePath, full).replace(/\\/g, '/');
-      const stat = fs.statSync(full);
-      if (stat.isDirectory()) {
+      if (entry.isDirectory()) {
         tree.push({
-          name: entry,
+          name: entry.name,
           path: rel,
           is_dir: true,
-          children: buildTree(full, basePath)
+          children: buildTree(full, basePath, maxDepth, currentDepth + 1)
         });
       } else {
         tree.push({
-          name: entry,
+          name: entry.name,
           path: rel,
           is_dir: false,
           children: null
@@ -48,66 +130,215 @@ function buildTree(currentPath, basePath) {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', version: '1.0.0' });
+  res.json({ status: 'ok', version: '1.0.0', workspace: currentWorkspace });
+});
+
+// Workspace APIs
+app.get('/api/fs/workspace', (req, res) => {
+  const rootName = path.basename(currentWorkspace) || currentWorkspace;
+  res.json({
+    path: currentWorkspace,
+    root: rootName,
+    exists: fs.existsSync(currentWorkspace)
+  });
+});
+
+app.post('/api/fs/workspace', (req, res) => {
+  const { path: reqPath } = req.body;
+  if (!reqPath) {
+    return res.status(400).json({ error: 'path parameter required' });
+  }
+
+  const target = resolveWorkspacePath(reqPath);
+  try {
+    if (!fs.existsSync(target)) {
+      return res.status(404).json({ error: `Directory "${target}" does not exist` });
+    }
+    const stat = fs.statSync(target);
+    if (!stat.isDirectory()) {
+      return res.status(400).json({ error: `Path "${target}" is a file, not a directory` });
+    }
+
+    currentWorkspace = target;
+    startWorkspaceWatcher(currentWorkspace);
+    const rootName = path.basename(currentWorkspace) || currentWorkspace;
+
+    res.json({
+      status: 'ok',
+      path: currentWorkspace,
+      root: rootName,
+      tree: buildTree(currentWorkspace, currentWorkspace)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // File System APIs - Real OS File System Reading & Writing
 app.get('/api/fs/tree', (req, res) => {
+  const rootParam = req.query.root;
+  const basePath = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
   const reqPath = req.query.path || '.';
-  const target = path.resolve(ROOT_DIR, reqPath);
+  const target = resolveWorkspacePath(reqPath, basePath);
+
+  const rootName = path.basename(basePath) || basePath || 'renkairo-platform';
+
   res.json({
-    root: path.basename(target) || 'renkairo-platform',
-    path: '.',
-    tree: buildTree(target, target)
+    root: rootName,
+    path: basePath,
+    tree: buildTree(target, basePath)
   });
 });
 
 app.get('/api/fs/file', (req, res) => {
   const reqPath = req.query.path;
+  const rootParam = req.query.root;
   if (!reqPath) return res.status(400).json({ error: 'path parameter required' });
-  const target = path.resolve(ROOT_DIR, reqPath);
+
+  const basePath = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  const target = resolveWorkspacePath(reqPath, basePath);
+
   if (!fs.existsSync(target) || fs.statSync(target).isDirectory()) {
     return res.status(404).json({ error: 'File not found' });
   }
   try {
     const content = fs.readFileSync(target, 'utf-8');
-    res.json({ path: reqPath, content });
+    const rel = path.relative(basePath, target).replace(/\\/g, '/');
+    res.json({ path: rel, fullPath: target, content });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/fs/file', (req, res) => {
-  const { path: reqPath, content } = req.body;
+  const { path: reqPath, content, root: rootParam } = req.body;
   if (!reqPath) return res.status(400).json({ error: 'path parameter required' });
-  const target = path.resolve(ROOT_DIR, reqPath);
+
+  const basePath = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  const target = resolveWorkspacePath(reqPath, basePath);
+
   try {
     fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, content || '', 'utf-8');
-    res.json({ status: 'ok', path: reqPath });
+    fs.writeFileSync(target, content ?? '', 'utf-8');
+    const rel = path.relative(basePath, target).replace(/\\/g, '/');
+    res.json({ status: 'ok', path: rel, fullPath: target });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/fs/nodes', (req, res) => {
-  const { action, path: reqPath, target_path } = req.body;
-  const target = path.resolve(ROOT_DIR, reqPath);
+  const { action, path: reqPath, target_path: destPath, root: rootParam, content } = req.body;
+  const basePath = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  const target = resolveWorkspacePath(reqPath, basePath);
+
   try {
     if (action === 'create_file') {
       fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, '', 'utf-8');
+      if (!fs.existsSync(target)) {
+        fs.writeFileSync(target, content ?? '', 'utf-8');
+      }
     } else if (action === 'create_dir') {
       fs.mkdirSync(target, { recursive: true });
     } else if (action === 'delete') {
       if (fs.existsSync(target)) {
         fs.rmSync(target, { recursive: true, force: true });
       }
-    } else if (action === 'rename' && target_path) {
-      const dest = path.resolve(ROOT_DIR, target_path);
+    } else if (action === 'rename' && destPath) {
+      const dest = resolveWorkspacePath(destPath, basePath);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.renameSync(target, dest);
+    } else if (action === 'duplicate') {
+      let dest;
+      if (destPath) {
+        dest = resolveWorkspacePath(destPath, basePath);
+      } else {
+        const ext = path.extname(target);
+        const dir = path.dirname(target);
+        const base = path.basename(target, ext);
+        let candidate = path.join(dir, `${base} (copy)${ext}`);
+        let counter = 2;
+        while (fs.existsSync(candidate)) {
+          candidate = path.join(dir, `${base} (copy ${counter})${ext}`);
+          counter++;
+        }
+        dest = candidate;
+      }
+      fs.cpSync(target, dest, { recursive: true });
     }
     res.json({ status: 'ok', action });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// System Folder Browser API (for In-App Folder Picker Modal)
+app.get('/api/fs/browse-folders', (req, res) => {
+  const queryPath = req.query.path;
+  const target = queryPath ? resolveWorkspacePath(queryPath) : currentWorkspace;
+
+  try {
+    const validTarget = fs.existsSync(target) ? target : os.homedir();
+    const isDir = fs.statSync(validTarget).isDirectory();
+    const dirPath = isDir ? validTarget : path.dirname(validTarget);
+
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    const folders = [];
+
+    for (const entry of entries) {
+      if (entry.name.startsWith('$') || IGNORED.has(entry.name)) continue;
+      if (entry.isDirectory()) {
+        folders.push({
+          name: entry.name,
+          path: path.join(dirPath, entry.name),
+          is_dir: true
+        });
+      }
+    }
+
+    folders.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+    const parsed = path.parse(dirPath);
+    const isRoot = dirPath === parsed.root;
+    const parentPath = isRoot ? null : path.dirname(dirPath);
+
+    res.json({
+      currentPath: dirPath,
+      parentPath: parentPath,
+      folders,
+      drives: getSystemDrives(),
+      quickPlaces: getQuickPlaces()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reveal in System Explorer (Windows Explorer / macOS Finder)
+app.post('/api/fs/reveal', (req, res) => {
+  const { path: reqPath } = req.body;
+  const target = resolveWorkspacePath(reqPath || '.');
+
+  try {
+    if (!fs.existsSync(target)) {
+      return res.status(404).json({ error: 'Path not found' });
+    }
+
+    if (process.platform === 'win32') {
+      const isDir = fs.statSync(target).isDirectory();
+      if (isDir) {
+        spawn('explorer.exe', [target], { detached: true });
+      } else {
+        spawn('explorer.exe', [`/select,${target}`], { detached: true });
+      }
+    } else if (process.platform === 'darwin') {
+      spawn('open', ['-R', target], { detached: true });
+    } else {
+      const isDir = fs.statSync(target).isDirectory();
+      spawn('xdg-open', [isDir ? target : path.dirname(target)], { detached: true });
+    }
+
+    res.json({ status: 'ok', path: target });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -142,14 +373,14 @@ app.post('/api/open-external-terminal', (req, res) => {
   try {
     if (process.platform === 'win32') {
       // Try launching Windows Terminal (wt.exe) or fallback to cmd.exe
-      const proc = spawn('cmd.exe', ['/c', 'start', 'wt.exe', '-d', ROOT_DIR], { detached: true, stdio: 'ignore' });
+      const proc = spawn('cmd.exe', ['/c', 'start', 'wt.exe', '-d', currentWorkspace], { detached: true, stdio: 'ignore' });
       proc.on('error', () => {
-        spawn('cmd.exe', ['/c', 'start', 'cmd.exe', '/k', `cd /d "${ROOT_DIR}"`], { detached: true, stdio: 'ignore' });
+        spawn('cmd.exe', ['/c', 'start', 'cmd.exe', '/k', `cd /d "${currentWorkspace}"`], { detached: true, stdio: 'ignore' });
       });
     } else if (process.platform === 'darwin') {
-      spawn('open', ['-a', 'Terminal', ROOT_DIR], { detached: true });
+      spawn('open', ['-a', 'Terminal', currentWorkspace], { detached: true });
     } else {
-      spawn('x-terminal-emulator', ['--working-directory', ROOT_DIR], { detached: true });
+      spawn('x-terminal-emulator', ['--working-directory', currentWorkspace], { detached: true });
     }
     res.json({ status: 'ok', message: 'External terminal launched' });
   } catch (err) {
@@ -157,11 +388,78 @@ app.post('/api/open-external-terminal', (req, res) => {
   }
 });
 
+// WebSockets (Terminal & Real-Time File System Watcher)
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server, path: '/api/ws/terminal' });
+const wssTerminal = new WebSocketServer({ noServer: true });
+const wssFs = new WebSocketServer({ noServer: true });
+
+// Live File Watcher (VS Code style debounced notification)
+let fsWatcher = null;
+const pendingFsChanges = new Set();
+let fsDebounceTimer = null;
+
+function broadcastFsChanges() {
+  if (pendingFsChanges.size === 0) return;
+  const changes = Array.from(pendingFsChanges);
+  pendingFsChanges.clear();
+
+  const payload = JSON.stringify({ type: 'fs_change', paths: changes });
+  wssFs.clients.forEach((client) => {
+    if (client.readyState === 1) { // WebSocket.OPEN
+      client.send(payload);
+    }
+  });
+}
+
+function startWorkspaceWatcher(workspaceDir) {
+  if (fsWatcher) {
+    try { fsWatcher.close(); } catch (e) {}
+    fsWatcher = null;
+  }
+
+  if (!fs.existsSync(workspaceDir)) return;
+
+  try {
+    fsWatcher = fs.watch(workspaceDir, { recursive: true }, (eventType, filename) => {
+      if (!filename) return;
+      const normalized = filename.replace(/\\/g, '/');
+      const parts = normalized.split('/');
+      if (parts.some((p) => IGNORED.has(p) || p.startsWith('.'))) return;
+
+      pendingFsChanges.add(normalized);
+      clearTimeout(fsDebounceTimer);
+      fsDebounceTimer = setTimeout(broadcastFsChanges, 75);
+    });
+    console.log(`[Watcher] Started recursive OS file watcher on: ${workspaceDir}`);
+  } catch (err) {
+    console.warn('[Watcher] Native recursive watch not available:', err.message);
+  }
+}
+
+// Start initial watcher
+startWorkspaceWatcher(currentWorkspace);
+
+server.on('upgrade', (request, socket, head) => {
+  const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
+  if (pathname === '/api/ws/terminal') {
+    wssTerminal.handleUpgrade(request, socket, head, (ws) => {
+      wssTerminal.emit('connection', ws, request);
+    });
+  } else if (pathname === '/api/ws/fs') {
+    wssFs.handleUpgrade(request, socket, head, (ws) => {
+      wssFs.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
+
+wssFs.on('connection', (ws) => {
+  ws.send(JSON.stringify({ type: 'connected', workspace: currentWorkspace }));
+});
 
 // REAL Interactive Shell Terminal Process per WebSocket Session
-wss.on('connection', (ws, req) => {
+wssTerminal.on('connection', (ws, req) => {
   const isWin = process.platform === 'win32';
   const urlParams = new URLSearchParams((req.url || '').split('?')[1] || '');
   const shellType = urlParams.get('shell') || 'powershell';
@@ -186,7 +484,7 @@ wss.on('connection', (ws, req) => {
   }
 
   const shellProc = spawn(shell, args, {
-    cwd: ROOT_DIR,
+    cwd: currentWorkspace,
     env: { ...process.env, TERM: 'xterm-256color' },
     shell: true
   });
