@@ -387,7 +387,7 @@ export const FileExplorer: React.FC = () => {
 
   return (
     <aside 
-      className="w-64 bg-[#0B0D11] border-r border-[#232734] flex flex-col select-none h-full z-10 relative overflow-hidden"
+      className="w-full bg-[#0B0D11] border-r border-[#232734] flex flex-col select-none h-full z-10 relative overflow-hidden"
       onContextMenu={(e) => handleContextMenu(e, null)}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleRootDrop}

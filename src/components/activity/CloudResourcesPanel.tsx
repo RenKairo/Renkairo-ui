@@ -10,7 +10,7 @@ export const CloudResourcesPanel: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 bg-[#0B0D11] border-r border-[#232734] flex flex-col select-none h-full z-10 font-sans">
+    <aside className="w-full bg-[#0B0D11] border-r border-[#232734] flex flex-col select-none h-full z-10 font-sans">
       <div className="h-9 px-3 border-b border-[#232734] flex items-center justify-between text-xs text-gray-400 font-semibold uppercase tracking-wider">
         <span>CLOUD RESOURCES</span>
       </div>

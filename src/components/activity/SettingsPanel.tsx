@@ -13,11 +13,15 @@ export const SettingsPanel: React.FC = () => {
     formatOnSave,
     setFormatOnSave,
     wallpaperOpacity,
-    setWallpaperOpacity
+    setWallpaperOpacity,
+    terminalCopyOnSelect,
+    setTerminalCopyOnSelect,
+    terminalCompactPath,
+    setTerminalCompactPath
   } = useIDEStore();
 
   return (
-    <aside className="w-64 bg-[#0B0D11] border-r border-[#232734] flex flex-col select-none h-full z-10 font-sans">
+    <aside className="w-full bg-[#0B0D11] border-r border-[#232734] flex flex-col select-none h-full z-10 font-sans">
       <div className="h-9 px-3 border-b border-[#232734] flex items-center justify-between text-xs text-gray-400 font-semibold uppercase tracking-wider">
         <span>IDE PREFERENCES</span>
       </div>
@@ -103,7 +107,52 @@ export const SettingsPanel: React.FC = () => {
           </button>
         </div>
 
-        {/* Theme Theme Selection */}
+        {/* Terminal Preferences */}
+        <div className="space-y-2.5 border-t border-[#232734] pt-3">
+          <span className="font-semibold text-gray-400 block uppercase tracking-wider text-[10px]">
+            TERMINAL SETTINGS
+          </span>
+
+          {/* Terminal Copy on Select Toggle */}
+          <div className="flex items-center justify-between py-1">
+            <div className="flex flex-col pr-2">
+              <span className="font-semibold text-gray-300">Copy on Select</span>
+              <span className="text-[10px] text-gray-500">Auto-copy highlighted text</span>
+            </div>
+            <button
+              onClick={() => setTerminalCopyOnSelect(!terminalCopyOnSelect)}
+              title={terminalCopyOnSelect ? 'Disable Copy on Selection' : 'Enable Copy on Selection'}
+              className={`w-9 h-5 rounded-full p-0.5 transition-colors shrink-0 ${
+                terminalCopyOnSelect ? 'bg-emerald-500' : 'bg-[#232734]'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                terminalCopyOnSelect ? 'translate-x-4' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+
+          {/* Terminal Compact Path (Root Only) Toggle */}
+          <div className="flex items-center justify-between py-1">
+            <div className="flex flex-col pr-2">
+              <span className="font-semibold text-gray-300">Root-Only Path</span>
+              <span className="text-[10px] text-gray-500">Short path (Linux/macOS style)</span>
+            </div>
+            <button
+              onClick={() => setTerminalCompactPath(!terminalCompactPath)}
+              title={terminalCompactPath ? 'Show Full Working Path' : 'Show Root Only (Linux/macOS style)'}
+              className={`w-9 h-5 rounded-full p-0.5 transition-colors shrink-0 ${
+                terminalCompactPath ? 'bg-emerald-500' : 'bg-[#232734]'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                terminalCompactPath ? 'translate-x-4' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Theme Variant Selection */}
         <div className="space-y-1.5 border-t border-[#232734] pt-3">
           <span className="font-semibold text-gray-300 block">Theme Variant</span>
           <div className="space-y-1.5">
