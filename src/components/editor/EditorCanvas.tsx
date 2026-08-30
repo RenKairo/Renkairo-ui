@@ -8,10 +8,14 @@ import {
   FolderOpen, 
   FolderSync,
   Loader2,
-  HardDrive
+  HardDrive,
+  Binary,
+  Zap,
+  AlertTriangle
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { openExternalTerminal } from '../../services/api';
+import { getMonacoOptionsForTier, formatFileSize } from '../../services/largeFileService';
 
 export const EditorCanvas: React.FC = () => {
   const { 
@@ -31,7 +35,8 @@ export const EditorCanvas: React.FC = () => {
     changeScopeFolder,
     workspacePath,
     rootName,
-    isFolderOpening
+    isFolderOpening,
+    fileLoadingProgress
   } = useIDEStore();
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
@@ -56,6 +61,9 @@ export const EditorCanvas: React.FC = () => {
   const breadcrumbs = activeTab 
     ? [rootName.toLowerCase(), ...activeTab.path.split(/[/\\]/)]
     : [rootName.toLowerCase()];
+
+  // Calculate tier-specific Monaco options
+  const tierOptions = activeTab ? getMonacoOptionsForTier(activeTab.tier) : {};
 
   return (
     <div className="flex-1 flex flex-col bg-[#0B0D11] relative overflow-hidden h-full">
@@ -157,8 +165,15 @@ export const EditorCanvas: React.FC = () => {
                 {idx < breadcrumbs.length - 1 && <ChevronRight className="w-3 h-3 text-gray-600" />}
               </React.Fragment>
             ))}
-            {activeTab.language && (
-              <span className="ml-2 text-[9px] bg-[#38BDF8]/10 text-[#38BDF8] px-1.5 py-0.5 rounded font-bold uppercase font-mono">
+
+            {activeTab.size !== undefined && (
+              <span className="ml-2 text-[9px] bg-[#181B24] border border-[#232734] text-gray-400 px-1.5 py-0.5 rounded font-mono">
+                {formatFileSize(activeTab.size)}
+              </span>
+            )}
+
+            {activeTab.language && !activeTab.isBinary && (
+              <span className="text-[9px] bg-[#38BDF8]/10 text-[#38BDF8] px-1.5 py-0.5 rounded font-bold uppercase font-mono">
                 {activeTab.language}
               </span>
             )}
@@ -173,9 +188,27 @@ export const EditorCanvas: React.FC = () => {
         </div>
       )}
 
+      {/* Large File & Safe Mode Notice Banner */}
+      {activeTab && (activeTab.tier === 'large' || activeTab.tier === 'huge' || activeTab.truncated) && (
+        <div className="h-7 bg-amber-500/10 border-b border-amber-500/30 px-4 flex items-center justify-between text-[11px] font-mono text-amber-300 select-none z-10">
+          <div className="flex items-center space-x-2">
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>
+              High-performance mode active ({formatFileSize(activeTab.size || 0)}). Heavy tokenizers and minimap disabled for speed.
+            </span>
+          </div>
+          {activeTab.truncated && (
+            <div className="flex items-center space-x-1 text-orange-400">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Viewing first 25 MB preview window</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Monaco Editor Container / Home Screen / Loading Screen */}
       <div className="flex-1 relative z-10">
-        {/* 1. Loading Animation */}
+        {/* 1. Folder Opening Animation */}
         {isFolderOpening ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200">
             <div className="w-20 h-20 rounded-3xl bg-[#12151C] border border-[#38BDF8]/40 flex items-center justify-center mb-6 shadow-2xl relative overflow-hidden group">
@@ -196,8 +229,51 @@ export const EditorCanvas: React.FC = () => {
               <div className="h-full bg-gradient-to-r from-[#38BDF8] via-[#FF4D4D] to-[#38BDF8] animate-pulse w-full"></div>
             </div>
           </div>
+        ) : fileLoadingProgress ? (
+          /* 2. Non-blocking Chunked Stream Progress for Large Files */
+          <div className="h-full flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-150">
+            <div className="w-16 h-16 rounded-2xl bg-[#12151C] border border-[#38BDF8]/40 flex items-center justify-center mb-4 shadow-xl">
+              <Loader2 className="w-8 h-8 animate-spin text-[#38BDF8]" />
+            </div>
+
+            <h3 className="text-sm font-bold text-white font-mono mb-1">
+              STREAMING FILE ({fileLoadingProgress.percent}%)
+            </h3>
+            <p className="text-xs text-gray-400 font-mono mb-4">
+              {formatFileSize(fileLoadingProgress.bytesLoaded)} / {formatFileSize(fileLoadingProgress.totalBytes)}
+            </p>
+
+            <div className="w-64 h-2 bg-[#181B24] rounded-full overflow-hidden border border-[#232734]">
+              <div 
+                className="h-full bg-gradient-to-r from-[#38BDF8] to-emerald-400 transition-all duration-100"
+                style={{ width: `${fileLoadingProgress.percent}%` }}
+              ></div>
+            </div>
+          </div>
+        ) : activeTab?.isBinary ? (
+          /* 3. High-Performance Binary File Guardrail Card */
+          <div className="h-full flex flex-col items-center justify-center text-gray-400 select-none p-6 animate-in fade-in duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-[#12151C] border border-[#232734] flex items-center justify-center mb-4 shadow-2xl">
+              <Binary className="w-8 h-8 text-[#38BDF8]" />
+            </div>
+
+            <h2 className="text-base font-bold text-white tracking-wide mb-1 font-mono">{activeTab.title}</h2>
+            <p className="text-xs text-gray-500 mb-2 font-mono">
+              Binary file ({formatFileSize(activeTab.size || 0)})
+            </p>
+            <p className="text-xs text-gray-400 mb-6 font-mono text-center max-w-sm">
+              This file contains binary data and cannot be displayed as text.
+            </p>
+
+            <button
+              onClick={() => openExternalTerminal()}
+              className="px-4 py-2 bg-[#181B24] hover:bg-[#232734] border border-[#232734] text-gray-200 hover:text-white font-semibold text-xs rounded-xl transition-all flex items-center space-x-2 font-mono"
+            >
+              <span>Inspect in Terminal</span>
+            </button>
+          </div>
         ) : activeTab ? (
-          /* 2. Monaco Editor */
+          /* 4. Optimized Monaco Editor */
           <Editor
             height="100%"
             language={activeTab.language}
@@ -227,25 +303,14 @@ export const EditorCanvas: React.FC = () => {
               );
             }}
             options={{
+              ...tierOptions,
               fontSize: fontSize,
-              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-              minimap: { enabled: minimapEnabled },
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
               tabSize: tabSize,
-              lineNumbers: 'on',
-              glyphMargin: false,
-              folding: true,
-              lineDecorationsWidth: 10,
-              lineNumbersMinChars: 3,
-              renderLineHighlight: 'line',
-              cursorBlinking: 'smooth',
-              cursorSmoothCaretAnimation: 'on',
-              padding: { top: 12 }
+              minimap: { enabled: activeTab.tier === 'small' && minimapEnabled }
             }}
           />
         ) : (
-          /* 3. Empty Start State */
+          /* 5. Empty Start State */
           <div className="h-full flex flex-col items-center justify-center text-gray-400 select-none p-6">
             {/* Japanese Torii Emblem */}
             <div className="w-16 h-16 rounded-2xl bg-[#12151C] border border-[#232734] flex items-center justify-center mb-4 shadow-2xl relative overflow-hidden">

@@ -1,22 +1,30 @@
 import { FileNode } from '../types/ide';
+import { probeFileHeader, readTextStreamWithProgress, StreamProgress, getTierFromSize } from './largeFileService';
 
-// Active Web File System Access API Handle (if supported and permitted)
-let rootDirectoryHandle: any = null;
+// Active Absolute Workspace Directory Path (Native Node.js / Electron)
+let activeWorkspacePath: string | null = null;
 
-// In-Memory File Store (persists file contents in real-time)
+// In-Memory Virtual Store (fallback)
 const inMemoryFileStore = new Map<string, string>();
 let currentVirtualTree: FileNode[] = [];
 
-const IGNORED = new Set([
-  'node_modules',
-  '.git',
-  '__pycache__',
-  '.venv',
-  'dist',
-  'dist_electron',
-  '.vite',
-  '.DS_Store'
-]);
+export interface FileReadDetails {
+  content: string;
+  size: number;
+  isBinary: boolean;
+  tier: 'small' | 'medium' | 'large' | 'huge';
+  truncated: boolean;
+  totalSize: number;
+  mimeType?: string;
+}
+
+export function getActiveWorkspacePath(): string | null {
+  return activeWorkspacePath;
+}
+
+export function setActiveWorkspacePath(p: string | null) {
+  activeWorkspacePath = p;
+}
 
 export function getCurrentTree(): FileNode[] {
   return currentVirtualTree;
@@ -24,6 +32,22 @@ export function getCurrentTree(): FileNode[] {
 
 export function setCurrentTree(tree: FileNode[]) {
   currentVirtualTree = tree;
+}
+
+// Path resolver for native filesystem
+function resolveFullPath(relPath: string): string {
+  if (!relPath) return activeWorkspacePath || '';
+  // If already absolute path (Windows 'C:\...' or POSIX '/...')
+  if (/^([a-zA-Z]:[/\\]|\/)/.test(relPath)) {
+    return relPath;
+  }
+  if (!activeWorkspacePath) return relPath;
+
+  const isWin = activeWorkspacePath.includes('\\');
+  const separator = isWin ? '\\' : '/';
+  const cleanRel = relPath.replace(/[/\\]+/g, separator);
+  
+  return `${activeWorkspacePath}${activeWorkspacePath.endsWith(separator) ? '' : separator}${cleanRel}`;
 }
 
 export function insertFileIntoTree(tree: FileNode[], relPath: string, isDir = false): void {
@@ -60,10 +84,6 @@ export function insertFileIntoTree(tree: FileNode[], relPath: string, isDir = fa
   }
 }
 
-export function insertFileIntoVirtualTree(relPath: string, isDir = false): void {
-  insertFileIntoTree(currentVirtualTree, relPath, isDir);
-}
-
 export function removeFileFromVirtualTree(targetRelPath: string): void {
   function removeRecursive(nodes: FileNode[]): boolean {
     const idx = nodes.findIndex((n) => n.path === targetRelPath || targetRelPath.startsWith(n.path + '/'));
@@ -81,552 +101,261 @@ export function removeFileFromVirtualTree(targetRelPath: string): void {
   removeRecursive(currentVirtualTree);
 }
 
-// Helper to navigate to a sub-directory handle from a relative path
-async function resolveDirHandle(relPath: string, createIfMissing = false): Promise<any> {
-  if (!rootDirectoryHandle) return null;
-  if (!relPath || relPath === '.' || relPath === '') return rootDirectoryHandle;
-
-  const parts = relPath.split(/[/\\]/).filter(Boolean);
-  let current = rootDirectoryHandle;
-  for (const part of parts) {
-    current = await current.getDirectoryHandle(part, { create: createIfMissing });
-  }
-  return current;
-}
-
-// Build file tree from directory handle
-export async function buildTreeFromHandle(
-  dirHandle: any,
-  relPath = '',
-  maxDepth = 8,
-  currentDepth = 0
-): Promise<FileNode[]> {
-  if (currentDepth > maxDepth) return [];
-  const entries: { name: string; is_dir: boolean; handle: any }[] = [];
-
-  try {
-    if (typeof dirHandle.values === 'function') {
-      for await (const handle of dirHandle.values()) {
-        if (IGNORED.has(handle.name)) continue;
-        entries.push({
-          name: handle.name,
-          is_dir: handle.kind === 'directory',
-          handle
-        });
-      }
-    } else if (typeof dirHandle.entries === 'function') {
-      for await (const [name, handle] of dirHandle.entries()) {
-        if (IGNORED.has(name)) continue;
-        entries.push({
-          name,
-          is_dir: handle.kind === 'directory',
-          handle
-        });
-      }
-    }
-  } catch (e) {
-    console.error('Failed to read directory handle entries', e);
-    return [];
-  }
-
-  // Sort: directories first (alphabetical), then files (alphabetical)
-  entries.sort((a, b) => {
-    if (a.is_dir && !b.is_dir) return -1;
-    if (!a.is_dir && b.is_dir) return 1;
-    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-  });
-
-  const tree: FileNode[] = [];
-  for (const entry of entries) {
-    const itemPath = relPath ? `${relPath}/${entry.name}` : entry.name;
-    if (entry.is_dir) {
-      const children = await buildTreeFromHandle(entry.handle, itemPath, maxDepth, currentDepth + 1);
-      tree.push({
-        name: entry.name,
-        path: itemPath,
-        is_dir: true,
-        children
-      });
-    } else {
-      tree.push({
-        name: entry.name,
-        path: itemPath,
-        is_dir: false,
-        children: null
-      });
-    }
-  }
-  return tree;
-}
-
-// Universal Directory Picker via HTML5 webkitdirectory input
-function openDirectoryViaFileInput(): Promise<{ name: string; path: string; tree: FileNode[] } | null> {
-  return new Promise((resolve) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    (input as any).webkitdirectory = true;
-    (input as any).directory = true;
-    input.multiple = true;
-    input.style.display = 'none';
-
-    input.onchange = async (e: any) => {
-      const files: FileList = e.target.files;
-      if (!files || files.length === 0) {
-        if (input.parentNode) input.parentNode.removeChild(input);
-        resolve(null);
-        return;
-      }
-
-      const firstPath = files[0].webkitRelativePath || files[0].name;
-      const rootFolderName = firstPath.split('/')[0] || 'PROJECT';
-      const tree: FileNode[] = [];
-
-      inMemoryFileStore.clear();
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fullRel = file.webkitRelativePath;
-        if (!fullRel) continue;
-
-        // Skip ignored directories
-        if (
-          fullRel.includes('node_modules/') ||
-          fullRel.includes('.git/') ||
-          fullRel.includes('.venv/') ||
-          fullRel.includes('dist/') ||
-          fullRel.includes('__pycache__/')
-        ) {
-          continue;
-        }
-
-        const relWithoutRoot = fullRel.startsWith(rootFolderName + '/')
-          ? fullRel.substring(rootFolderName.length + 1)
-          : fullRel;
-
-        if (!relWithoutRoot) continue;
-
-        try {
-          const text = await file.text();
-          inMemoryFileStore.set(relWithoutRoot, text);
-        } catch (err) {
-          inMemoryFileStore.set(relWithoutRoot, '');
-        }
-
-        insertFileIntoTree(tree, relWithoutRoot, false);
-      }
-
-      currentVirtualTree = tree;
-      if (input.parentNode) input.parentNode.removeChild(input);
-
-      resolve({
-        name: rootFolderName,
-        path: rootFolderName,
-        tree
-      });
-    };
-
-    input.oncancel = () => {
-      if (input.parentNode) input.parentNode.removeChild(input);
-      resolve(null);
-    };
-
-    document.body.appendChild(input);
-    input.click();
-  });
-}
-
-// 1. Open Folder from Local Machine (Tries showDirectoryPicker with readwrite, fallback to HTML5 file input)
+// ----------------------------------------------------
+// 1. Open Local Folder Picker (Native Node.js Electron)
+// ----------------------------------------------------
 export async function openLocalFolderPicker(): Promise<{
   name: string;
   path: string;
   tree: FileNode[];
 } | null> {
-  // 1. Try Native Web File System Access API
-  if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
+  // 1. Native Electron Node.js File System Provider (Primary & Default)
+  if (typeof window !== 'undefined' && window.electronAPI?.fs?.selectFolder) {
     try {
-      const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-      if (handle) {
-        // Request readwrite permissions upfront
-        if (typeof handle.requestPermission === 'function') {
-          try {
-            await handle.requestPermission({ mode: 'readwrite' });
-          } catch (e) {}
-        }
-
-        rootDirectoryHandle = handle;
+      const result = await window.electronAPI.fs.selectFolder();
+      if (result) {
+        activeWorkspacePath = result.path;
+        currentVirtualTree = result.tree;
         inMemoryFileStore.clear();
 
-        const tree = await buildTreeFromHandle(handle);
-        currentVirtualTree = tree;
-
         return {
-          name: handle.name,
-          path: handle.name,
+          name: result.name,
+          path: result.path,
+          tree: result.tree
+        };
+      }
+      return null;
+    } catch (err) {
+      console.error('[Native FS] Failed selecting folder via Electron IPC:', err);
+    }
+  }
+
+  // 2. Native Electron Dialog fallback
+  if (typeof window !== 'undefined' && window.electronAPI?.openDirectoryDialog) {
+    try {
+      const selectedPath = await window.electronAPI.openDirectoryDialog();
+      if (selectedPath) {
+        activeWorkspacePath = selectedPath;
+        const rootName = selectedPath.split(/[/\\]/).pop() || selectedPath;
+        const tree = await refreshDirectoryTree();
+        return {
+          name: rootName,
+          path: selectedPath,
           tree
         };
       }
-    } catch (e: any) {
-      if (e.name === 'AbortError') {
-        return null;
-      }
-      console.warn('showDirectoryPicker unavailable or blocked, falling back to directory file input:', e);
-    }
+    } catch (e) {}
   }
 
-  // 2. Fallback to HTML5 directory file input
-  return await openDirectoryViaFileInput();
+  return null;
 }
 
-// 2. Refresh Tree (Clears cache and forces fresh disk scan)
+// ----------------------------------------------------
+// 2. Refresh Directory Tree (Native Node.js)
+// ----------------------------------------------------
 export async function refreshDirectoryTree(): Promise<FileNode[]> {
   inMemoryFileStore.clear();
 
-  if (rootDirectoryHandle) {
+  if (activeWorkspacePath && typeof window !== 'undefined' && window.electronAPI?.fs?.readDirectoryTree) {
     try {
-      const tree = await buildTreeFromHandle(rootDirectoryHandle);
+      const tree = await window.electronAPI.fs.readDirectoryTree(activeWorkspacePath);
       currentVirtualTree = tree;
       return tree;
-    } catch (e) {
-      console.warn('Failed to refresh from handle, using virtual tree', e);
+    } catch (err) {
+      console.error('[Native FS] Failed reading directory tree:', err);
     }
   }
-
-  // Try backend tree
-  try {
-    const res = await fetch('/api/fs/tree');
-    if (res.ok) {
-      const data = await res.json();
-      currentVirtualTree = data.tree || [];
-      return currentVirtualTree;
-    }
-  } catch (e) {}
 
   return [...currentVirtualTree];
 }
 
-// 3. Read File Content (Reads directly from disk/backend if forceFresh is true)
-export async function readFile(relPath: string, forceFresh = false): Promise<string> {
-  if (!forceFresh && inMemoryFileStore.has(relPath)) {
-    return inMemoryFileStore.get(relPath)!;
-  }
+// ----------------------------------------------------
+// 3. Read File Content with Native Node.js & Streaming
+// ----------------------------------------------------
+export async function readFileDetails(
+  relPath: string, 
+  forceFresh = false,
+  onProgress?: (progress: StreamProgress) => void
+): Promise<FileReadDetails> {
+  const fullPath = resolveFullPath(relPath);
 
-  if (rootDirectoryHandle) {
+  // 1. Native Electron Node.js IPC File Reader
+  if (typeof window !== 'undefined' && window.electronAPI?.fs?.readFileDetails) {
     try {
-      const parts = relPath.split(/[/\\]/).filter(Boolean);
-      const fileName = parts.pop()!;
-      const parentRel = parts.join('/');
-      const parentDir = await resolveDirHandle(parentRel);
-      const fileHandle = await parentDir.getFileHandle(fileName);
-      const file = await fileHandle.getFile();
-      const content = await file.text();
-      inMemoryFileStore.set(relPath, content);
-      return content;
-    } catch (e) {
-      console.error(`Failed to read file ${relPath}:`, e);
+      const details = await window.electronAPI.fs.readFileDetails(fullPath);
+      if (details) {
+        if (!forceFresh && details.size < 5 * 1024 * 1024) {
+          inMemoryFileStore.set(relPath, details.content);
+        }
+        return {
+          content: details.content,
+          size: details.size,
+          isBinary: details.isBinary,
+          tier: details.tier,
+          truncated: details.truncated,
+          totalSize: details.totalSize
+        };
+      }
+    } catch (err) {
+      console.error(`[Native FS] Error reading ${fullPath}:`, err);
     }
   }
 
-  // Try backend if available
-  try {
-    const res = await fetch(`/api/fs/file?path=${encodeURIComponent(relPath)}&_t=${Date.now()}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.content !== undefined) {
-        inMemoryFileStore.set(relPath, data.content);
-        return data.content;
-      }
-    }
-  } catch (e) {}
+  // Fallback cache
+  if (!forceFresh && inMemoryFileStore.has(relPath)) {
+    const cached = inMemoryFileStore.get(relPath)!;
+    return {
+      content: cached,
+      size: cached.length,
+      isBinary: false,
+      tier: getTierFromSize(cached.length),
+      truncated: false,
+      totalSize: cached.length
+    };
+  }
 
-  return inMemoryFileStore.get(relPath) || '';
+  const fallback = inMemoryFileStore.get(relPath) || '';
+  return {
+    content: fallback,
+    size: fallback.length,
+    isBinary: false,
+    tier: 'small',
+    truncated: false,
+    totalSize: fallback.length
+  };
 }
 
-// 4. Save File Content (Directly writes to local disk file)
+export async function readFile(relPath: string, forceFresh = false): Promise<string> {
+  const details = await readFileDetails(relPath, forceFresh);
+  return details.content;
+}
+
+// ----------------------------------------------------
+// 4. Write / Save File (Native Node.js fs.writeFile)
+// ----------------------------------------------------
 export async function writeFile(relPath: string, content: string): Promise<boolean> {
   inMemoryFileStore.set(relPath, content);
-  let savedToDisk = false;
+  const fullPath = resolveFullPath(relPath);
 
-  // 1. Direct Web File System Access API Handle Write
-  if (rootDirectoryHandle) {
+  if (typeof window !== 'undefined' && window.electronAPI?.fs?.writeFile) {
     try {
-      if (typeof rootDirectoryHandle.queryPermission === 'function') {
-        const status = await rootDirectoryHandle.queryPermission({ mode: 'readwrite' });
-        if (status !== 'granted') {
-          await rootDirectoryHandle.requestPermission({ mode: 'readwrite' });
-        }
-      }
-
-      const parts = relPath.split(/[/\\]/).filter(Boolean);
-      const fileName = parts.pop()!;
-      const parentRel = parts.join('/');
-      const parentDir = await resolveDirHandle(parentRel, true);
-      const fileHandle = await parentDir.getFileHandle(fileName, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(content);
-      await writable.close();
-      savedToDisk = true;
-      console.log(`[FileSystem] Disk write complete for: ${relPath}`);
-    } catch (e) {
-      console.warn(`Direct handle write failed for ${relPath}, trying backend:`, e);
+      return await window.electronAPI.fs.writeFile(fullPath, content);
+    } catch (err) {
+      console.error(`[Native FS] Error writing ${fullPath}:`, err);
     }
   }
-
-  // 2. Node Backend Write (if backend server is active)
-  try {
-    const res = await fetch('/api/fs/file', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: relPath, content })
-    });
-    if (res.ok) {
-      savedToDisk = true;
-    }
-  } catch (e) {}
 
   return true;
 }
 
-// 5. Create File
+// ----------------------------------------------------
+// 5. Create File (Native Node.js fs.writeFile)
+// ----------------------------------------------------
 export async function createFile(parentRelPath: string, fileName: string): Promise<boolean> {
   const targetRel = parentRelPath ? `${parentRelPath}/${fileName}` : fileName;
   inMemoryFileStore.set(targetRel, '');
+  const fullPath = resolveFullPath(targetRel);
 
-  if (rootDirectoryHandle) {
+  if (typeof window !== 'undefined' && window.electronAPI?.fs?.createFile) {
     try {
-      const parentDir = await resolveDirHandle(parentRelPath, true);
-      const fileHandle = await parentDir.getFileHandle(fileName, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write('');
-      await writable.close();
-    } catch (e) {
-      console.warn(`Failed creating file on disk handle for ${targetRel}:`, e);
+      await window.electronAPI.fs.createFile(fullPath, '');
+    } catch (err) {
+      console.error(`[Native FS] Error creating file ${fullPath}:`, err);
     }
   }
 
-  // Backend write
-  try {
-    await fetch('/api/fs/nodes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create_file', path: targetRel })
-    });
-  } catch (e) {}
-
-  insertFileIntoVirtualTree(targetRel, false);
+  insertFileIntoTree(currentVirtualTree, targetRel, false);
   return true;
 }
 
-// 6. Create Folder
+// ----------------------------------------------------
+// 6. Create Folder (Native Node.js fs.mkdir)
+// ----------------------------------------------------
 export async function createFolder(parentRelPath: string, folderName: string): Promise<boolean> {
   const targetRel = parentRelPath ? `${parentRelPath}/${folderName}` : folderName;
+  const fullPath = resolveFullPath(targetRel);
 
-  if (rootDirectoryHandle) {
+  if (typeof window !== 'undefined' && window.electronAPI?.fs?.createDirectory) {
     try {
-      const parentDir = await resolveDirHandle(parentRelPath, true);
-      await parentDir.getDirectoryHandle(folderName, { create: true });
-    } catch (e) {
-      console.warn(`Failed creating directory on disk handle for ${targetRel}:`, e);
+      await window.electronAPI.fs.createDirectory(fullPath);
+    } catch (err) {
+      console.error(`[Native FS] Error creating directory ${fullPath}:`, err);
     }
   }
 
-  // Backend write
-  try {
-    await fetch('/api/fs/nodes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create_dir', path: targetRel })
-    });
-  } catch (e) {}
-
-  insertFileIntoVirtualTree(targetRel, true);
+  insertFileIntoTree(currentVirtualTree, targetRel, true);
   return true;
 }
 
-// 7. Delete Item (File or Folder)
+// ----------------------------------------------------
+// 7. Delete Item (Native Node.js fs.rm)
+// ----------------------------------------------------
 export async function deleteItem(relPath: string): Promise<boolean> {
   inMemoryFileStore.delete(relPath);
-  for (const key of Array.from(inMemoryFileStore.keys())) {
-    if (key.startsWith(relPath + '/')) {
-      inMemoryFileStore.delete(key);
-    }
-  }
+  const fullPath = resolveFullPath(relPath);
 
-  if (rootDirectoryHandle) {
+  if (typeof window !== 'undefined' && window.electronAPI?.fs?.deleteItem) {
     try {
-      const parts = relPath.split(/[/\\]/).filter(Boolean);
-      const itemName = parts.pop()!;
-      const parentRel = parts.join('/');
-      const parentDir = await resolveDirHandle(parentRel);
-      await parentDir.removeEntry(itemName, { recursive: true });
-    } catch (e) {
-      console.warn(`Failed deleting on disk handle for ${relPath}:`, e);
+      await window.electronAPI.fs.deleteItem(fullPath);
+    } catch (err) {
+      console.error(`[Native FS] Error deleting ${fullPath}:`, err);
     }
   }
-
-  // Backend delete
-  try {
-    await fetch('/api/fs/nodes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete', path: relPath })
-    });
-  } catch (e) {}
 
   removeFileFromVirtualTree(relPath);
   return true;
 }
 
-// 8. Rename Item
+// ----------------------------------------------------
+// 8. Rename Item (Native Node.js fs.rename)
+// ----------------------------------------------------
 export async function renameItem(oldRelPath: string, newName: string, isDir: boolean): Promise<boolean> {
   const parent = oldRelPath.includes('/') ? oldRelPath.substring(0, oldRelPath.lastIndexOf('/')) : '';
   const newRelPath = parent ? `${parent}/${newName}` : newName;
+
+  const oldFullPath = resolveFullPath(oldRelPath);
+  const newFullPath = resolveFullPath(newRelPath);
+
+  if (typeof window !== 'undefined' && window.electronAPI?.fs?.renameItem) {
+    try {
+      await window.electronAPI.fs.renameItem(oldFullPath, newFullPath);
+    } catch (err) {
+      console.error(`[Native FS] Error renaming ${oldFullPath} to ${newFullPath}:`, err);
+    }
+  }
 
   const content = inMemoryFileStore.get(oldRelPath) || '';
   inMemoryFileStore.set(newRelPath, content);
   inMemoryFileStore.delete(oldRelPath);
 
-  if (isDir) {
-    for (const key of Array.from(inMemoryFileStore.keys())) {
-      if (key.startsWith(oldRelPath + '/')) {
-        const childContent = inMemoryFileStore.get(key)!;
-        const newKey = key.replace(oldRelPath, newRelPath);
-        inMemoryFileStore.set(newKey, childContent);
-        inMemoryFileStore.delete(key);
-      }
-    }
-  }
-
-  if (rootDirectoryHandle) {
-    try {
-      const parts = oldRelPath.split(/[/\\]/).filter(Boolean);
-      const oldName = parts.pop()!;
-      const parentRel = parts.join('/');
-      const parentDir = await resolveDirHandle(parentRel);
-
-      if (!isDir) {
-        const oldFileHandle = await parentDir.getFileHandle(oldName);
-        if (typeof (oldFileHandle as any).move === 'function') {
-          await (oldFileHandle as any).move(newName);
-        } else {
-          const file = await oldFileHandle.getFile();
-          const fileText = await file.text();
-          const newFileHandle = await parentDir.getFileHandle(newName, { create: true });
-          const writable = await newFileHandle.createWritable();
-          await writable.write(fileText);
-          await writable.close();
-          await parentDir.removeEntry(oldName);
-        }
-      } else {
-        const oldDirHandle = await parentDir.getDirectoryHandle(oldName);
-        if (typeof (oldDirHandle as any).move === 'function') {
-          await (oldDirHandle as any).move(newName);
-        } else {
-          const newDirHandle = await parentDir.getDirectoryHandle(newName, { create: true });
-          await copyDirectoryRecursive(oldDirHandle, newDirHandle);
-          await parentDir.removeEntry(oldName, { recursive: true });
-        }
-      }
-    } catch (e) {
-      console.warn(`Failed rename on disk handle for ${oldRelPath} -> ${newName}:`, e);
-    }
-  }
-
-  // Backend rename
-  try {
-    await fetch('/api/fs/nodes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'rename', path: oldRelPath, target_path: newRelPath })
-    });
-  } catch (e) {}
-
   removeFileFromVirtualTree(oldRelPath);
-  insertFileIntoVirtualTree(newRelPath, isDir);
+  insertFileIntoTree(currentVirtualTree, newRelPath, isDir);
   return true;
 }
 
-// 9. Move Item (File or Folder to another Folder)
+// ----------------------------------------------------
+// 9. Move Item (Native Node.js fs.rename / move)
+// ----------------------------------------------------
 export async function moveItem(sourceRelPath: string, targetDirRelPath: string, isDir: boolean): Promise<boolean> {
   const itemName = sourceRelPath.split(/[/\\]/).pop()!;
   const newRelPath = targetDirRelPath ? `${targetDirRelPath}/${itemName}` : itemName;
+
+  const srcFullPath = resolveFullPath(sourceRelPath);
+  const destFullPath = resolveFullPath(newRelPath);
+
+  if (typeof window !== 'undefined' && window.electronAPI?.fs?.moveItem) {
+    try {
+      await window.electronAPI.fs.moveItem(srcFullPath, destFullPath);
+    } catch (err) {
+      console.error(`[Native FS] Error moving ${srcFullPath} to ${destFullPath}:`, err);
+    }
+  }
 
   const content = inMemoryFileStore.get(sourceRelPath) || '';
   inMemoryFileStore.set(newRelPath, content);
   inMemoryFileStore.delete(sourceRelPath);
 
-  if (isDir) {
-    for (const key of Array.from(inMemoryFileStore.keys())) {
-      if (key.startsWith(sourceRelPath + '/')) {
-        const childContent = inMemoryFileStore.get(key)!;
-        const newKey = key.replace(sourceRelPath, newRelPath);
-        inMemoryFileStore.set(newKey, childContent);
-        inMemoryFileStore.delete(key);
-      }
-    }
-  }
-
-  if (rootDirectoryHandle) {
-    try {
-      const srcParts = sourceRelPath.split(/[/\\]/).filter(Boolean);
-      const oldName = srcParts.pop()!;
-      const srcParentRel = srcParts.join('/');
-      const srcParentDir = await resolveDirHandle(srcParentRel);
-      const destDir = await resolveDirHandle(targetDirRelPath, true);
-
-      if (!isDir) {
-        const srcFileHandle = await srcParentDir.getFileHandle(oldName);
-        if (typeof (srcFileHandle as any).move === 'function') {
-          await (srcFileHandle as any).move(destDir, oldName);
-        } else {
-          const file = await srcFileHandle.getFile();
-          const fileText = await file.text();
-          const newFileHandle = await destDir.getFileHandle(oldName, { create: true });
-          const writable = await newFileHandle.createWritable();
-          await writable.write(fileText);
-          await writable.close();
-          await srcParentDir.removeEntry(oldName);
-        }
-      } else {
-        const srcDirHandle = await srcParentDir.getDirectoryHandle(oldName);
-        if (typeof (srcDirHandle as any).move === 'function') {
-          await (srcDirHandle as any).move(destDir, oldName);
-        } else {
-          const newSubDir = await destDir.getDirectoryHandle(oldName, { create: true });
-          await copyDirectoryRecursive(srcDirHandle, newSubDir);
-          await srcParentDir.removeEntry(oldName, { recursive: true });
-        }
-      }
-    } catch (e) {
-      console.warn(`Failed move on disk handle for ${sourceRelPath} -> ${targetDirRelPath}:`, e);
-    }
-  }
-
-  // Backend move
-  try {
-    await fetch('/api/fs/nodes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'rename', path: sourceRelPath, target_path: newRelPath })
-    });
-  } catch (e) {}
-
   removeFileFromVirtualTree(sourceRelPath);
-  insertFileIntoVirtualTree(newRelPath, isDir);
+  insertFileIntoTree(currentVirtualTree, newRelPath, isDir);
   return true;
-}
-
-async function copyDirectoryRecursive(sourceDirHandle: any, targetDirHandle: any): Promise<void> {
-  for await (const [name, handle] of sourceDirHandle.entries()) {
-    if (handle.kind === 'directory') {
-      const subTarget = await targetDirHandle.getDirectoryHandle(name, { create: true });
-      await copyDirectoryRecursive(handle, subTarget);
-    } else {
-      const file = await handle.getFile();
-      const content = await file.text();
-      const targetFileHandle = await targetDirHandle.getFileHandle(name, { create: true });
-      const writable = await targetFileHandle.createWritable();
-      await writable.write(content);
-      await writable.close();
-    }
-  }
 }

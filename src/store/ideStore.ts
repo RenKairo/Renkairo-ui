@@ -7,6 +7,7 @@ import {
   moveItem, 
   openLocalFolderPicker, 
   readFile, 
+  readFileDetails,
   refreshDirectoryTree, 
   renameItem, 
   writeFile 
@@ -27,6 +28,7 @@ interface IDEState {
 
   // Folder Opening & Loading Animation State
   isFolderOpening: boolean;
+  fileLoadingProgress: { path: string; percent: number; bytesLoaded: number; totalBytes: number } | null;
 
   // Folder Opening & Scope Switching
   openFolder: () => Promise<void>;
@@ -93,6 +95,7 @@ export const useIDEStore = create<IDEState>((set, get) => ({
   setSelectedPath: (path) => set({ selectedPath: path }),
 
   isFolderOpening: false,
+  fileLoadingProgress: null,
 
   openFolder: async () => {
     set({ isFolderOpening: true });
@@ -136,14 +139,20 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     const tree = await refreshDirectoryTree();
     const { tabs } = get();
 
-    // Freshly reload all open tabs from disk
+    // Freshly reload all open tabs from disk with streaming
     const updatedTabs = await Promise.all(
       tabs.map(async (tab) => {
         try {
-          const freshContent = await readFile(tab.path, true);
+          const freshDetails = await readFileDetails(tab.path, true);
           return {
             ...tab,
-            content: freshContent,
+            content: freshDetails.content,
+            size: freshDetails.size,
+            isBinary: freshDetails.isBinary,
+            tier: freshDetails.tier,
+            truncated: freshDetails.truncated,
+            totalSize: freshDetails.totalSize,
+            mimeType: freshDetails.mimeType,
             isDirty: false
           };
         } catch (e) {
@@ -240,30 +249,50 @@ export const useIDEStore = create<IDEState>((set, get) => ({
       return;
     }
 
-    const content = await readFile(path);
+    set({ fileLoadingProgress: { path, percent: 0, bytesLoaded: 0, totalBytes: 0 } });
+
+    let details;
+    try {
+      details = await readFileDetails(path, false, (progress) => {
+        set({ fileLoadingProgress: { path, ...progress } });
+      });
+    } finally {
+      set({ fileLoadingProgress: null });
+    }
+
     let language = 'plaintext';
-    const lower = name.toLowerCase();
-    if (lower.endsWith('.py')) language = 'python';
-    else if (lower.endsWith('.ts') || lower.endsWith('.tsx')) language = 'typescript';
-    else if (lower.endsWith('.js') || lower.endsWith('.jsx') || lower.endsWith('.cjs') || lower.endsWith('.mjs')) language = 'javascript';
-    else if (lower.endsWith('.json')) language = 'json';
-    else if (lower.endsWith('.yml') || lower.endsWith('.yaml')) language = 'yaml';
-    else if (lower.endsWith('.md')) language = 'markdown';
-    else if (lower.endsWith('.css') || lower.endsWith('.scss')) language = 'css';
-    else if (lower.endsWith('.html')) language = 'html';
-    else if (lower.endsWith('.sh') || lower.endsWith('.bash') || lower.endsWith('.ps1')) language = 'shell';
-    else if (lower.endsWith('.sql')) language = 'sql';
-    else if (lower.endsWith('.rs')) language = 'rust';
-    else if (lower.endsWith('.go')) language = 'go';
-    else if (lower.endsWith('.java')) language = 'java';
+    // For small and medium files, enable full language tokenization
+    if (details.tier === 'small' || details.tier === 'medium') {
+      const lower = name.toLowerCase();
+      if (lower.endsWith('.py')) language = 'python';
+      else if (lower.endsWith('.ts') || lower.endsWith('.tsx')) language = 'typescript';
+      else if (lower.endsWith('.js') || lower.endsWith('.jsx') || lower.endsWith('.cjs') || lower.endsWith('.mjs')) language = 'javascript';
+      else if (lower.endsWith('.json')) language = 'json';
+      else if (lower.endsWith('.yml') || lower.endsWith('.yaml')) language = 'yaml';
+      else if (lower.endsWith('.md')) language = 'markdown';
+      else if (lower.endsWith('.css') || lower.endsWith('.scss')) language = 'css';
+      else if (lower.endsWith('.html')) language = 'html';
+      else if (lower.endsWith('.sh') || lower.endsWith('.bash') || lower.endsWith('.ps1')) language = 'shell';
+      else if (lower.endsWith('.sql')) language = 'sql';
+      else if (lower.endsWith('.rs')) language = 'rust';
+      else if (lower.endsWith('.go')) language = 'go';
+      else if (lower.endsWith('.java')) language = 'java';
+      else if (lower.endsWith('.c') || lower.endsWith('.cpp') || lower.endsWith('.h')) language = 'cpp';
+    }
 
     const newTab: TabItem = {
       id: `tab_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       title: name,
       path: path,
-      content: content,
+      content: details.content,
       isDirty: false,
-      language
+      language,
+      size: details.size,
+      isBinary: details.isBinary,
+      tier: details.tier,
+      truncated: details.truncated,
+      totalSize: details.totalSize,
+      mimeType: details.mimeType
     };
 
     set({
