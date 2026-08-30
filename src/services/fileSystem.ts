@@ -370,3 +370,81 @@ export async function moveItem(sourceRelPath: string, targetDirRelPath: string, 
   insertFileIntoTree(currentVirtualTree, newRelPath, isDir);
   return true;
 }
+
+// ----------------------------------------------------
+// 10. Codebase Search Service (Full-Stack Engine)
+// ----------------------------------------------------
+export interface SearchMatch {
+  line: number;
+  text: string;
+  matchIndices: [number, number][];
+}
+
+export interface SearchFileResult {
+  path: string;
+  fullPath: string;
+  matches: SearchMatch[];
+}
+
+export interface SearchResponse {
+  results: SearchFileResult[];
+  totalMatches: number;
+  totalFiles: number;
+  capped: boolean;
+  error?: string;
+}
+
+export async function searchCodebase(options: {
+  query: string;
+  includes?: string;
+  isCaseSensitive?: boolean;
+  isWholeWord?: boolean;
+  isRegex?: boolean;
+}): Promise<SearchResponse> {
+  if (!options.query || !options.query.trim()) {
+    return { results: [], totalMatches: 0, totalFiles: 0, capped: false };
+  }
+
+  // 1. Native Electron Node.js IPC Search Engine
+  if (typeof window !== 'undefined' && window.electronAPI?.fs?.searchCodebase) {
+    try {
+      return await window.electronAPI.fs.searchCodebase({
+        ...options,
+        rootPath: activeWorkspacePath || undefined
+      });
+    } catch (err) {
+      console.error('[Native FS] Failed running searchCodebase via Electron IPC:', err);
+    }
+  }
+
+  // 2. Express Backend HTTP API fallback
+  try {
+    const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:';
+    const baseUrl = isFileProtocol ? 'http://localhost:8000' : '';
+    let res = await fetch(`${baseUrl}/api/fs/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...options,
+        root: activeWorkspacePath || undefined
+      })
+    });
+    if (!res.ok && !isFileProtocol) {
+      res = await fetch('http://localhost:8000/api/fs/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...options,
+          root: activeWorkspacePath || undefined
+        })
+      });
+    }
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.error('[FS API] Failed running searchCodebase via backend API:', err);
+  }
+
+  return { results: [], totalMatches: 0, totalFiles: 0, capped: false };
+}

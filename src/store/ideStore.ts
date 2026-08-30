@@ -47,9 +47,10 @@ interface IDEState {
   // Open Tabs & Editor State
   tabs: TabItem[];
   activeTabId: string | null;
+  targetLine: { tabId: string; line: number; timestamp: number } | null;
   cursorPos: { line: number; col: number };
   setCursorPos: (line: number, col: number) => void;
-  openFile: (path: string, name: string) => Promise<void>;
+  openFile: (path: string, name: string, line?: number) => Promise<void>;
   closeTab: (id: string) => void;
   closeAllTabs: () => void;
   setActiveTabId: (id: string) => void;
@@ -262,67 +263,74 @@ export const useIDEStore = create<IDEState>((set, get) => ({
   // Editor Tabs
   tabs: [],
   activeTabId: null,
+  targetLine: null,
   cursorPos: { line: 1, col: 1 },
   setCursorPos: (line, col) => set({ cursorPos: { line, col } }),
 
-  openFile: async (path: string, name: string) => {
+  openFile: async (path: string, name: string, line?: number) => {
     const { tabs } = get();
     const existing = tabs.find((t) => t.path === path);
+    let targetTabId = existing?.id;
+
     if (existing) {
       set({ activeTabId: existing.id });
-      return;
-    }
+    } else {
+      set({ fileLoadingProgress: { path, percent: 0, bytesLoaded: 0, totalBytes: 0 } });
 
-    set({ fileLoadingProgress: { path, percent: 0, bytesLoaded: 0, totalBytes: 0 } });
+      let details;
+      try {
+        details = await readFileDetails(path, false, (progress) => {
+          set({ fileLoadingProgress: { path, ...progress } });
+        });
+      } finally {
+        set({ fileLoadingProgress: null });
+      }
 
-    let details;
-    try {
-      details = await readFileDetails(path, false, (progress) => {
-        set({ fileLoadingProgress: { path, ...progress } });
+      let language = 'plaintext';
+      // For small and medium files, enable full language tokenization
+      if (details.tier === 'small' || details.tier === 'medium') {
+        const lower = name.toLowerCase();
+        if (lower.endsWith('.py')) language = 'python';
+        else if (lower.endsWith('.ts') || lower.endsWith('.tsx')) language = 'typescript';
+        else if (lower.endsWith('.js') || lower.endsWith('.jsx') || lower.endsWith('.cjs') || lower.endsWith('.mjs')) language = 'javascript';
+        else if (lower.endsWith('.json')) language = 'json';
+        else if (lower.endsWith('.yml') || lower.endsWith('.yaml')) language = 'yaml';
+        else if (lower.endsWith('.md')) language = 'markdown';
+        else if (lower.endsWith('.css') || lower.endsWith('.scss')) language = 'css';
+        else if (lower.endsWith('.html')) language = 'html';
+        else if (lower.endsWith('.sh') || lower.endsWith('.bash') || lower.endsWith('.ps1')) language = 'shell';
+        else if (lower.endsWith('.sql')) language = 'sql';
+        else if (lower.endsWith('.rs')) language = 'rust';
+        else if (lower.endsWith('.go')) language = 'go';
+        else if (lower.endsWith('.java')) language = 'java';
+        else if (lower.endsWith('.c') || lower.endsWith('.cpp') || lower.endsWith('.h')) language = 'cpp';
+      }
+
+      const newTab: TabItem = {
+        id: `tab_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        title: name,
+        path: path,
+        content: details.content,
+        isDirty: false,
+        language,
+        size: details.size,
+        isBinary: details.isBinary,
+        tier: details.tier,
+        truncated: details.truncated,
+        totalSize: details.totalSize,
+        mimeType: details.mimeType
+      };
+
+      targetTabId = newTab.id;
+      set({
+        tabs: [...tabs, newTab],
+        activeTabId: newTab.id
       });
-    } finally {
-      set({ fileLoadingProgress: null });
     }
 
-    let language = 'plaintext';
-    // For small and medium files, enable full language tokenization
-    if (details.tier === 'small' || details.tier === 'medium') {
-      const lower = name.toLowerCase();
-      if (lower.endsWith('.py')) language = 'python';
-      else if (lower.endsWith('.ts') || lower.endsWith('.tsx')) language = 'typescript';
-      else if (lower.endsWith('.js') || lower.endsWith('.jsx') || lower.endsWith('.cjs') || lower.endsWith('.mjs')) language = 'javascript';
-      else if (lower.endsWith('.json')) language = 'json';
-      else if (lower.endsWith('.yml') || lower.endsWith('.yaml')) language = 'yaml';
-      else if (lower.endsWith('.md')) language = 'markdown';
-      else if (lower.endsWith('.css') || lower.endsWith('.scss')) language = 'css';
-      else if (lower.endsWith('.html')) language = 'html';
-      else if (lower.endsWith('.sh') || lower.endsWith('.bash') || lower.endsWith('.ps1')) language = 'shell';
-      else if (lower.endsWith('.sql')) language = 'sql';
-      else if (lower.endsWith('.rs')) language = 'rust';
-      else if (lower.endsWith('.go')) language = 'go';
-      else if (lower.endsWith('.java')) language = 'java';
-      else if (lower.endsWith('.c') || lower.endsWith('.cpp') || lower.endsWith('.h')) language = 'cpp';
+    if (line && targetTabId) {
+      set({ targetLine: { tabId: targetTabId, line, timestamp: Date.now() } });
     }
-
-    const newTab: TabItem = {
-      id: `tab_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      title: name,
-      path: path,
-      content: details.content,
-      isDirty: false,
-      language,
-      size: details.size,
-      isBinary: details.isBinary,
-      tier: details.tier,
-      truncated: details.truncated,
-      totalSize: details.totalSize,
-      mimeType: details.mimeType
-    };
-
-    set({
-      tabs: [...tabs, newTab],
-      activeTabId: newTab.id
-    });
   },
 
   closeTab: (id) => {
