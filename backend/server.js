@@ -464,6 +464,7 @@ wssTerminal.on('connection', (ws, req) => {
   const isWin = process.platform === 'win32';
   const urlParams = new URLSearchParams((req.url || '').split('?')[1] || '');
   const shellType = urlParams.get('shell') || 'powershell';
+  const reqCwd = urlParams.get('cwd');
 
   let shell = isWin ? 'powershell.exe' : (process.env.SHELL || 'bash');
   let args = isWin ? ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass', '-Command', 'Remove-Item alias:where -Force -ErrorAction SilentlyContinue'] : ['-i'];
@@ -487,13 +488,23 @@ wssTerminal.on('connection', (ws, req) => {
     }
   }
 
+  let targetCwd = currentWorkspace;
+  if (reqCwd) {
+    try {
+      const resolved = resolveWorkspacePath(reqCwd);
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+        targetCwd = resolved;
+      }
+    } catch (e) {}
+  }
+
   let ptyProcess = null;
   try {
     ptyProcess = pty.spawn(shell, args, {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
-      cwd: currentWorkspace,
+      cwd: targetCwd,
       env: { ...process.env, TERM: 'xterm-256color' }
     });
   } catch (err) {

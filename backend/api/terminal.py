@@ -29,7 +29,11 @@ async def websocket_terminal(websocket: WebSocket):
         shell = os.environ.get("SHELL", "bash")
         cmd = [shell, "-i"]
 
+    req_cwd = query_params.get("cwd")
     cwd = os.getcwd()
+    if req_cwd and os.path.exists(req_cwd) and os.path.isdir(req_cwd):
+        cwd = req_cwd
+
     cols = 80
     rows = 24
 
