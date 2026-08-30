@@ -9,10 +9,7 @@ export interface Participant {
   isSelf: boolean;
 }
 
-export interface UsePeerScreenShareReturn {
-  startHostSession: () => Promise<string>;
-  joinSession: (roomId: string) => Promise<void>;
-  endSession: () => void;
+export interface ScreenShareState {
   isHost: boolean;
   isConnected: boolean;
   isConnecting: boolean;
@@ -21,6 +18,12 @@ export interface UsePeerScreenShareReturn {
   remoteStream: MediaStream | null;
   participants: Participant[];
   error: string | null;
+}
+
+export interface UsePeerScreenShareReturn extends ScreenShareState {
+  startHostSession: () => Promise<string>;
+  joinSession: (roomId: string) => Promise<void>;
+  endSession: () => void;
 }
 
 const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
@@ -44,15 +47,20 @@ function createDummyStream(): MediaStream {
   return canvas.captureStream(1);
 }
 
+const INITIAL_STATE: ScreenShareState = {
+  isHost: false,
+  isConnected: false,
+  isConnecting: false,
+  peerId: null,
+  localStream: null,
+  remoteStream: null,
+  participants: [],
+  error: null
+};
+
 export function usePeerScreenShare(): UsePeerScreenShareReturn {
-  const [isHost, setIsHost] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [peerId, setPeerId] = useState<string | null>(null);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  // Single consolidated state object to ensure deterministic React hook ordering across HMR
+  const [state, setState] = useState<ScreenShareState>(INITIAL_STATE);
 
   const peerRef = useRef<Peer | null>(null);
   const activeCallsRef = useRef<MediaConnection[]>([]);
@@ -93,15 +101,8 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
       peerRef.current = null;
     }
 
-    // 5. Reset React states
-    setIsHost(false);
-    setIsConnected(false);
-    setIsConnecting(false);
-    setPeerId(null);
-    setLocalStream(null);
-    setRemoteStream(null);
-    setParticipants([]);
-    setError(null);
+    // 5. Reset React state
+    setState(INITIAL_STATE);
   }, []);
 
   // Cleanup on unmount
@@ -114,8 +115,7 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
   // Host Mode: Captures screen and listens for viewer calls & data links
   const startHostSession = useCallback(async (): Promise<string> => {
     endSession();
-    setError(null);
-    setIsConnecting(true);
+    setState((prev) => ({ ...prev, isConnecting: true, error: null }));
 
     try {
       // 1. Capture screen & audio (Electron Desktop Capturer + Web Browser Fallback)
@@ -160,7 +160,6 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
       }
 
       localStreamRef.current = stream;
-      setLocalStream(stream);
 
       // Listen for browser "Stop Sharing" floating bar event
       stream.getVideoTracks().forEach((track) => {
@@ -183,25 +182,37 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
 
       return new Promise<string>((resolve, reject) => {
         peer.on('open', (id) => {
-          setPeerId(id);
-          setIsHost(true);
-          setIsConnected(true);
-          setIsConnecting(false);
-
-          setParticipants([
-            {
-              peerId: id,
-              name: 'You (Host)',
-              role: 'Host',
-              status: 'Broadcasting',
-              isSelf: true
-            }
-          ]);
+          setState({
+            isHost: true,
+            isConnected: true,
+            isConnecting: false,
+            peerId: id,
+            localStream: stream,
+            remoteStream: null,
+            participants: [
+              {
+                peerId: id,
+                name: 'You (Host)',
+                role: 'Host',
+                status: 'Broadcasting',
+                isSelf: true
+              }
+            ],
+            error: null
+          });
 
           resolve(id);
         });
 
-        // Listen for incoming viewer data connections (for heartbeat & status)
+        // Automatic signaling server reconnection handler
+        peer.on('disconnected', () => {
+          console.warn('[PeerJS Host]: Disconnected from signaling server. Reconnecting...');
+          try {
+            if (!peer.destroyed) peer.reconnect();
+          } catch (e) {}
+        });
+
+        // Listen for incoming viewer data connections
         peer.on('connection', (conn) => {
           dataConnectionsRef.current.push(conn);
 
@@ -221,50 +232,65 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
           // Answer incoming viewer with local screen stream
           call.answer(stream!);
 
-          // Dynamically add joining viewer to participants list
-          setParticipants((prev) => {
-            if (prev.some((p) => p.peerId === call.peer)) return prev;
-            return [
+          // Dynamically update participants list
+          setState((prev) => {
+            if (prev.participants.some((p) => p.peerId === call.peer)) return prev;
+            return {
               ...prev,
-              {
-                peerId: call.peer,
-                name: `Peer (${call.peer.slice(-4)})`,
-                role: 'Viewer',
-                status: 'Viewing Stream',
-                isSelf: false
-              }
-            ];
+              participants: [
+                ...prev.participants,
+                {
+                  peerId: call.peer,
+                  name: `Peer (${call.peer.slice(-4)})`,
+                  role: 'Viewer',
+                  status: 'Viewing Stream',
+                  isSelf: false
+                }
+              ]
+            };
           });
 
           // Handle ICE connection state changes for Host side
           if (call.peerConnection) {
             call.peerConnection.oniceconnectionstatechange = () => {
-              const state = call.peerConnection?.iceConnectionState;
-              if (state === 'failed' || state === 'closed') {
+              const stateName = call.peerConnection?.iceConnectionState;
+              if (stateName === 'failed' || stateName === 'closed') {
                 activeCallsRef.current = activeCallsRef.current.filter((c) => c !== call);
-                setParticipants((prev) => prev.filter((p) => p.peerId !== call.peer));
+                setState((prev) => ({
+                  ...prev,
+                  participants: prev.participants.filter((p) => p.peerId !== call.peer)
+                }));
               }
             };
           }
 
           call.on('close', () => {
             activeCallsRef.current = activeCallsRef.current.filter((c) => c !== call);
-            setParticipants((prev) => prev.filter((p) => p.peerId !== call.peer));
+            setState((prev) => ({
+              ...prev,
+              participants: prev.participants.filter((p) => p.peerId !== call.peer)
+            }));
           });
 
           call.on('error', (err) => {
             console.warn('[PeerJS Host Call Error]:', err);
-            setParticipants((prev) => prev.filter((p) => p.peerId !== call.peer));
+            setState((prev) => ({
+              ...prev,
+              participants: prev.participants.filter((p) => p.peerId !== call.peer)
+            }));
           });
         });
 
         peer.on('error', (err) => {
           console.error('[PeerJS Host Error]:', err);
+          if (err.type === 'disconnected') {
+            try { peer.reconnect(); } catch (e) {}
+            return;
+          }
           const errMessage = err.type === 'unavailable-id' 
             ? 'Room ID is already occupied. Retrying...' 
             : `P2P Connection Error: ${err.message}`;
-          setError(errMessage);
-          setIsConnecting(false);
+          setState((prev) => ({ ...prev, isConnecting: false, error: errMessage }));
           reject(new Error(errMessage));
         });
       });
@@ -273,8 +299,7 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
       const errMsg = err.name === 'NotAllowedError' 
         ? 'Screen capture permission was denied.' 
         : err.message || 'Failed to start screen share session.';
-      setError(errMsg);
-      setIsConnecting(false);
+      setState((prev) => ({ ...prev, isConnecting: false, error: errMsg }));
       endSession();
       throw new Error(errMsg);
     }
@@ -284,13 +309,12 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
   const joinSession = useCallback(async (targetRoomId: string): Promise<void> => {
     const cleanRoomId = targetRoomId.trim();
     if (!cleanRoomId) {
-      setError('Please enter a valid Room ID.');
+      setState((prev) => ({ ...prev, error: 'Please enter a valid Room ID.' }));
       return;
     }
 
     endSession();
-    setError(null);
-    setIsConnecting(true);
+    setState((prev) => ({ ...prev, isConnecting: true, error: null }));
 
     try {
       // 1. Initialize PeerJS client with random ID
@@ -304,46 +328,14 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
 
       return new Promise<void>((resolve, reject) => {
         peer.on('open', (myPeerId) => {
-          setPeerId(myPeerId);
-          setIsHost(false);
-
-          setParticipants([
-            {
-              peerId: cleanRoomId,
-              name: `Host (${cleanRoomId.slice(-6)})`,
-              role: 'Host',
-              status: 'Broadcasting',
-              isSelf: false
-            },
-            {
-              peerId: myPeerId,
-              name: 'You (Viewer)',
-              role: 'Viewer',
-              status: 'Connecting...',
-              isSelf: true
-            }
-          ]);
-
-          // 2. Open Data Channel for P2P heartbeat
-          const dataConn = peer.connect(cleanRoomId);
-          dataConnectionsRef.current.push(dataConn);
-
-          // 3. Initiate Media Call with a lightweight dummy stream to ensure SDP m-lines format cleanly
-          const dummyStream = createDummyStream();
-          const call = peer.call(cleanRoomId, dummyStream);
-          activeCallsRef.current.push(call);
-
-          call.on('stream', (remoteMediaStream) => {
-            if (disconnectTimerRef.current) {
-              clearTimeout(disconnectTimerRef.current);
-              disconnectTimerRef.current = null;
-            }
-
-            setRemoteStream(remoteMediaStream);
-            setIsConnected(true);
-            setIsConnecting(false);
-
-            setParticipants([
+          setState({
+            isHost: false,
+            isConnected: false,
+            isConnecting: true,
+            peerId: myPeerId,
+            localStream: null,
+            remoteStream: null,
+            participants: [
               {
                 peerId: cleanRoomId,
                 name: `Host (${cleanRoomId.slice(-6)})`,
@@ -355,10 +347,61 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
                 peerId: myPeerId,
                 name: 'You (Viewer)',
                 role: 'Viewer',
-                status: 'Viewing Stream',
+                status: 'Connecting...',
                 isSelf: true
               }
-            ]);
+            ],
+            error: null
+          });
+
+          // Automatic signaling server reconnection handler
+          peer.on('disconnected', () => {
+            console.warn('[PeerJS Viewer]: Disconnected from signaling server. Reconnecting...');
+            try {
+              if (!peer.destroyed) peer.reconnect();
+            } catch (e) {}
+          });
+
+          // 2. Open Data Channel for P2P heartbeat
+          const dataConn = peer.connect(cleanRoomId);
+          dataConnectionsRef.current.push(dataConn);
+
+          // 3. Initiate Media Call with a lightweight dummy stream
+          const dummyStream = createDummyStream();
+          const call = peer.call(cleanRoomId, dummyStream);
+          activeCallsRef.current.push(call);
+
+          call.on('stream', (remoteMediaStream) => {
+            if (disconnectTimerRef.current) {
+              clearTimeout(disconnectTimerRef.current);
+              disconnectTimerRef.current = null;
+            }
+
+            setState({
+              isHost: false,
+              isConnected: true,
+              isConnecting: false,
+              peerId: myPeerId,
+              localStream: null,
+              remoteStream: remoteMediaStream,
+              participants: [
+                {
+                  peerId: cleanRoomId,
+                  name: `Host (${cleanRoomId.slice(-6)})`,
+                  role: 'Host',
+                  status: 'Broadcasting',
+                  isSelf: false
+                },
+                {
+                  peerId: myPeerId,
+                  name: 'You (Viewer)',
+                  role: 'Viewer',
+                  status: 'Viewing Stream',
+                  isSelf: true
+                }
+              ],
+              error: null
+            });
 
             resolve();
           });
@@ -366,85 +409,81 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
           // 4. Robust ICE Connection State Monitor (with 5s grace period for transient 'disconnected' states)
           if (call.peerConnection) {
             call.peerConnection.oniceconnectionstatechange = () => {
-              const state = call.peerConnection?.iceConnectionState;
-              console.log('[WebRTC ICE Connection State]:', state);
+              const stateName = call.peerConnection?.iceConnectionState;
+              console.log('[WebRTC ICE Connection State]:', stateName);
 
-              if (state === 'connected' || state === 'completed') {
+              if (stateName === 'connected' || stateName === 'completed') {
                 if (disconnectTimerRef.current) {
                   clearTimeout(disconnectTimerRef.current);
                   disconnectTimerRef.current = null;
                 }
-                setIsConnected(true);
-              } else if (state === 'disconnected') {
-                // Give a 5-second grace period before dropping connection
+                setState((prev) => ({ ...prev, isConnected: true }));
+              } else if (stateName === 'disconnected') {
                 if (!disconnectTimerRef.current) {
                   disconnectTimerRef.current = setTimeout(() => {
-                    setError('P2P connection dropped or host went offline.');
-                    setIsConnected(false);
-                    setParticipants([]);
+                    setState({
+                      ...INITIAL_STATE,
+                      error: 'P2P connection dropped or host went offline.'
+                    });
                   }, 5000);
                 }
-              } else if (state === 'failed' || state === 'closed') {
+              } else if (stateName === 'failed' || stateName === 'closed') {
                 if (disconnectTimerRef.current) {
                   clearTimeout(disconnectTimerRef.current);
                   disconnectTimerRef.current = null;
                 }
-                setError('P2P WebRTC connection failed.');
-                setIsConnected(false);
-                setParticipants([]);
+                setState({
+                  ...INITIAL_STATE,
+                  error: 'P2P WebRTC connection failed.'
+                });
               }
             };
           }
 
           call.on('close', () => {
-            setIsConnected(false);
-            setRemoteStream(null);
-            setParticipants([]);
-            setError('Screen share session ended by host.');
+            setState({
+              ...INITIAL_STATE,
+              error: 'Screen share session ended by host.'
+            });
           });
 
           call.on('error', (err) => {
             console.error('[PeerJS Viewer Call Error]:', err);
-            setError(`Failed connecting to room: ${err.message}`);
-            setIsConnecting(false);
-            setParticipants([]);
+            setState({
+              ...INITIAL_STATE,
+              error: `Failed connecting to room: ${err.message}`
+            });
             reject(err);
           });
         });
 
         peer.on('error', (err) => {
           console.error('[PeerJS Viewer Error]:', err);
+          if (err.type === 'disconnected') {
+            try { peer.reconnect(); } catch (e) {}
+            return;
+          }
           let errMsg = `Failed to join session: ${err.message}`;
           if (err.type === 'peer-unavailable') {
             errMsg = `Room ID "${cleanRoomId}" not found or host went offline.`;
           }
-          setError(errMsg);
-          setIsConnecting(false);
-          setParticipants([]);
+          setState({ ...INITIAL_STATE, error: errMsg });
           reject(new Error(errMsg));
         });
       });
     } catch (err: any) {
       console.error('[Join Session Error]:', err);
       const msg = err.message || 'Failed to join screen share session.';
-      setError(msg);
-      setIsConnecting(false);
+      setState({ ...INITIAL_STATE, error: msg });
       endSession();
       throw new Error(msg);
     }
   }, [endSession]);
 
   return {
+    ...state,
     startHostSession,
     joinSession,
-    endSession,
-    isHost,
-    isConnected,
-    isConnecting,
-    peerId,
-    localStream,
-    remoteStream,
-    participants,
-    error
+    endSession
   };
 }
