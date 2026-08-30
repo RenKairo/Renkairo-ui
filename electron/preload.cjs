@@ -6,4 +6,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFileDialog: (defaultPath) => ipcRenderer.invoke('dialog:openFile', defaultPath),
   showItemInFolder: (fullPath) => ipcRenderer.invoke('shell:showItemInFolder', fullPath),
   openPath: (fullPath) => ipcRenderer.invoke('shell:openPath', fullPath),
+  fs: {
+    selectFolder: () => ipcRenderer.invoke('fs:selectFolder'),
+    readDirectoryTree: (dirPath) => ipcRenderer.invoke('fs:readDirectoryTree', dirPath),
+    readFileDetails: (filePath, options) => ipcRenderer.invoke('fs:readFileDetails', filePath, options),
+    writeFile: (filePath, content) => ipcRenderer.invoke('fs:writeFile', filePath, content),
+    createFile: (filePath, content) => ipcRenderer.invoke('fs:createFile', filePath, content),
+    createDirectory: (dirPath) => ipcRenderer.invoke('fs:createDirectory', dirPath),
+    deleteItem: (targetPath) => ipcRenderer.invoke('fs:deleteItem', targetPath),
+    renameItem: (oldPath, newPath) => ipcRenderer.invoke('fs:renameItem', oldPath, newPath),
+    moveItem: (srcPath, destPath) => ipcRenderer.invoke('fs:moveItem', srcPath, destPath),
+  }
 });

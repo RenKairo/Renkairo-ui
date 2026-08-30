@@ -13,6 +13,12 @@ export interface TabItem {
   content: string;
   isDirty: boolean;
   language: string;
+  size?: number;
+  isBinary?: boolean;
+  tier?: 'small' | 'medium' | 'large' | 'huge';
+  truncated?: boolean;
+  totalSize?: number;
+  mimeType?: string;
 }
 
 export type ActivityView = 
