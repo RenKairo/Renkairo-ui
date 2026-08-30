@@ -1,6 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Peer, MediaConnection } from 'peerjs';
 
+export interface Participant {
+  peerId: string;
+  name: string;
+  role: 'Host' | 'Viewer';
+  status: 'Broadcasting' | 'Viewing Stream' | 'Connecting...' | 'Disconnected';
+  isSelf: boolean;
+}
+
 export interface UsePeerScreenShareReturn {
   startHostSession: () => Promise<string>;
   joinSession: (roomId: string) => Promise<void>;
@@ -11,6 +19,7 @@ export interface UsePeerScreenShareReturn {
   peerId: string | null;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
+  participants: Participant[];
   error: string | null;
 }
 
@@ -27,6 +36,7 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
   const [peerId, setPeerId] = useState<string | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const peerRef = useRef<Peer | null>(null);
@@ -62,6 +72,7 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
     setPeerId(null);
     setLocalStream(null);
     setRemoteStream(null);
+    setParticipants([]);
     setError(null);
   }, []);
 
@@ -148,6 +159,18 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
           setIsHost(true);
           setIsConnected(true);
           setIsConnecting(false);
+
+          // Add Host to participants list
+          setParticipants([
+            {
+              peerId: id,
+              name: 'You (Host)',
+              role: 'Host',
+              status: 'Broadcasting',
+              isSelf: true
+            }
+          ]);
+
           resolve(id);
         });
 
@@ -158,12 +181,30 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
           // Answer incoming viewer with our local screen stream
           call.answer(stream);
 
+          // Add joining viewer to participants list dynamically
+          setParticipants((prev) => {
+            if (prev.some((p) => p.peerId === call.peer)) return prev;
+            return [
+              ...prev,
+              {
+                peerId: call.peer,
+                name: `Peer (${call.peer.slice(-4)})`,
+                role: 'Viewer',
+                status: 'Viewing Stream',
+                isSelf: false
+              }
+            ];
+          });
+
           call.on('close', () => {
             activeCallsRef.current = activeCallsRef.current.filter((c) => c !== call);
+            // Remove disconnected viewer from participants list
+            setParticipants((prev) => prev.filter((p) => p.peerId !== call.peer));
           });
 
           call.on('error', (err) => {
             console.warn('[PeerJS Host Call Error]:', err);
+            setParticipants((prev) => prev.filter((p) => p.peerId !== call.peer));
           });
         });
 
@@ -216,6 +257,23 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
           setPeerId(myPeerId);
           setIsHost(false);
 
+          setParticipants([
+            {
+              peerId: cleanRoomId,
+              name: `Host (${cleanRoomId.slice(-6)})`,
+              role: 'Host',
+              status: 'Broadcasting',
+              isSelf: false
+            },
+            {
+              peerId: myPeerId,
+              name: 'You (Viewer)',
+              role: 'Viewer',
+              status: 'Connecting...',
+              isSelf: true
+            }
+          ]);
+
           // 2. Call the Host Room ID with an empty receive-only stream
           const emptyStream = new MediaStream();
           const call = peer.call(cleanRoomId, emptyStream);
@@ -225,6 +283,24 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
             setRemoteStream(remoteMediaStream);
             setIsConnected(true);
             setIsConnecting(false);
+
+            setParticipants([
+              {
+                peerId: cleanRoomId,
+                name: `Host (${cleanRoomId.slice(-6)})`,
+                role: 'Host',
+                status: 'Broadcasting',
+                isSelf: false
+              },
+              {
+                peerId: myPeerId,
+                name: 'You (Viewer)',
+                role: 'Viewer',
+                status: 'Viewing Stream',
+                isSelf: true
+              }
+            ]);
+
             resolve();
           });
 
@@ -235,6 +311,7 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
               if (state === 'disconnected' || state === 'failed' || state === 'closed') {
                 setError('P2P connection dropped or host disconnected.');
                 setIsConnected(false);
+                setParticipants([]);
               }
             };
           }
@@ -242,6 +319,7 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
           call.on('close', () => {
             setIsConnected(false);
             setRemoteStream(null);
+            setParticipants([]);
             setError('Screen share session ended by host.');
           });
 
@@ -249,6 +327,7 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
             console.error('[PeerJS Viewer Call Error]:', err);
             setError(`Failed connecting to room: ${err.message}`);
             setIsConnecting(false);
+            setParticipants([]);
             reject(err);
           });
         });
@@ -261,6 +340,7 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
           }
           setError(errMsg);
           setIsConnecting(false);
+          setParticipants([]);
           reject(new Error(errMsg));
         });
       });
@@ -284,6 +364,7 @@ export function usePeerScreenShare(): UsePeerScreenShareReturn {
     peerId,
     localStream,
     remoteStream,
+    participants,
     error
   };
 }

@@ -8,9 +8,8 @@ import {
   Power, 
   Loader2, 
   AlertCircle, 
-  Share2, 
-  Tv,
-  Maximize2
+  Share2,
+  Circle
 } from 'lucide-react';
 import { usePeerScreenShare } from '../../hooks/usePeerScreenShare';
 
@@ -23,17 +22,12 @@ export const TeamPanel: React.FC = () => {
     isConnected,
     isConnecting,
     peerId,
+    participants,
     error
   } = usePeerScreenShare();
 
   const [inputRoomId, setInputRoomId] = useState('');
   const [copied, setCopied] = useState(false);
-
-  const team = [
-    { name: 'Developer (You)', role: isHost ? 'Host' : 'Peer', status: isConnected ? (isHost ? 'Broadcasting Screen' : 'Viewing Stream') : 'Idle', color: 'bg-emerald-500' },
-    { name: 'Alex Chen', role: 'Collaborator', status: 'Online', color: 'bg-sky-500' },
-    { name: 'Elena Rostova', role: 'Reviewer', status: 'Online', color: 'bg-purple-500' }
-  ];
 
   const copyRoomId = () => {
     if (peerId) {
@@ -137,26 +131,39 @@ export const TeamPanel: React.FC = () => {
           </div>
         )}
 
-        {/* Active Participants List */}
+        {/* Dynamic Live Active Participants List */}
         <div className="pt-2">
-          <div className="text-[10px] font-mono text-gray-400 font-semibold uppercase px-1 mb-2">
-            ACTIVE PARTICIPANTS ({team.length})
+          <div className="flex items-center justify-between text-[10px] font-mono text-gray-400 font-semibold uppercase px-1 mb-2">
+            <span>ACTIVE PARTICIPANTS</span>
+            <span className="bg-[#181B24] border border-[#232734] px-1.5 py-0.5 rounded text-gray-300">
+              {participants.length}
+            </span>
           </div>
 
-          <div className="space-y-1.5">
-            {team.map((member) => (
-              <div key={member.name} className="bg-[#12151C] border border-[#232734] rounded-lg p-2 flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2">
-                  <span className={`w-2 h-2 rounded-full ${member.color}`}></span>
-                  <div>
-                    <h4 className="font-semibold text-white text-[11px]">{member.name}</h4>
-                    <span className="text-[9px] text-gray-400 font-mono">{member.status}</span>
+          {participants.length === 0 ? (
+            <div className="p-3 bg-[#12151C] border border-[#232734] rounded-lg text-center text-xs text-gray-500 font-mono">
+              No active P2P session.
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {participants.map((member) => (
+                <div key={member.peerId} className="bg-[#12151C] border border-[#232734] rounded-lg p-2.5 flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-2">
+                    <span className={`w-2 h-2 rounded-full ${member.isSelf ? 'bg-emerald-500 animate-pulse' : 'bg-sky-500'}`}></span>
+                    <div>
+                      <h4 className="font-semibold text-white text-[11px] flex items-center space-x-1">
+                        <span>{member.name}</span>
+                      </h4>
+                      <span className="text-[9px] text-gray-400 font-mono">{member.status}</span>
+                    </div>
                   </div>
+                  <span className="text-[9px] text-[#38BDF8] font-mono bg-[#181B24] px-1.5 py-0.5 rounded border border-[#232734]">
+                    {member.role}
+                  </span>
                 </div>
-                <span className="text-[9px] text-gray-500 font-mono">{member.role}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </aside>
