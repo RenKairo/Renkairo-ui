@@ -31,10 +31,12 @@ export const TerminalPanel: React.FC = () => {
   useEffect(() => {
     if (activeTerminalTab !== 'TERMINAL' || !terminalRef.current) return;
 
-    // Initialize Xterm.js instance
+    // Initialize Xterm.js instance with VS Code aesthetic & PTY features
     const term = new XTerm({
-      fontFamily: "'JetBrains Mono', monospace",
+      fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
       fontSize: 12,
+      cursorBlink: true,
+      cursorStyle: 'block',
       theme: {
         background: '#12151C',
         foreground: '#E2E8F0',
@@ -48,16 +50,20 @@ export const TerminalPanel: React.FC = () => {
         magenta: '#EC4899',
         cyan: '#06B6D4',
         white: '#F8FAFC'
-      },
-      cursorBlink: true,
-      rows: 10
+      }
     });
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(terminalRef.current);
-    fitAddon.fit();
     xtermInstance.current = term;
+
+    // Fit addon after DOM layout stabilizes
+    const timer = setTimeout(() => {
+      try {
+        fitAddon.fit();
+      } catch (e) {}
+    }, 50);
 
     // Establish WebSocket Connection to Backend with shell profile query parameter
     const isFile = window.location.protocol === 'file:';
@@ -69,6 +75,7 @@ export const TerminalPanel: React.FC = () => {
     wsInstance.current = ws;
 
     ws.onopen = () => {
+      fitAddon.fit();
       ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
     };
 
@@ -82,17 +89,42 @@ export const TerminalPanel: React.FC = () => {
       }
     });
 
-    const handleResize = () => {
-      fitAddon.fit();
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+    // Custom Key Handler (Ctrl+V Clipboard Paste & Copy)
+    term.attachCustomKeyEventHandler((arg) => {
+      if (arg.ctrlKey && arg.code === 'KeyV' && arg.type === 'keydown') {
+        navigator.clipboard.readText().then((text) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(text);
+          }
+        });
+        return false;
       }
+      return true;
+    });
+
+    const handleResize = () => {
+      try {
+        fitAddon.fit();
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+        }
+      } catch (e) {}
     };
 
     window.addEventListener('resize', handleResize);
 
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+
+    if (terminalRef.current) {
+      resizeObserver.observe(terminalRef.current);
+    }
+
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
       ws.close();
       term.dispose();
     };

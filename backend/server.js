@@ -1,4 +1,5 @@
 import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import http from 'http';
@@ -7,6 +8,7 @@ import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import pty from 'node-pty';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -458,7 +460,7 @@ wssFs.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'connected', workspace: currentWorkspace }));
 });
 
-// REAL Interactive Shell Terminal Process per WebSocket Session
+// REAL Interactive Shell Terminal Process per WebSocket Session (using node-pty)
 wssTerminal.on('connection', (ws, req) => {
   const isWin = process.platform === 'win32';
   const urlParams = new URLSearchParams((req.url || '').split('?')[1] || '');
@@ -472,10 +474,10 @@ wssTerminal.on('connection', (ws, req) => {
       shell = 'cmd.exe';
       args = ['/k'];
     } else if (shellType === 'python') {
-      shell = 'python';
+      shell = 'python.exe';
       args = ['-i'];
     } else if (shellType === 'node') {
-      shell = 'node';
+      shell = 'node.exe';
       args = [];
     } else if (shellType === 'bash') {
       shell = 'bash.exe';
@@ -483,51 +485,66 @@ wssTerminal.on('connection', (ws, req) => {
     }
   }
 
-  const shellProc = spawn(shell, args, {
-    cwd: currentWorkspace,
-    env: { ...process.env, TERM: 'xterm-256color' },
-    shell: true
-  });
+  let ptyProcess = null;
+  try {
+    ptyProcess = pty.spawn(shell, args, {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd: currentWorkspace,
+      env: { ...process.env, TERM: 'xterm-256color' }
+    });
+  } catch (err) {
+    console.error('[Terminal PTY Spawn Error]:', err);
+  }
 
-  // Direct Stream Output from real Shell Process to Xterm UI
-  shellProc.stdout?.on('data', (chunk) => {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(chunk.toString());
-    }
-  });
-
-  shellProc.stderr?.on('data', (chunk) => {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(chunk.toString());
-    }
-  });
-
-  // Pass raw keystrokes and commands directly to real Shell stdin
-  ws.on('message', (message) => {
-    try {
-      const data = message.toString();
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed.type === 'resize') return;
-      } catch (e) {}
-
-      if (shellProc.stdin && !shellProc.stdin.destroyed) {
-        shellProc.stdin.write(data);
+  if (ptyProcess) {
+    ptyProcess.onData((data) => {
+      if (ws.readyState === ws.OPEN) {
+        ws.send(data);
       }
-    } catch (err) {}
-  });
+    });
 
-  shellProc.on('exit', () => {
-    if (ws.readyState === ws.OPEN) {
-      ws.send('\r\n\x1b[31mShell session closed.\x1b[0m\r\n');
-    }
-  });
+    ws.on('message', (message) => {
+      try {
+        const data = message.toString();
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed && parsed.type === 'resize') {
+            const cols = parseInt(parsed.cols) || 80;
+            const rows = parseInt(parsed.rows) || 24;
+            ptyProcess.resize(cols, rows);
+            return;
+          }
+        } catch (e) {}
 
-  ws.on('close', () => {
-    try {
-      shellProc.kill();
-    } catch (e) {}
-  });
+        ptyProcess.write(data);
+      } catch (err) {
+        console.error('[Terminal Write Error]:', err);
+      }
+    });
+
+    ptyProcess.onExit(({ exitCode }) => {
+      if (ws.readyState === ws.OPEN) {
+        ws.send(`\r\n\x1b[31mShell session closed (exit code ${exitCode}).\x1b[0m\r\n`);
+      }
+    });
+
+    ws.on('close', () => {
+      try {
+        ptyProcess.kill();
+      } catch (e) {}
+    });
+  } else {
+    // Subprocess Fallback
+    const proc = spawn(shell, args, { cwd: currentWorkspace });
+    proc.stdout?.on('data', (d) => ws.readyState === ws.OPEN && ws.send(d.toString()));
+    proc.stderr?.on('data', (d) => ws.readyState === ws.OPEN && ws.send(d.toString()));
+    ws.on('message', (msg) => proc.stdin && proc.stdin.write(msg.toString()));
+    ws.on('close', () => {
+      try { proc.kill(); } catch (e) {}
+    });
+  }
 });
 
 const PORT = process.env.PORT || 8000;
