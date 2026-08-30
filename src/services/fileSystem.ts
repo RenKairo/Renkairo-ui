@@ -151,8 +151,19 @@ export async function openLocalFolderPicker(): Promise<{
 }
 
 // ----------------------------------------------------
-// 2. Refresh Directory Tree (Native Node.js)
+// 2. Refresh Directory Tree & Lazy Child Fetcher (Demand-Driven)
 // ----------------------------------------------------
+export async function fetchDirectoryChildren(dirRelPath: string): Promise<FileNode[]> {
+  if (typeof window !== 'undefined' && window.electronAPI?.fs?.readDirectoryChildren) {
+    try {
+      return await window.electronAPI.fs.readDirectoryChildren(dirRelPath);
+    } catch (err) {
+      console.error(`[Native FS] Failed reading children of ${dirRelPath}:`, err);
+    }
+  }
+  return [];
+}
+
 export async function refreshDirectoryTree(): Promise<FileNode[]> {
   inMemoryFileStore.clear();
 

@@ -2,6 +2,7 @@
 
 export interface ElectronFS {
   selectFolder: () => Promise<{ path: string; name: string; tree: any[] } | null>;
+  readDirectoryChildren: (dirRelOrFullPath: string) => Promise<any[]>;
   readDirectoryTree: (dirPath: string) => Promise<any[]>;
   readFileDetails: (filePath: string, options?: any) => Promise<{
     content: string;
