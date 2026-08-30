@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "npm run build && npx electron electron/main.js",
+    "dev:live": "concurrently -k \"vite\" \"npx electron electron/main.js\"",
     "dev:fast": "npx electron electron/main.js",
     "dev:web": "vite",
     "build": "tsc && vite build",

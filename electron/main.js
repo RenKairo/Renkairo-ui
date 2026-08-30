@@ -45,7 +45,16 @@ function createWindow() {
   });
 
   const distPath = path.join(__dirname, '../dist/index.html');
-  win.loadFile(distPath);
+  
+  // Try connecting to Vite dev server for instant HMR auto-updates; fallback to dist/index.html
+  fetch('http://localhost:5173')
+    .then(() => {
+      win.loadURL('http://localhost:5173');
+      console.log('[Electron] Connected to Vite Dev Server (Live HMR auto-update enabled)');
+    })
+    .catch(() => {
+      win.loadFile(distPath);
+    });
 }
 
 // IPC Handlers for native OS folder and file operations
