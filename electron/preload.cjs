@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openPath: (fullPath) => ipcRenderer.invoke('shell:openPath', fullPath),
   fs: {
     selectFolder: () => ipcRenderer.invoke('fs:selectFolder'),
+    readDirectoryChildren: (dirRelOrFullPath) => ipcRenderer.invoke('fs:readDirectoryChildren', dirRelOrFullPath),
     readDirectoryTree: (dirPath) => ipcRenderer.invoke('fs:readDirectoryTree', dirPath),
     readFileDetails: (filePath, options) => ipcRenderer.invoke('fs:readFileDetails', filePath, options),
     writeFile: (filePath, content) => ipcRenderer.invoke('fs:writeFile', filePath, content),

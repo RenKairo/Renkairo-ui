@@ -4,6 +4,7 @@ import {
   createFile, 
   createFolder, 
   deleteItem, 
+  fetchDirectoryChildren,
   moveItem, 
   openLocalFolderPicker, 
   readFile, 
@@ -34,6 +35,7 @@ interface IDEState {
   openFolder: () => Promise<void>;
   changeScopeFolder: () => Promise<void>;
   refreshTree: () => Promise<void>;
+  expandFolder: (dirRelPath: string) => Promise<void>;
 
   // Direct File & Folder Modification
   createNewFile: (parentRelPath: string, fileName: string) => Promise<void>;
@@ -162,6 +164,28 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     );
 
     set({ fileTree: tree, tabs: updatedTabs });
+  },
+
+  expandFolder: async (dirRelPath: string) => {
+    const children = await fetchDirectoryChildren(dirRelPath);
+    const { fileTree } = get();
+
+    function updateChildrenRecursive(nodes: FileNode[]): boolean {
+      for (const node of nodes) {
+        if (node.path === dirRelPath && node.is_dir) {
+          node.children = children;
+          return true;
+        }
+        if (node.children && node.children.length > 0) {
+          if (updateChildrenRecursive(node.children)) return true;
+        }
+      }
+      return false;
+    }
+
+    const nextTree = [...fileTree];
+    updateChildrenRecursive(nextTree);
+    set({ fileTree: nextTree });
   },
 
   createNewFile: async (parentRelPath: string, fileName: string) => {

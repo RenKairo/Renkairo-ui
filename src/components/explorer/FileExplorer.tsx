@@ -56,9 +56,10 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
   renamingPath,
   setRenamingPath
 }) => {
-  const [isOpen, setIsOpen] = useState(level < 1);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoadingChildren, setIsLoadingChildren] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const { openFile, selectedPath, setSelectedPath, createNewFile, createNewFolder, renameNode, moveNode } = useIDEStore();
+  const { openFile, selectedPath, setSelectedPath, createNewFile, createNewFolder, renameNode, moveNode, expandFolder } = useIDEStore();
 
   const [renameText, setRenameText] = useState(node.name);
   const [newChildName, setNewChildName] = useState('');
@@ -98,11 +99,28 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
     }
   }, [isCreatingHere]);
 
-  const handleSelect = (e: React.MouseEvent) => {
+  const handleToggleExpand = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!isOpen) {
+      if (node.is_dir && node.children === null) {
+        setIsLoadingChildren(true);
+        try {
+          await expandFolder(node.path);
+        } finally {
+          setIsLoadingChildren(false);
+        }
+      }
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  };
+
+  const handleSelect = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedPath(node.path);
     if (node.is_dir) {
-      setIsOpen(!isOpen);
+      await handleToggleExpand(e);
     } else {
       openFile(node.path, node.name);
     }
@@ -190,10 +208,12 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
         {node.is_dir ? (
           <>
             <span 
-              onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} 
+              onClick={(e) => handleToggleExpand(e)} 
               className="p-0.5 hover:text-white text-gray-400"
             >
-              {isOpen ? (
+              {isLoadingChildren ? (
+                <Loader2 className="w-3.5 h-3.5 text-[#38BDF8] animate-spin shrink-0" />
+              ) : isOpen ? (
                 <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
               ) : (
                 <ChevronRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
