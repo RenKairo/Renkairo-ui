@@ -100,7 +100,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className={`h-screen w-screen flex flex-col bg-[#0B0D11] text-[#E2E8F0] overflow-hidden select-none font-sans ${isDraggingLeft || isDraggingRight ? 'cursor-col-resize select-none' : ''}`}>
+    <div className={`h-screen w-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] overflow-hidden select-none font-sans ${isDraggingLeft || isDraggingRight ? 'cursor-col-resize select-none' : ''}`}>
       {/* Top Command Bar */}
       <TopCommandBar />
 
@@ -112,17 +112,17 @@ export const App: React.FC = () => {
         {/* Dynamic Resizable Left Activity Panel */}
         <div 
           style={{ width: `${leftSidebarWidth}px` }} 
-          className="h-full relative shrink-0 flex flex-col bg-[#0B0D11] overflow-hidden"
+          className="h-full relative shrink-0 flex flex-col bg-[var(--bg-base)] overflow-hidden"
         >
           {renderActivityPanel()}
 
           {/* Left-to-Center Resize Handle */}
           <div
             onMouseDown={handleLeftResizeMouseDown}
-            className="w-2 h-full absolute top-0 -right-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[#38BDF8]/40 active:bg-[#FF4D4D]/60 transition-colors"
+            className="w-2 h-full absolute top-0 -right-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
             title="Drag to resize left panel"
           >
-            <div className="w-0.5 h-12 rounded-full bg-[#232734] group-hover:bg-[#38BDF8] group-active:bg-[#FF4D4D] transition-colors" />
+            <div className="w-0.5 h-12 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-cyan)] group-active:bg-[var(--accent-coral)] transition-colors" />
           </div>
         </div>
 
@@ -138,15 +138,15 @@ export const App: React.FC = () => {
         {/* Dynamic Resizable Right Observability & Compute Deck Sidebar */}
         <div 
           style={{ width: `${rightSidebarWidth}px` }} 
-          className="h-full relative shrink-0 flex flex-col bg-[#0B0D11] overflow-hidden"
+          className="h-full relative shrink-0 flex flex-col bg-[var(--bg-base)] overflow-hidden"
         >
           {/* Center-to-Right Resize Handle */}
           <div
             onMouseDown={handleRightResizeMouseDown}
-            className="w-2 h-full absolute top-0 -left-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[#38BDF8]/40 active:bg-[#FF4D4D]/60 transition-colors"
+            className="w-2 h-full absolute top-0 -left-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
             title="Drag to resize right observability deck"
           >
-            <div className="w-0.5 h-12 rounded-full bg-[#232734] group-hover:bg-[#38BDF8] group-active:bg-[#FF4D4D] transition-colors" />
+            <div className="w-0.5 h-12 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-cyan)] group-active:bg-[var(--accent-coral)] transition-colors" />
           </div>
 
           <ObservabilityDeck />

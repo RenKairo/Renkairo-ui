@@ -84,6 +84,8 @@ export interface GitCommitItem {
   message: string;
 }
 
+export type ThemeMode = 'dark' | 'light';
+
 export type ActivityView = 
   | 'explorer' 
   | 'search' 

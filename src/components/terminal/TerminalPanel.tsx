@@ -32,8 +32,42 @@ interface SessionInstance {
   container: HTMLDivElement;
 }
 
+const getTerminalTheme = (themeMode: 'dark' | 'light') => {
+  if (themeMode === 'light') {
+    return {
+      background: '#FFFFFF',
+      foreground: '#0F172A',
+      cursor: '#E11D48',
+      selectionBackground: 'rgba(225, 29, 72, 0.22)',
+      black: '#0F172A',
+      red: '#E11D48',
+      green: '#059669',
+      yellow: '#D97706',
+      blue: '#0284C7',
+      magenta: '#9333EA',
+      cyan: '#0891B2',
+      white: '#FFFFFF'
+    };
+  }
+  return {
+    background: '#12151C',
+    foreground: '#E2E8F0',
+    cursor: '#FF4D4D',
+    selectionBackground: 'rgba(255, 77, 77, 0.35)',
+    black: '#0B0D11',
+    red: '#FF4D4D',
+    green: '#10B981',
+    yellow: '#F59E0B',
+    blue: '#38BDF8',
+    magenta: '#EC4899',
+    cyan: '#06B6D4',
+    white: '#F8FAFC'
+  };
+};
+
 export const TerminalPanel: React.FC = () => {
   const { 
+    theme,
     activeTerminalTab, 
     setActiveTerminalTab, 
     problems, 
@@ -64,6 +98,15 @@ export const TerminalPanel: React.FC = () => {
 
   // Ref to hold container elements for each session
   const containerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Dynamic theme update for all existing terminal instances
+  useEffect(() => {
+    sessionInstances.current.forEach((inst) => {
+      try {
+        inst.term.options.theme = getTerminalTheme(theme);
+      } catch (err) {}
+    });
+  }, [theme]);
 
   // Refs for preferences so event listeners always have latest values
   const copyOnSelectRef = useRef(terminalCopyOnSelect);
@@ -98,11 +141,9 @@ export const TerminalPanel: React.FC = () => {
     dragStartHeightRef.current = terminalHeight;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      // Dragging upward increases terminal height, dragging downward decreases it
       const deltaY = dragStartYRef.current - moveEvent.clientY;
       const newHeight = dragStartHeightRef.current + deltaY;
 
-      // Constraints: min 36px (tab header only), max based on viewport
       const minH = 36;
       const maxH = Math.max(minH, window.innerHeight - 80);
       const clamped = Math.min(Math.max(newHeight, minH), maxH);
@@ -116,7 +157,6 @@ export const TerminalPanel: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
 
-      // Trigger fit addon resize on active session
       setTimeout(() => {
         if (activeSessionId) {
           const inst = sessionInstances.current.get(activeSessionId);
@@ -136,13 +176,12 @@ export const TerminalPanel: React.FC = () => {
     window.addEventListener('mouseup', handleMouseUp);
   };
 
-  // Toggle Compact Root Path without any ugly command injection
+  // Toggle Compact Root Path cleanly
   const toggleCompactPath = () => {
     const nextVal = !terminalCompactPath;
     setTerminalCompactPath(nextVal);
     compactPathRef.current = nextVal;
 
-    // Cleanly re-spawn the active terminal session with the updated prompt mode
     if (activeSessionId) {
       const instance = sessionInstances.current.get(activeSessionId);
       if (instance) {
@@ -156,7 +195,7 @@ export const TerminalPanel: React.FC = () => {
     }
   };
 
-  // Format CWD for display: root-only (Linux/macOS style) vs full path
+  // Format CWD for display
   const getFormattedCwd = (rawCwd: string | null) => {
     if (!rawCwd) return 'Workspace';
     if (!terminalCompactPath) return rawCwd;
@@ -227,7 +266,7 @@ export const TerminalPanel: React.FC = () => {
     }
   }, [activeTerminalTab]);
 
-  // When workspacePath changes (user opens a new directory), automatically create a fresh terminal in that new directory
+  // Auto-create fresh terminal when workspace changes
   const prevWorkspaceRef = useRef<string | null>(workspacePath);
   useEffect(() => {
     if (workspacePath && workspacePath !== prevWorkspaceRef.current) {
@@ -238,7 +277,7 @@ export const TerminalPanel: React.FC = () => {
     }
   }, [workspacePath]);
 
-  // Initialize XTerm instance for each session once its container is mounted
+  // Initialize XTerm instance for each session once mounted
   useEffect(() => {
     if (activeTerminalTab !== 'TERMINAL') return;
 
@@ -263,7 +302,6 @@ export const TerminalPanel: React.FC = () => {
       const container = containerRefs.current.get(session.id);
       if (!container) return;
 
-      // Clean container DOM if previously used
       container.innerHTML = '';
 
       const term = new XTerm({
@@ -271,27 +309,13 @@ export const TerminalPanel: React.FC = () => {
         fontSize: 12,
         cursorBlink: true,
         cursorStyle: 'block',
-        theme: {
-          background: '#12151C',
-          foreground: '#E2E8F0',
-          cursor: '#FF4D4D',
-          selectionBackground: 'rgba(255, 77, 77, 0.35)',
-          black: '#0B0D11',
-          red: '#FF4D4D',
-          green: '#10B981',
-          yellow: '#F59E0B',
-          blue: '#38BDF8',
-          magenta: '#EC4899',
-          cyan: '#06B6D4',
-          white: '#F8FAFC'
-        }
+        theme: getTerminalTheme(theme)
       });
 
       const fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
       term.open(container);
 
-      // WebSocket URL with shell, cwd & compact_path query parameters
       const isFile = window.location.protocol === 'file:';
       const baseUrl = isFile
         ? 'ws://localhost:8000/api/ws/terminal'
@@ -317,14 +341,12 @@ export const TerminalPanel: React.FC = () => {
         term.write(event.data);
       };
 
-      // Standard user input to WebSocket (handles keyboard and native paste seamlessly without duplication)
       term.onData((data) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(data);
         }
       });
 
-      // ⚡ Feature 1: Copy on Selection on mouse release (with floating pill notification)
       const handleContainerMouseUp = () => {
         if (!copyOnSelectRef.current) return;
         if (term.hasSelection()) {
@@ -338,9 +360,7 @@ export const TerminalPanel: React.FC = () => {
       };
       container.addEventListener('mouseup', handleContainerMouseUp);
 
-      // ⚡ Feature 2: Smart Ctrl+C copy handler (Prevents duplicate paste & avoids unwanted SIGINT)
       term.attachCustomKeyEventHandler((arg) => {
-        // Copy on Ctrl+C / Cmd+C when text is selected
         if ((arg.ctrlKey || arg.metaKey) && arg.code === 'KeyC' && arg.type === 'keydown') {
           if (term.hasSelection()) {
             const sel = term.getSelection();
@@ -349,10 +369,9 @@ export const TerminalPanel: React.FC = () => {
                 showCopiedToast('Copied selection to clipboard!');
               }).catch(() => {});
             }
-            return false; // prevent sending interrupt signal
+            return false;
           }
         }
-        // Let xterm native handler manage Ctrl+V / Cmd+V paste cleanly through term.onData (no double paste)
         return true;
       });
 
@@ -370,9 +389,9 @@ export const TerminalPanel: React.FC = () => {
       }, 50);
     });
 
-  }, [sessions, activeSessionId, activeTerminalTab, terminalCompactPath]);
+  }, [sessions, activeSessionId, activeTerminalTab, terminalCompactPath, theme]);
 
-  // ResizeObserver for dynamic, real-time responsive fitting
+  // ResizeObserver for dynamic fitting
   useEffect(() => {
     if (!panelRef.current) return;
 
@@ -394,7 +413,7 @@ export const TerminalPanel: React.FC = () => {
     return () => ro.disconnect();
   }, [activeSessionId]);
 
-  // Clean up all sessions on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       sessionInstances.current.forEach((inst) => {
@@ -436,27 +455,27 @@ export const TerminalPanel: React.FC = () => {
         maxHeight: isMaximized ? '100%' : 'calc(100% - 40px)',
         minHeight: '36px'
       }}
-      className={`bg-[#12151C] border-t border-[#232734] flex flex-col select-none z-20 relative transition-all duration-75`}
+      className={`bg-[var(--bg-panel)] border-t border-[var(--border-color)] flex flex-col select-none z-20 relative transition-colors duration-150`}
     >
       {/* ⚡ Top Drag Resize Handle */}
       <div
         onMouseDown={handleMouseDownResize}
-        className="h-2 w-full -top-1 absolute left-0 right-0 z-30 cursor-row-resize flex items-center justify-center group hover:bg-[#38BDF8]/40 active:bg-[#FF4D4D]/60 transition-colors"
+        className="h-2 w-full -top-1 absolute left-0 right-0 z-30 cursor-row-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
         title="Drag to resize terminal height"
       >
-        <div className="h-0.5 w-10 rounded-full bg-[#232734] group-hover:bg-[#38BDF8] group-active:bg-[#FF4D4D] transition-colors" />
+        <div className="h-0.5 w-10 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-cyan)] group-active:bg-[var(--accent-coral)] transition-colors" />
       </div>
 
       {/* Floating Copy Notification Toast */}
       {copyToast && (
-        <div className="absolute top-10 right-4 z-50 pointer-events-none flex items-center space-x-1.5 bg-[#181B24]/95 border border-emerald-500/50 text-emerald-300 text-[11px] px-3 py-1 rounded-md shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-1 duration-150 font-mono">
-          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+        <div className="absolute top-10 right-4 z-50 pointer-events-none flex items-center space-x-1.5 bg-[var(--bg-panel)] border border-emerald-500/50 text-emerald-600 dark:text-emerald-300 text-[11px] px-3 py-1 rounded-md shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-1 duration-150 font-mono">
+          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
           <span className="font-medium">{copyToast}</span>
         </div>
       )}
 
       {/* Header & Main Tabs */}
-      <div className="h-8 bg-[#0B0D11] border-b border-[#232734] px-3 flex items-center justify-between text-xs shrink-0">
+      <div className="h-8 bg-[var(--bg-base)] border-b border-[var(--border-color)] px-3 flex items-center justify-between text-xs shrink-0">
         <div className="flex items-center space-x-1">
           {tabs.map((tab) => {
             const isActive = activeTerminalTab === tab.id;
@@ -465,17 +484,17 @@ export const TerminalPanel: React.FC = () => {
                 key={tab.id}
                 onClick={() => setActiveTerminalTab(tab.id)}
                 className={`px-3 py-1 text-[11px] font-semibold tracking-wider transition-colors relative flex items-center space-x-1.5 focus:outline-none ${
-                  isActive ? 'text-white' : 'text-gray-400 hover:text-gray-200'
+                  isActive ? 'text-[var(--text-primary)] font-bold' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 <span>{tab.label}</span>
                 {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-[#FF4D4D] text-white text-[9px] font-bold flex items-center justify-center">
+                  <span className="w-4 h-4 rounded-full bg-[var(--accent-coral)] text-white text-[9px] font-bold flex items-center justify-center">
                     {tab.badge}
                   </span>
                 )}
                 {isActive && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#FF4D4D] cyber-glow-coral"></div>
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent-coral)] cyber-glow-coral"></div>
                 )}
               </button>
             );
@@ -483,26 +502,26 @@ export const TerminalPanel: React.FC = () => {
         </div>
 
         {/* Terminal Controls */}
-        <div className="flex items-center space-x-2 text-gray-400">
+        <div className="flex items-center space-x-2 text-[var(--text-muted)]">
           {/* ⚡ Compact Root vs Full Path Toggle Button */}
           <button
             onClick={toggleCompactPath}
             title={terminalCompactPath ? "Showing Root Only (Linux/macOS style) - Click for Full Path" : "Showing Full Path - Click for Root Only (Linux/macOS style)"}
             className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-all flex items-center space-x-1 ${
               terminalCompactPath 
-                ? 'bg-[#38BDF8]/20 border-[#38BDF8]/60 text-[#38BDF8] shadow-sm font-semibold' 
-                : 'bg-[#181B24] border-[#232734] text-gray-400 hover:text-gray-200 hover:border-gray-600'
+                ? 'bg-[var(--accent-cyan)]/15 border-[var(--accent-cyan)]/50 text-[var(--accent-cyan)] shadow-sm font-semibold' 
+                : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
-            <FolderTree className={`w-3 h-3 ${terminalCompactPath ? 'text-[#38BDF8]' : 'text-gray-400'}`} />
+            <FolderTree className={`w-3 h-3 ${terminalCompactPath ? 'text-[var(--accent-cyan)]' : 'text-[var(--text-muted)]'}`} />
             <span className="hidden md:inline">
               {terminalCompactPath ? 'Root Path' : 'Full Path'}
             </span>
           </button>
 
           {/* Shell Profile Selector Dropdown */}
-          <div className="flex items-center space-x-1 bg-[#181B24] border border-[#232734] rounded px-1.5 py-0.5 text-[10px] font-mono text-gray-300">
-            <Terminal className="w-3 h-3 text-[#38BDF8]" />
+          <div className="flex items-center space-x-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded px-1.5 py-0.5 text-[10px] font-mono text-[var(--text-secondary)]">
+            <Terminal className="w-3 h-3 text-[var(--accent-cyan)]" />
             <select
               value={shellType}
               onChange={(e) => {
@@ -510,34 +529,34 @@ export const TerminalPanel: React.FC = () => {
                 setShellType(newType);
                 createNewSession(newType, workspacePath, terminalCompactPath);
               }}
-              className="bg-transparent text-gray-200 focus:outline-none font-mono cursor-pointer"
+              className="bg-transparent text-[var(--text-primary)] focus:outline-none font-mono cursor-pointer"
             >
-              <option value="powershell" className="bg-[#12151C] text-white">⚙️ PowerShell</option>
-              <option value="cmd" className="bg-[#12151C] text-white">💻 Command Prompt (CMD)</option>
-              <option value="python" className="bg-[#12151C] text-white">🐍 Python REPL</option>
-              <option value="node" className="bg-[#12151C] text-white">🟢 Node.js REPL</option>
-              <option value="bash" className="bg-[#12151C] text-white">🐧 Git Bash / WSL</option>
+              <option value="powershell" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">⚙️ PowerShell</option>
+              <option value="cmd" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">💻 Command Prompt (CMD)</option>
+              <option value="python" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🐍 Python REPL</option>
+              <option value="node" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🟢 Node.js REPL</option>
+              <option value="bash" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🐧 Git Bash / WSL</option>
             </select>
           </div>
 
-          <button onClick={() => createNewSession(shellType, workspacePath, terminalCompactPath)} title="New Terminal Session" className="p-1 hover:text-white transition-colors flex items-center space-x-1">
-            <Plus className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-[10px] font-mono text-emerald-400 hidden sm:inline">New Terminal</span>
+          <button onClick={() => createNewSession(shellType, workspacePath, terminalCompactPath)} title="New Terminal Session" className="p-1 hover:text-[var(--text-primary)] transition-colors flex items-center space-x-1">
+            <Plus className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="text-[10px] font-mono text-emerald-500 font-semibold hidden sm:inline">New Terminal</span>
           </button>
 
-          <button onClick={clearActiveTerminal} title="Clear Console" className="p-1 hover:text-white transition-colors">
+          <button onClick={clearActiveTerminal} title="Clear Console" className="p-1 hover:text-[var(--text-primary)] transition-colors">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
           
-          <button onClick={() => setIsMaximized(!isMaximized)} title={isMaximized ? "Restore Height" : "Maximize Panel"} className="p-1 hover:text-white transition-colors">
+          <button onClick={() => setIsMaximized(!isMaximized)} title={isMaximized ? "Restore Height" : "Maximize Panel"} className="p-1 hover:text-[var(--text-primary)] transition-colors">
             {isMaximized ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
-      {/* Sub-Header Bar for Active Terminal Sessions (VS Code Style) */}
+      {/* Sub-Header Bar for Active Terminal Sessions */}
       {activeTerminalTab === 'TERMINAL' && (
-        <div className="h-6 bg-[#181B24]/90 border-b border-[#232734] px-2 flex items-center justify-between text-[11px] font-mono text-gray-400 select-none shrink-0">
+        <div className="h-6 bg-[var(--bg-card)] border-b border-[var(--border-color)] px-2 flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)] select-none shrink-0">
           <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar">
             {sessions.map((sess) => {
               const isActive = sess.id === activeSessionId;
@@ -547,15 +566,15 @@ export const TerminalPanel: React.FC = () => {
                   onClick={() => setActiveSessionId(sess.id)}
                   className={`px-2 py-0.5 rounded flex items-center space-x-1.5 text-[10px] cursor-pointer transition-colors border ${
                     isActive 
-                      ? 'bg-[#12151C] text-[#38BDF8] border-[#38BDF8]/40 font-semibold shadow-sm' 
-                      : 'bg-transparent text-gray-400 border-transparent hover:bg-[#12151C]/60 hover:text-gray-200'
+                      ? 'bg-[var(--bg-panel)] text-[var(--accent-cyan)] border-[var(--accent-cyan)]/40 font-semibold shadow-sm' 
+                      : 'bg-transparent text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  <Terminal className={`w-3 h-3 ${isActive ? 'text-[#38BDF8]' : 'text-gray-500'}`} />
+                  <Terminal className={`w-3 h-3 ${isActive ? 'text-[var(--accent-cyan)]' : 'text-[var(--text-subtle)]'}`} />
                   <span className="truncate max-w-[120px]">{sess.name}</span>
                   <button
                     onClick={(e) => closeSession(sess.id, e)}
-                    className="p-0.5 hover:text-rose-400 rounded transition-colors ml-0.5"
+                    className="p-0.5 hover:text-rose-500 rounded transition-colors ml-0.5"
                     title="Kill Terminal Session"
                   >
                     <X className="w-2.5 h-2.5" />
@@ -565,13 +584,13 @@ export const TerminalPanel: React.FC = () => {
             })}
           </div>
 
-          <div className="flex items-center space-x-2 text-[10px] text-gray-400 font-mono pr-1 shrink-0">
+          <div className="flex items-center space-x-2 text-[10px] text-[var(--text-muted)] font-mono pr-1 shrink-0">
             {activeSessionId && (
               <div 
-                className="flex items-center space-x-1.5 text-gray-400 font-mono"
+                className="flex items-center space-x-1.5 text-[var(--text-muted)] font-mono"
               >
-                <span className="text-gray-500">CWD:</span>
-                <span className="text-[#38BDF8] font-semibold max-w-[280px] truncate" title={activeSessionCwd || 'Workspace'}>
+                <span className="text-[var(--text-subtle)]">CWD:</span>
+                <span className="text-[var(--accent-cyan)] font-semibold max-w-[280px] truncate" title={activeSessionCwd || 'Workspace'}>
                   {getFormattedCwd(activeSessionCwd)}
                 </span>
               </div>
@@ -585,11 +604,11 @@ export const TerminalPanel: React.FC = () => {
         {activeTerminalTab === 'TERMINAL' && (
           <div className="h-full w-full relative">
             {sessions.length === 0 && (
-              <div className="h-full flex items-center justify-center text-gray-500 text-xs font-mono space-x-2">
+              <div className="h-full flex items-center justify-center text-[var(--text-muted)] text-xs font-mono space-x-2">
                 <span>No active terminal sessions.</span>
                 <button 
                   onClick={() => createNewSession(shellType, workspacePath, terminalCompactPath)}
-                  className="px-2 py-1 bg-[#181B24] hover:bg-[#232734] border border-[#232734] text-[#38BDF8] rounded text-xs"
+                  className="px-2 py-1 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--accent-cyan)] rounded text-xs shadow-sm font-semibold"
                 >
                   + Create Terminal
                 </button>
@@ -602,7 +621,7 @@ export const TerminalPanel: React.FC = () => {
                   if (el) containerRefs.current.set(sess.id, el);
                   else containerRefs.current.delete(sess.id);
                 }}
-                className={`h-full w-full bg-[#12151C] pl-2 pt-1 absolute inset-0 ${
+                className={`h-full w-full bg-[var(--bg-panel)] pl-2 pt-1 absolute inset-0 ${
                   sess.id === activeSessionId ? 'block z-10' : 'hidden z-0'
                 }`}
               ></div>
@@ -612,37 +631,43 @@ export const TerminalPanel: React.FC = () => {
 
         {activeTerminalTab === 'PROBLEMS' && (
           <div className="h-full overflow-y-auto p-2 space-y-1 font-mono text-xs">
-            {problems.map((p) => (
-              <div 
-                key={p.id} 
-                onClick={() => openFile(p.file, p.file.split('/').pop() || p.file)}
-                className="flex items-center space-x-3 p-2 rounded hover:bg-[#181B24] cursor-pointer border border-transparent hover:border-[#232734] transition-colors"
-              >
-                {p.severity === 'error' ? (
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                ) : (
-                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                )}
-                <span className="text-gray-200">{p.message}</span>
-                <span className="text-gray-500 text-[10px]">{p.file}:{p.line}:{p.col}</span>
-                <span className="ml-auto text-[10px] text-gray-400 bg-[#0B0D11] px-1.5 py-0.5 rounded border border-[#232734]">
-                  {p.code}
-                </span>
+            {problems.length === 0 ? (
+              <div className="p-4 text-center text-xs text-[var(--text-muted)] font-mono">
+                No problems detected in the workspace.
               </div>
-            ))}
+            ) : (
+              problems.map((p) => (
+                <div 
+                  key={p.id} 
+                  onClick={() => openFile(p.file, p.file.split('/').pop() || p.file)}
+                  className="flex items-center space-x-3 p-2 rounded hover:bg-[var(--bg-hover)] cursor-pointer border border-transparent hover:border-[var(--border-color)] transition-colors"
+                >
+                  {p.severity === 'error' ? (
+                    <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                  )}
+                  <span className="text-[var(--text-primary)]">{p.message}</span>
+                  <span className="text-[var(--text-muted)] text-[10px]">{p.file}:{p.line}:{p.col}</span>
+                  <span className="ml-auto text-[10px] text-[var(--text-muted)] bg-[var(--bg-card)] px-1.5 py-0.5 rounded border border-[var(--border-color)]">
+                    {p.code}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         )}
 
         {activeTerminalTab === 'OUTPUT' && (
-          <div className="h-full overflow-y-auto p-2 font-mono text-xs text-gray-300 space-y-1">
-            <div className="text-emerald-400">[INFO] RenKairo backend process initialized successfully.</div>
-            <div className="text-gray-400">[INFO] Watching workspace directory for modifications...</div>
-            <div className="text-[#38BDF8]">[BUILD] React + Vite production bundle compiled in 420ms.</div>
+          <div className="h-full overflow-y-auto p-2 font-mono text-xs text-[var(--text-secondary)] space-y-1">
+            <div className="text-emerald-500">[INFO] RenKairo backend process initialized successfully.</div>
+            <div className="text-[var(--text-muted)]">[INFO] Watching workspace directory for modifications...</div>
+            <div className="text-[var(--accent-cyan)]">[BUILD] React + Vite production bundle compiled.</div>
           </div>
         )}
 
         {activeTerminalTab === 'DEBUG CONSOLE' && (
-          <div className="h-full overflow-y-auto p-2 font-mono text-xs text-gray-400">
+          <div className="h-full overflow-y-auto p-2 font-mono text-xs text-[var(--text-muted)]">
             <span>Debugger attached on port 9229. Ready for breakpoints...</span>
           </div>
         )}
@@ -651,22 +676,22 @@ export const TerminalPanel: React.FC = () => {
           <div className="h-full overflow-y-auto p-2 font-mono text-xs">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-[#232734] text-gray-500 text-[10px]">
-                  <th className="py-1">PORT</th>
-                  <th>PROTOCOL</th>
-                  <th>PROCESS</th>
-                  <th>ADDRESS</th>
+                <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-[10px]">
+                  <th className="py-1 font-semibold">PORT</th>
+                  <th className="font-semibold">PROTOCOL</th>
+                  <th className="font-semibold">PROCESS</th>
+                  <th className="font-semibold">ADDRESS</th>
                 </tr>
               </thead>
-              <tbody className="text-gray-300 divide-y divide-[#232734]/40">
+              <tbody className="text-[var(--text-secondary)] divide-y divide-[var(--border-color)]/60">
                 <tr>
-                  <td className="py-1 text-[#38BDF8]">8000</td>
+                  <td className="py-1 text-[var(--accent-cyan)] font-bold">8000</td>
                   <td>HTTP / WS</td>
                   <td>uvicorn (FastAPI / Express)</td>
                   <td>http://localhost:8000</td>
                 </tr>
                 <tr>
-                  <td className="py-1 text-emerald-400">5173</td>
+                  <td className="py-1 text-emerald-500 font-bold">5173</td>
                   <td>HTTP</td>
                   <td>vite (Frontend)</td>
                   <td>http://localhost:5173</td>

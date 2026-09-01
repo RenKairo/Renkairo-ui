@@ -41,21 +41,21 @@ function getGitFileStatus(filePath: string, gitStatus: GitStatusResult | null): 
 
 const getFileIcon = (filename: string) => {
   const lower = filename.toLowerCase();
-  if (lower.endsWith('.py')) return <span className="text-[#38BDF8] font-bold text-[10px]">🐍</span>;
-  if (lower.endsWith('.ts') || lower.endsWith('.tsx')) return <span className="text-blue-400 font-bold text-[10px]">TS</span>;
-  if (lower.endsWith('.js') || lower.endsWith('.jsx') || lower.endsWith('.mjs') || lower.endsWith('.cjs')) return <span className="text-amber-400 font-bold text-[10px]">JS</span>;
-  if (lower.endsWith('.json')) return <span className="text-yellow-300 font-bold text-[10px]">{'{ }'}</span>;
-  if (lower.endsWith('.yml') || lower.endsWith('.yaml')) return <span className="text-[#FF4D4D] font-bold text-[10px]">⚙</span>;
-  if (lower.endsWith('.md')) return <span className="text-sky-300 font-bold text-[10px]">M↓</span>;
-  if (lower.endsWith('.css') || lower.endsWith('.scss')) return <span className="text-pink-400 font-bold text-[10px]">#</span>;
-  if (lower.endsWith('.html')) return <span className="text-orange-400 font-bold text-[10px]">&lt;&gt;</span>;
-  if (lower.endsWith('.rs')) return <span className="text-orange-500 font-bold text-[10px]">🦀</span>;
-  if (lower.endsWith('.go')) return <span className="text-cyan-300 font-bold text-[10px]">GO</span>;
-  if (lower.endsWith('.sql')) return <span className="text-indigo-400 font-bold text-[10px]">SQL</span>;
-  if (lower.endsWith('.java')) return <span className="text-red-400 font-bold text-[10px]">☕</span>;
-  if (lower === 'dockerfile' || lower.endsWith('.dockerfile')) return <span className="text-cyan-400 font-bold text-[10px]">🐳</span>;
-  if (lower.startsWith('.env')) return <span className="text-emerald-400 font-bold text-[10px]">ENV</span>;
-  return <FileCode className="w-3.5 h-3.5 text-gray-400" />;
+  if (lower.endsWith('.py')) return <span className="text-[var(--accent-cyan)] font-bold text-[10px]">🐍</span>;
+  if (lower.endsWith('.ts') || lower.endsWith('.tsx')) return <span className="text-blue-500 font-bold text-[10px]">TS</span>;
+  if (lower.endsWith('.js') || lower.endsWith('.jsx') || lower.endsWith('.mjs') || lower.endsWith('.cjs')) return <span className="text-amber-500 font-bold text-[10px]">JS</span>;
+  if (lower.endsWith('.json')) return <span className="text-yellow-500 font-bold text-[10px]">{'{ }'}</span>;
+  if (lower.endsWith('.yml') || lower.endsWith('.yaml')) return <span className="text-[var(--accent-coral)] font-bold text-[10px]">⚙</span>;
+  if (lower.endsWith('.md')) return <span className="text-sky-500 font-bold text-[10px]">M↓</span>;
+  if (lower.endsWith('.css') || lower.endsWith('.scss')) return <span className="text-pink-500 font-bold text-[10px]">#</span>;
+  if (lower.endsWith('.html')) return <span className="text-orange-500 font-bold text-[10px]">&lt;&gt;</span>;
+  if (lower.endsWith('.rs')) return <span className="text-orange-600 font-bold text-[10px]">🦀</span>;
+  if (lower.endsWith('.go')) return <span className="text-cyan-500 font-bold text-[10px]">GO</span>;
+  if (lower.endsWith('.sql')) return <span className="text-indigo-500 font-bold text-[10px]">SQL</span>;
+  if (lower.endsWith('.java')) return <span className="text-red-500 font-bold text-[10px]">☕</span>;
+  if (lower === 'dockerfile' || lower.endsWith('.dockerfile')) return <span className="text-cyan-500 font-bold text-[10px]">🐳</span>;
+  if (lower.startsWith('.env')) return <span className="text-emerald-500 font-bold text-[10px]">ENV</span>;
+  return <FileCode className="w-3.5 h-3.5 text-[var(--text-muted)]" />;
 };
 
 interface DirectoryTreeItemProps {
@@ -224,28 +224,28 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
         style={{ paddingLeft: `${level * 14 + 8}px` }}
         className={`flex items-center space-x-1.5 py-1 pr-2 rounded text-xs cursor-pointer select-none group transition-colors relative ${
           isSelected 
-            ? 'bg-[#181B24] text-white border-l-2 border-[#FF4D4D]' 
-            : 'text-gray-300 hover:bg-[#12151C] hover:text-white'
-        } ${isDragOver ? 'bg-[#38BDF8]/20 border border-[#38BDF8]' : ''}`}
+            ? 'bg-[var(--bg-active)] text-[var(--text-primary)] border-l-2 border-[var(--accent-coral)] font-medium shadow-sm' 
+            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+        } ${isDragOver ? 'bg-[var(--accent-cyan)]/20 border border-[var(--accent-cyan)]' : ''}`}
       >
         {node.is_dir ? (
           <>
             <span 
               onClick={(e) => handleToggleExpand(e)} 
-              className="p-0.5 hover:text-white text-gray-400"
+              className="p-0.5 hover:text-[var(--text-primary)] text-[var(--text-muted)]"
             >
               {isLoadingChildren ? (
-                <Loader2 className="w-3.5 h-3.5 text-[#38BDF8] animate-spin shrink-0" />
+                <Loader2 className="w-3.5 h-3.5 text-[var(--accent-cyan)] animate-spin shrink-0" />
               ) : isOpen ? (
-                <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
               ) : (
-                <ChevronRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
               )}
             </span>
             {isOpen ? (
-              <FolderOpen className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+              <FolderOpen className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0" />
             ) : (
-              <Folder className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+              <Folder className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0 opacity-80" />
             )}
           </>
         ) : (
@@ -265,26 +265,26 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Escape') setRenamingPath(null);
               }}
-              className="w-full bg-[#0B0D11] border border-[#38BDF8] text-white px-1 py-0.5 rounded text-xs font-mono focus:outline-none"
+              className="w-full bg-[var(--bg-input)] border border-[var(--accent-cyan)] text-[var(--text-primary)] px-1 py-0.5 rounded text-xs font-mono focus:outline-none shadow-sm"
             />
           </form>
         ) : (
           <div className="flex items-center justify-between flex-1 min-w-0 pr-1">
             <span className={`truncate font-mono text-[11px] select-none ${
-              nodeGitStatus === 'M' ? 'text-amber-300 font-medium' :
-              nodeGitStatus === 'A' || nodeGitStatus === 'U' ? 'text-emerald-300' :
-              nodeGitStatus === 'D' ? 'text-rose-400 line-through' :
-              isSelected ? 'text-white' : 'text-gray-300 group-hover:text-white'
+              nodeGitStatus === 'M' ? 'text-amber-500 font-semibold' :
+              nodeGitStatus === 'A' || nodeGitStatus === 'U' ? 'text-emerald-500 font-semibold' :
+              nodeGitStatus === 'D' ? 'text-rose-500 line-through' :
+              isSelected ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
             }`}>
               {node.name}
             </span>
 
             {nodeGitStatus && (
               <span className={`text-[9px] font-bold font-mono shrink-0 ml-1.5 ${
-                nodeGitStatus === 'M' ? 'text-amber-400' :
-                nodeGitStatus === 'A' ? 'text-emerald-400' :
-                nodeGitStatus === 'U' ? 'text-cyan-400' :
-                nodeGitStatus === 'D' ? 'text-rose-400' : 'text-gray-400'
+                nodeGitStatus === 'M' ? 'text-amber-500' :
+                nodeGitStatus === 'A' ? 'text-emerald-500' :
+                nodeGitStatus === 'U' ? 'text-[var(--accent-cyan)]' :
+                nodeGitStatus === 'D' ? 'text-rose-500' : 'text-[var(--text-muted)]'
               }`}>
                 {nodeGitStatus}
               </span>
@@ -304,9 +304,9 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
               onClick={(e) => e.stopPropagation()}
             >
               {creatingIn.isDir ? (
-                <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <Folder className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
               ) : (
-                <FileCode className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+                <FileCode className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0" />
               )}
               <form onSubmit={handleCreateChildSubmit} className="flex-1 mr-2">
                 <input
@@ -319,7 +319,7 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
                     if (e.key === 'Escape') setCreatingIn(null);
                   }}
                   placeholder={creatingIn.isDir ? 'Folder name...' : 'File name...'}
-                  className="w-full bg-[#0B0D11] border border-emerald-400 text-white px-1 py-0.5 rounded text-xs font-mono focus:outline-none"
+                  className="w-full bg-[var(--bg-input)] border border-emerald-500 text-[var(--text-primary)] px-1 py-0.5 rounded text-xs font-mono focus:outline-none shadow-sm"
                 />
               </form>
             </div>
@@ -430,7 +430,7 @@ export const FileExplorer: React.FC = () => {
 
   return (
     <aside 
-      className="w-full bg-[#0B0D11] border-r border-[#232734] flex flex-col select-none h-full z-10 relative overflow-hidden"
+      className="w-full bg-[var(--bg-panel)] border-r border-[var(--border-color)] flex flex-col select-none h-full z-10 relative overflow-hidden transition-colors duration-150"
       onContextMenu={(e) => handleContextMenu(e, null)}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleRootDrop}
@@ -439,37 +439,37 @@ export const FileExplorer: React.FC = () => {
       {isFolderOpening ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
           <div className="relative mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#12151C] border border-[#38BDF8]/40 flex items-center justify-center shadow-lg shadow-[#38BDF8]/10 animate-pulse">
-              <FolderOpen className="w-7 h-7 text-[#38BDF8] animate-bounce" />
+            <div className="w-14 h-14 rounded-2xl bg-[var(--bg-card)] border border-[var(--accent-cyan)]/40 flex items-center justify-center shadow-lg animate-pulse">
+              <FolderOpen className="w-7 h-7 text-[var(--accent-cyan)] animate-bounce" />
             </div>
-            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#38BDF8] via-[#FF4D4D] to-[#38BDF8] opacity-30 blur-md animate-spin"></div>
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[var(--accent-cyan)] via-[var(--accent-coral)] to-[var(--accent-cyan)] opacity-30 blur-md animate-spin"></div>
           </div>
           
-          <h3 className="text-xs font-bold text-white mb-1.5 font-mono tracking-wider flex items-center space-x-1.5">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#38BDF8]" />
+          <h3 className="text-xs font-bold text-[var(--text-primary)] mb-1.5 font-mono tracking-wider flex items-center space-x-1.5">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent-cyan)]" />
             <span>OPENING FOLDER...</span>
           </h3>
-          <p className="text-[10px] text-gray-400 font-mono max-w-[180px] leading-relaxed">
+          <p className="text-[10px] text-[var(--text-muted)] font-mono max-w-[180px] leading-relaxed">
             Reading directory structure and mapping files...
           </p>
 
-          <div className="w-36 h-1 bg-[#181B24] rounded-full overflow-hidden mt-4 border border-[#232734]">
-            <div className="h-full bg-gradient-to-r from-[#38BDF8] to-[#FF4D4D] animate-pulse w-full"></div>
+          <div className="w-36 h-1 bg-[var(--bg-card)] rounded-full overflow-hidden mt-4 border border-[var(--border-color)]">
+            <div className="h-full bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-coral)] animate-pulse w-full"></div>
           </div>
         </div>
       ) : !workspacePath ? (
         /* 2. No Folder Opened State */
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-          <div className="w-12 h-12 rounded-xl bg-[#12151C] border border-[#232734] flex items-center justify-center mb-3 shadow-lg p-2 relative group">
-            <div className="absolute inset-0 bg-gradient-to-t from-[#FF4D4D]/20 to-transparent opacity-50 rounded-xl"></div>
-            <ToriiIcon className="w-7 h-7 drop-shadow-[0_0_8px_rgba(255,77,77,0.5)] group-hover:scale-105 transition-transform" />
+          <div className="w-12 h-12 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center mb-3 shadow-lg p-2 relative group">
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--accent-coral)]/20 to-transparent opacity-50 rounded-xl"></div>
+            <ToriiIcon color="var(--accent-coral)" className="w-7 h-7 drop-shadow-[0_0_8px_var(--glow-coral)] group-hover:scale-105 transition-transform" />
           </div>
-          <h3 className="text-xs font-semibold text-gray-300 mb-1 font-mono uppercase tracking-wider">No Folder Opened</h3>
-          <p className="text-[11px] text-gray-500 mb-4">Open a folder from your computer to start editing and creating files.</p>
+          <h3 className="text-xs font-semibold text-[var(--text-primary)] mb-1 font-mono uppercase tracking-wider">No Folder Opened</h3>
+          <p className="text-[11px] text-[var(--text-muted)] mb-4 leading-relaxed">Open a folder from your computer to start editing and creating files.</p>
           
           <button
             onClick={openFolder}
-            className="w-full py-2 bg-[#FF4D4D] hover:bg-[#FF6666] text-white font-semibold text-xs rounded-lg transition-all shadow-md flex items-center justify-center space-x-2 font-mono group"
+            className="w-full py-2 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral-hover)] text-white font-semibold text-xs rounded-lg transition-all shadow-md flex items-center justify-center space-x-2 font-mono group cursor-pointer"
           >
             <FolderOpen className="w-4 h-4 group-hover:scale-110 transition-transform" />
             <span>Open Folder</span>
@@ -479,7 +479,7 @@ export const FileExplorer: React.FC = () => {
         /* 3. Folder Opened - Tree View */
         <>
           {/* Header Bar above root with Action Buttons */}
-          <div className="h-9 px-3 border-b border-[#232734] flex items-center justify-between text-xs text-gray-400 font-semibold tracking-wider bg-[#0B0D11]">
+          <div className="h-9 px-3 border-b border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-muted)] font-semibold tracking-wider bg-[var(--bg-panel)]">
             <span className="truncate">EXPLORER</span>
             
             <div className="flex items-center space-x-1">
@@ -487,7 +487,7 @@ export const FileExplorer: React.FC = () => {
               <button 
                 onClick={changeScopeFolder} 
                 title="Change Folder Scope / Open Another Folder" 
-                className="p-1 text-sky-400 hover:text-white hover:bg-[#181B24] rounded transition-colors flex items-center space-x-1"
+                className="p-1 text-[var(--accent-cyan)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded transition-colors flex items-center space-x-1"
               >
                 <FolderSync className="w-3.5 h-3.5" />
               </button>
@@ -496,27 +496,27 @@ export const FileExplorer: React.FC = () => {
               <button 
                 onClick={() => setCreatingIn({ parentPath: getTargetDir(null), isDir: false })} 
                 title="New File" 
-                className="p-1 hover:text-white hover:bg-[#181B24] rounded transition-colors"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded transition-colors"
               >
-                <Plus className="w-3.5 h-3.5 text-gray-300" />
+                <Plus className="w-3.5 h-3.5" />
               </button>
 
               {/* New Folder */}
               <button 
                 onClick={() => setCreatingIn({ parentPath: getTargetDir(null), isDir: true })} 
                 title="New Folder" 
-                className="p-1 hover:text-white hover:bg-[#181B24] rounded transition-colors"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded transition-colors"
               >
-                <FolderPlus className="w-3.5 h-3.5 text-gray-300" />
+                <FolderPlus className="w-3.5 h-3.5" />
               </button>
 
               {/* Refresh */}
               <button 
                 onClick={refreshTree} 
                 title="Refresh Folder" 
-                className="p-1 hover:text-white hover:bg-[#181B24] rounded transition-colors"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded transition-colors"
               >
-                <RotateCw className="w-3 h-3 text-gray-300" />
+                <RotateCw className="w-3 h-3" />
               </button>
             </div>
           </div>
@@ -524,17 +524,17 @@ export const FileExplorer: React.FC = () => {
           {/* Root Folder Bar */}
           <div 
             onClick={() => setSelectedPath(null)}
-            className="px-3 py-2 flex items-center justify-between text-xs font-bold text-gray-200 uppercase tracking-wide border-b border-[#232734]/40 bg-[#12151C]/60 group"
+            className="px-3 py-2 flex items-center justify-between text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide border-b border-[var(--border-color)]/60 bg-[var(--bg-card)] group cursor-pointer"
           >
             <div className="flex items-center space-x-1.5 overflow-hidden">
-              <FolderOpen className="w-3.5 h-3.5 text-[#FF4D4D] shrink-0" />
+              <FolderOpen className="w-3.5 h-3.5 text-[var(--accent-coral)] shrink-0" />
               <span className="font-mono truncate">{rootName}</span>
             </div>
 
             <button
               onClick={(e) => { e.stopPropagation(); changeScopeFolder(); }}
               title="Switch to another folder"
-              className="text-[10px] text-gray-400 hover:text-[#38BDF8] lowercase font-mono opacity-80 group-hover:opacity-100 transition-opacity"
+              className="text-[10px] text-[var(--text-muted)] hover:text-[var(--accent-cyan)] lowercase font-mono opacity-80 group-hover:opacity-100 transition-opacity"
             >
               change
             </button>
@@ -546,9 +546,9 @@ export const FileExplorer: React.FC = () => {
             {creatingIn && creatingIn.parentPath === '' && (
               <div className="flex items-center space-x-1.5 py-1 px-2 text-xs">
                 {creatingIn.isDir ? (
-                  <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <Folder className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                 ) : (
-                  <FileCode className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+                  <FileCode className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0" />
                 )}
                 <form onSubmit={handleRootNewSubmit} className="flex-1">
                   <input
@@ -561,25 +561,25 @@ export const FileExplorer: React.FC = () => {
                       if (e.key === 'Escape') setCreatingIn(null);
                     }}
                     placeholder={creatingIn.isDir ? 'Folder name...' : 'File name...'}
-                    className="w-full bg-[#0B0D11] border border-emerald-400 text-white px-1 py-0.5 rounded text-xs font-mono focus:outline-none"
+                    className="w-full bg-[var(--bg-input)] border border-emerald-500 text-[var(--text-primary)] px-1 py-0.5 rounded text-xs font-mono focus:outline-none shadow-sm"
                   />
                 </form>
               </div>
             )}
 
             {fileTree.length === 0 && !creatingIn ? (
-              <div className="p-4 text-center text-xs text-gray-500 font-mono flex flex-col items-center justify-center space-y-2 mt-4">
+              <div className="p-4 text-center text-xs text-[var(--text-muted)] font-mono flex flex-col items-center justify-center space-y-2 mt-4">
                 <p>This folder is empty.</p>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => setCreatingIn({ parentPath: '', isDir: false })}
-                    className="px-2 py-1 bg-[#181B24] hover:bg-[#232734] text-xs text-gray-300 rounded"
+                    className="px-2 py-1 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs text-[var(--text-secondary)] rounded border border-[var(--border-color)]"
                   >
                     + File
                   </button>
                   <button
                     onClick={() => setCreatingIn({ parentPath: '', isDir: true })}
-                    className="px-2 py-1 bg-[#181B24] hover:bg-[#232734] text-xs text-gray-300 rounded"
+                    className="px-2 py-1 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs text-[var(--text-secondary)] rounded border border-[var(--border-color)]"
                   >
                     + Folder
                   </button>
@@ -606,7 +606,7 @@ export const FileExplorer: React.FC = () => {
       {/* Clean Right-Click Context Menu */}
       {contextMenu && (
         <div
-          className="fixed z-50 w-44 bg-[#12151C] border border-[#232734] rounded-lg shadow-2xl py-1 text-xs text-gray-300 select-none animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-50 w-44 bg-[var(--bg-panel)] border border-[var(--border-color)] rounded-lg shadow-2xl py-1 text-xs text-[var(--text-secondary)] select-none animate-in fade-in zoom-in-95 duration-100"
           style={{ top: `${contextMenu.mouseY}px`, left: `${contextMenu.mouseX}px` }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -615,9 +615,9 @@ export const FileExplorer: React.FC = () => {
               setCreatingIn({ parentPath: getTargetDir(contextMenu.node), isDir: false });
               setContextMenu(null);
             }}
-            className="w-full text-left px-3 py-1.5 hover:bg-[#181B24] hover:text-white flex items-center space-x-2"
+            className="w-full text-left px-3 py-1.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] flex items-center space-x-2"
           >
-            <Plus className="w-3.5 h-3.5 text-[#38BDF8]" />
+            <Plus className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
             <span>New File</span>
           </button>
 
@@ -626,23 +626,23 @@ export const FileExplorer: React.FC = () => {
               setCreatingIn({ parentPath: getTargetDir(contextMenu.node), isDir: true });
               setContextMenu(null);
             }}
-            className="w-full text-left px-3 py-1.5 hover:bg-[#181B24] hover:text-white flex items-center space-x-2"
+            className="w-full text-left px-3 py-1.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] flex items-center space-x-2"
           >
-            <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
+            <FolderPlus className="w-3.5 h-3.5 text-emerald-500" />
             <span>New Folder</span>
           </button>
 
           {contextMenu.node && (
             <>
-              <div className="border-t border-[#232734] my-1"></div>
+              <div className="border-t border-[var(--border-color)] my-1"></div>
               <button
                 onClick={() => {
                   setRenamingPath(contextMenu.node!.path);
                   setContextMenu(null);
                 }}
-                className="w-full text-left px-3 py-1.5 hover:bg-[#181B24] hover:text-white flex items-center space-x-2"
+                className="w-full text-left px-3 py-1.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] flex items-center space-x-2"
               >
-                <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                <Edit2 className="w-3.5 h-3.5 text-amber-500" />
                 <span>Rename (F2)</span>
               </button>
 
@@ -654,7 +654,7 @@ export const FileExplorer: React.FC = () => {
                     deleteNode(nodeToDelete.path);
                   }
                 }}
-                className="w-full text-left px-3 py-1.5 hover:bg-rose-950/40 text-rose-400 hover:text-rose-300 flex items-center space-x-2"
+                className="w-full text-left px-3 py-1.5 hover:bg-rose-500/10 text-rose-500 hover:text-rose-600 flex items-center space-x-2"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Delete</span>
@@ -662,15 +662,15 @@ export const FileExplorer: React.FC = () => {
             </>
           )}
 
-          <div className="border-t border-[#232734] my-1"></div>
+          <div className="border-t border-[var(--border-color)] my-1"></div>
           <button
             onClick={() => {
               refreshTree();
               setContextMenu(null);
             }}
-            className="w-full text-left px-3 py-1.5 hover:bg-[#181B24] hover:text-white flex items-center space-x-2"
+            className="w-full text-left px-3 py-1.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] flex items-center space-x-2"
           >
-            <RotateCw className="w-3.5 h-3.5 text-gray-400" />
+            <RotateCw className="w-3.5 h-3.5 text-[var(--text-muted)]" />
             <span>Refresh</span>
           </button>
         </div>

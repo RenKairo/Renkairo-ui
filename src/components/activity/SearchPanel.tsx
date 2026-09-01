@@ -33,7 +33,7 @@ function HighlightedSnippet({ text, matchIndices }: { text: string; matchIndices
     parts.push(
       <mark
         key={i}
-        className="bg-[#38BDF8]/30 text-[#38BDF8] font-bold rounded px-0.5 select-none"
+        className="bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] font-bold rounded px-0.5 select-none"
       >
         {text.substring(start, end)}
       </mark>
@@ -50,15 +50,15 @@ function HighlightedSnippet({ text, matchIndices }: { text: string; matchIndices
 
 function getFileIcon(filePath: string) {
   const lower = filePath.toLowerCase();
-  if (lower.endsWith('.json')) return <FileJson className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+  if (lower.endsWith('.json')) return <FileJson className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
   if (lower.endsWith('.ts') || lower.endsWith('.tsx') || lower.endsWith('.js') || lower.endsWith('.jsx')) {
-    return <FileCode className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />;
+    return <FileCode className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0" />;
   }
-  if (lower.endsWith('.py')) return <FileCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
+  if (lower.endsWith('.py')) return <FileCode className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
   if (lower.endsWith('.css') || lower.endsWith('.html') || lower.endsWith('.scss')) {
-    return <FileCode className="w-3.5 h-3.5 text-rose-400 shrink-0" />;
+    return <FileCode className="w-3.5 h-3.5 text-rose-500 shrink-0" />;
   }
-  return <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0" />;
+  return <FileText className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />;
 }
 
 export const SearchPanel: React.FC = () => {
@@ -151,16 +151,16 @@ export const SearchPanel: React.FC = () => {
   };
 
   return (
-    <aside className="w-64 bg-[#0B0D11] border-r border-[#232734] flex flex-col select-none h-full z-10 font-sans">
+    <aside className="w-full bg-[var(--bg-panel)] border-r border-[var(--border-color)] flex flex-col select-none h-full z-10 font-sans transition-colors duration-150">
       {/* Header Bar */}
-      <div className="h-9 px-3 border-b border-[#232734] flex items-center justify-between text-xs text-gray-400 font-semibold uppercase tracking-wider shrink-0">
+      <div className="h-9 px-3 border-b border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-muted)] font-semibold uppercase tracking-wider shrink-0 bg-[var(--bg-panel)]">
         <span>SEARCH CODEBASE</span>
         <div className="flex items-center space-x-1">
           {results.length > 0 && (
             <button
               onClick={toggleCollapseAll}
               title={allCollapsed ? 'Expand All Files' : 'Collapse All Files'}
-              className="p-1 rounded hover:bg-[#181B24] text-gray-400 hover:text-white transition-colors"
+              className="p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
             >
               {allCollapsed ? <ChevronsRight className="w-3.5 h-3.5" /> : <ChevronsDown className="w-3.5 h-3.5" />}
             </button>
@@ -169,7 +169,7 @@ export const SearchPanel: React.FC = () => {
             <button
               onClick={clearSearch}
               title="Clear Search"
-              className="p-1 rounded hover:bg-[#181B24] text-gray-400 hover:text-rose-400 transition-colors"
+              className="p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-rose-500 transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -178,7 +178,7 @@ export const SearchPanel: React.FC = () => {
       </div>
 
       {/* Input Controls */}
-      <div className="p-3 space-y-2.5 border-b border-[#232734] shrink-0">
+      <div className="p-3 space-y-2.5 border-b border-[var(--border-color)] shrink-0">
         {/* Main Search Input */}
         <div className="relative flex items-center">
           <input
@@ -186,14 +186,14 @@ export const SearchPanel: React.FC = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search in files..."
-            className="w-full h-8 bg-[#12151C] border border-[#232734] rounded pl-8 pr-20 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#38BDF8] font-mono"
+            className="w-full h-8 bg-[var(--bg-input)] border border-[var(--border-color)] rounded pl-8 pr-20 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] font-mono shadow-sm"
           />
-          <Search className="w-3.5 h-3.5 text-gray-500 absolute left-2.5 pointer-events-none" />
+          <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 pointer-events-none" />
 
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="absolute right-16 p-0.5 text-gray-500 hover:text-gray-300"
+              className="absolute right-16 p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               title="Clear Input"
             >
               <X className="w-3 h-3" />
@@ -207,8 +207,8 @@ export const SearchPanel: React.FC = () => {
               title="Match Case (Aa)"
               className={`p-1 rounded text-[10px] font-mono font-bold transition-all ${
                 isCaseSensitive 
-                  ? 'bg-[#38BDF8]/20 text-[#38BDF8] border border-[#38BDF8]/40 shadow-sm' 
-                  : 'text-gray-500 hover:text-gray-300 border border-transparent'
+                  ? 'bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/40 shadow-sm' 
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'
               }`}
             >
               <CaseSensitive className="w-3.5 h-3.5" />
@@ -219,8 +219,8 @@ export const SearchPanel: React.FC = () => {
               title="Match Whole Word (\b)"
               className={`px-1 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
                 isWholeWord 
-                  ? 'bg-[#38BDF8]/20 text-[#38BDF8] border border-[#38BDF8]/40 shadow-sm' 
-                  : 'text-gray-500 hover:text-gray-300 border border-transparent'
+                  ? 'bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/40 shadow-sm' 
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'
               }`}
             >
               \b
@@ -231,8 +231,8 @@ export const SearchPanel: React.FC = () => {
               title="Use Regular Expression (.*)"
               className={`p-1 rounded text-[10px] font-mono font-bold transition-all ${
                 isRegex 
-                  ? 'bg-[#FF4D4D]/20 text-[#FF4D4D] border border-[#FF4D4D]/40 shadow-sm' 
-                  : 'text-gray-500 hover:text-gray-300 border border-transparent'
+                  ? 'bg-[var(--accent-coral)]/20 text-[var(--accent-coral)] border border-[var(--accent-coral)]/40 shadow-sm' 
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'
               }`}
             >
               <Regex className="w-3.5 h-3.5" />
@@ -241,17 +241,17 @@ export const SearchPanel: React.FC = () => {
         </div>
 
         {/* Files to Include Filter */}
-        <div className="flex items-center space-x-1.5 bg-[#12151C] border border-[#232734] rounded px-2 focus-within:border-[#38BDF8]">
-          <Filter className="w-3 h-3 text-gray-500 shrink-0" />
+        <div className="flex items-center space-x-1.5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 focus-within:border-[var(--accent-cyan)] shadow-sm">
+          <Filter className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
           <input
             type="text"
             value={includes}
             onChange={(e) => setIncludes(e.target.value)}
             placeholder="files to include (*.py, *.ts)"
-            className="w-full h-6 bg-transparent text-[10px] text-gray-300 placeholder-gray-600 focus:outline-none font-mono"
+            className="w-full h-6 bg-transparent text-[10px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none font-mono"
           />
           {includes && (
-            <button onClick={() => setIncludes('')} className="p-0.5 text-gray-500 hover:text-gray-300">
+            <button onClick={() => setIncludes('')} className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
               <X className="w-2.5 h-2.5" />
             </button>
           )}
@@ -262,25 +262,25 @@ export const SearchPanel: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-2 space-y-2 font-mono">
         {/* Status / Loading / Error Indicators */}
         {error ? (
-          <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded text-rose-400 text-xs font-sans">
+          <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded text-rose-500 text-xs font-sans">
             <span className="font-bold">Error:</span> {error}
           </div>
         ) : isSearching ? (
-          <div className="p-3 flex items-center justify-center space-x-2 text-xs text-[#38BDF8]">
+          <div className="p-3 flex items-center justify-center space-x-2 text-xs text-[var(--accent-cyan)]">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>Searching codebase...</span>
           </div>
         ) : !query.trim() ? (
-          <div className="p-4 text-center text-xs text-gray-500 font-sans">
+          <div className="p-4 text-center text-xs text-[var(--text-muted)] font-sans">
             Type a query to search across files in the active workspace.
           </div>
         ) : (
-          <div className="text-[11px] text-gray-400 font-semibold px-1 py-1 flex items-center justify-between border-b border-[#232734]/60 pb-2">
+          <div className="text-[11px] text-[var(--text-muted)] font-semibold px-1 py-1 flex items-center justify-between border-b border-[var(--border-color)] pb-2">
             <span>
               {totalMatches} result{totalMatches === 1 ? '' : 's'} in {totalFiles} file{totalFiles === 1 ? '' : 's'}
             </span>
             {capped && (
-              <span className="text-[10px] text-amber-400 bg-amber-400/10 border border-amber-400/30 px-1.5 py-0.5 rounded font-bold">
+              <span className="text-[10px] text-amber-500 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold">
                 Capped at 500
               </span>
             )}
@@ -289,8 +289,8 @@ export const SearchPanel: React.FC = () => {
 
         {/* Empty State */}
         {query.trim() && !isSearching && !error && results.length === 0 && (
-          <div className="p-6 text-center text-xs text-gray-500 font-sans">
-            No results found for "<span className="text-gray-300 font-mono">{query}</span>"
+          <div className="p-6 text-center text-xs text-[var(--text-muted)] font-sans">
+            No results found for "<span className="text-[var(--text-primary)] font-mono">{query}</span>"
           </div>
         )}
 
@@ -304,38 +304,38 @@ export const SearchPanel: React.FC = () => {
               {/* File Node Header */}
               <button
                 onClick={() => toggleFileCollapse(result.path)}
-                className="w-full text-left flex items-center justify-between p-1.5 rounded hover:bg-[#12151C] text-xs text-gray-200 transition-colors group border border-transparent hover:border-[#232734]"
+                className="w-full text-left flex items-center justify-between p-1.5 rounded hover:bg-[var(--bg-hover)] text-xs text-[var(--text-primary)] transition-colors group border border-transparent hover:border-[var(--border-color)]"
               >
                 <div className="flex items-center space-x-1.5 overflow-hidden pr-2">
                   {isCollapsed ? (
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
                   ) : (
-                    <ChevronDown className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                    <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
                   )}
                   {getFileIcon(result.path)}
-                  <span className="truncate font-semibold text-gray-200 text-[11px]" title={result.path}>
+                  <span className="truncate font-semibold text-[var(--text-primary)] text-[11px]" title={result.path}>
                     {result.path}
                   </span>
                 </div>
 
-                <span className="text-[10px] bg-[#181B24] border border-[#232734] text-[#38BDF8] font-bold px-1.5 py-0.5 rounded shrink-0">
+                <span className="text-[10px] bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--accent-cyan)] font-bold px-1.5 py-0.5 rounded shrink-0 shadow-sm">
                   {result.matches.length}
                 </span>
               </button>
 
               {/* Matches List */}
               {!isCollapsed && (
-                <div className="pl-4 space-y-0.5 border-l border-[#232734] ml-2.5">
+                <div className="pl-4 space-y-0.5 border-l border-[var(--border-color)] ml-2.5">
                   {result.matches.map((m, idx) => (
                     <button
                       key={idx}
                       onClick={() => openFile(result.path, fileName, m.line)}
-                      className="w-full text-left p-1 rounded hover:bg-[#181B24] text-[11px] font-mono text-gray-400 hover:text-white flex items-start space-x-2 transition-colors border border-transparent hover:border-[#232734] group"
+                      className="w-full text-left p-1 rounded hover:bg-[var(--bg-hover)] text-[11px] font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-start space-x-2 transition-colors border border-transparent hover:border-[var(--border-color)] group"
                     >
-                      <span className="text-gray-600 text-[10px] shrink-0 font-mono w-7 text-right group-hover:text-[#38BDF8]">
+                      <span className="text-[var(--text-subtle)] text-[10px] shrink-0 font-mono w-7 text-right group-hover:text-[var(--accent-cyan)]">
                         {m.line}:
                       </span>
-                      <div className="truncate text-gray-300 flex-1 leading-tight">
+                      <div className="truncate text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] flex-1 leading-tight">
                         <HighlightedSnippet text={m.text} matchIndices={m.matchIndices} />
                       </div>
                     </button>

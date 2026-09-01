@@ -1,22 +1,84 @@
 @import "tailwindcss";
 
 @layer base {
-  :root {
+  :root,
+  [data-theme="dark"],
+  .dark {
     --bg-base: #0B0D11;
     --bg-panel: #12151C;
     --bg-card: #181B24;
+    --bg-hover: #181B24;
+    --bg-active: #232734;
+    --bg-input: #0E1015;
     --border-color: #232734;
+    --border-subtle: #181B24;
+    --text-primary: #F1F5F9;
+    --text-secondary: #CBD5E1;
+    --text-muted: #94A3B8;
+    --text-subtle: #64748B;
     --accent-coral: #FF4D4D;
+    --accent-coral-hover: #FF6666;
+    --accent-coral-subtle: rgba(255, 77, 77, 0.15);
     --accent-crimson: #D9383A;
     --accent-cyan: #38BDF8;
+    --accent-cyan-hover: #7DD3FC;
+    --accent-cyan-subtle: rgba(56, 189, 248, 0.15);
     --accent-amber: #F59E0B;
     --accent-emerald: #10B981;
+    --accent-rose: #FB7185;
+    --accent-purple: #A855F7;
+    --scrollbar-track: #0B0D11;
+    --scrollbar-thumb: #232734;
+    --scrollbar-thumb-hover: #343A4D;
+    --editor-gutter: #12151C;
+    --glow-coral: rgba(255, 77, 77, 0.25);
+    --glow-cyan: rgba(56, 189, 248, 0.25);
+    --modal-backdrop: rgba(0, 0, 0, 0.75);
+    --wallpaper-overlay: linear-gradient(to top, #0B0D11 0%, rgba(11, 13, 17, 0.6) 50%, rgba(11, 13, 17, 0.8) 100%);
+    --shadow-dropdown: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 0 0 1px #232734;
+  }
+
+  [data-theme="light"],
+  .light {
+    --bg-base: #F3F4F6;
+    --bg-panel: #FFFFFF;
+    --bg-card: #F8FAFC;
+    --bg-hover: #F1F5F9;
+    --bg-active: #E2E8F0;
+    --bg-input: #FFFFFF;
+    --border-color: #E2E8F0;
+    --border-subtle: #EEF2F6;
+    --text-primary: #0F172A;
+    --text-secondary: #334155;
+    --text-muted: #64748B;
+    --text-subtle: #94A3B8;
+    --accent-coral: #E11D48;
+    --accent-coral-hover: #BE123C;
+    --accent-coral-subtle: rgba(225, 29, 72, 0.1);
+    --accent-crimson: #BE123C;
+    --accent-cyan: #0284C7;
+    --accent-cyan-hover: #0369A1;
+    --accent-cyan-subtle: rgba(2, 132, 199, 0.1);
+    --accent-amber: #D97706;
+    --accent-emerald: #059669;
+    --accent-rose: #E11D48;
+    --accent-purple: #7C3AED;
+    --scrollbar-track: #F1F5F9;
+    --scrollbar-thumb: #CBD5E1;
+    --scrollbar-thumb-hover: #94A3B8;
+    --editor-gutter: #FAFAFA;
+    --glow-coral: rgba(225, 29, 72, 0.2);
+    --glow-cyan: rgba(2, 132, 199, 0.2);
+    --modal-backdrop: rgba(15, 23, 42, 0.4);
+    --wallpaper-overlay: linear-gradient(to top, #F3F4F6 0%, rgba(243, 244, 246, 0.75) 50%, rgba(243, 244, 246, 0.9) 100%);
+    --shadow-dropdown: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px #E2E8F0;
   }
 
   body {
     background-color: var(--bg-base);
-    color: #E2E8F0;
+    color: var(--text-primary);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
 
   code, pre, .font-mono {
@@ -24,40 +86,44 @@
   }
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbars for dark & light */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0D11;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #232734;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #343A4D;
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Glass & Cyber Glow Effects */
 .cyber-glow-coral {
-  box-shadow: 0 0 12px rgba(255, 77, 77, 0.25);
+  box-shadow: 0 0 12px var(--glow-coral);
 }
 
 .cyber-glow-cyan {
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+  box-shadow: 0 0 12px var(--glow-cyan);
 }
 
 .cyber-border-coral {
-  border-color: rgba(255, 77, 77, 0.4);
+  border-color: var(--accent-coral);
+}
+
+.cyber-border-cyan {
+  border-color: var(--accent-cyan);
 }
 
 .cyber-gradient-bg {
-  background: linear-gradient(135deg, rgba(255, 77, 77, 0.08) 0%, rgba(56, 189, 248, 0.05) 100%);
+  background: linear-gradient(135deg, var(--accent-coral-subtle) 0%, var(--accent-cyan-subtle) 100%);
 }
 
 /* Monaco Editor Custom Styling */
@@ -66,7 +132,17 @@
 }
 
 .monaco-editor .margin {
-  background-color: #12151C !important;
+  background-color: var(--editor-gutter) !important;
+}
+
+[data-theme="light"] .monaco-editor,
+.light .monaco-editor {
+  --vscode-editor-background: #FFFFFF !important;
+}
+
+[data-theme="light"] .monaco-editor .margin,
+.light .monaco-editor .margin {
+  background-color: #FAFAFA !important;
 }
 
 .xterm-viewport::-webkit-scrollbar {

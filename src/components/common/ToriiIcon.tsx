@@ -10,12 +10,12 @@ interface ToriiIconProps {
 export const ToriiIcon: React.FC<ToriiIconProps> = ({
   className = 'w-4 h-4',
   size,
-  color = '#FF4D4D',
+  color = 'var(--accent-coral)',
   glow = false,
 }) => {
   const style: React.CSSProperties = {
     ...(size ? { width: size, height: size } : {}),
-    ...(glow ? { filter: `drop-shadow(0 0 8px ${color}99)` } : {}),
+    ...(glow ? { filter: `drop-shadow(0 0 8px var(--glow-coral))` } : {}),
   };
 
   return (

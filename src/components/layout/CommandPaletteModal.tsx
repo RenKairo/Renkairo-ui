@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileCode, Terminal, Save, FolderOpen, RotateCw, Image, FolderSync } from 'lucide-react';
+import { Search, FileCode, Terminal, Save, FolderOpen, RotateCw, Image, FolderSync, Moon, Sun } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { ToriiIcon } from '../common/ToriiIcon';
 
 export const CommandPaletteModal: React.FC = () => {
   const { 
+    theme,
+    toggleTheme,
     isCommandPaletteOpen, 
     setCommandPaletteOpen, 
     openFile, 
@@ -48,6 +50,7 @@ export const CommandPaletteModal: React.FC = () => {
   }));
 
   const standardActions = [
+    { id: 'toggle_theme', title: `Preferences: Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Theme`, category: 'Appearance', icon: theme === 'dark' ? Sun : Moon, action: () => toggleTheme() },
     { id: 'open_folder', title: 'File: Open Folder From Local Machine...', category: 'Workspace', icon: FolderOpen, action: () => openFolder() },
     { id: 'change_scope', title: 'File: Change Folder Scope...', category: 'Workspace', icon: FolderSync, action: () => changeScopeFolder() },
     { id: 'refresh_tree', title: 'View: Refresh File Explorer', category: 'Explorer', icon: RotateCw, action: () => refreshTree() },
@@ -80,34 +83,34 @@ export const CommandPaletteModal: React.FC = () => {
   if (!isCommandPaletteOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center pt-20 px-4 select-none">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center pt-20 px-4 select-none">
       <div 
-        className="w-full max-w-xl bg-[#12151C] border border-[#232734] rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-xl bg-[var(--bg-panel)] border border-[var(--border-color)] rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Header */}
-        <div className="p-3 border-b border-[#232734] flex items-center space-x-3 bg-[#0B0D11]/60">
-          <div className="w-5 h-5 rounded bg-[#181B24] border border-[#232734] flex items-center justify-center shrink-0 p-0.5">
-            <ToriiIcon className="w-3.5 h-3.5 drop-shadow-[0_0_4px_rgba(255,77,77,0.5)]" />
+        <div className="p-3 border-b border-[var(--border-color)] flex items-center space-x-3 bg-[var(--bg-card)]">
+          <div className="w-5 h-5 rounded bg-[var(--bg-panel)] border border-[var(--border-color)] flex items-center justify-center shrink-0 p-0.5">
+            <ToriiIcon color="var(--accent-coral)" className="w-3.5 h-3.5 drop-shadow-[0_0_4px_var(--glow-coral)]" />
           </div>
-          <Search className="w-4 h-4 text-[#38BDF8] shrink-0" />
+          <Search className="w-4 h-4 text-[var(--accent-cyan)] shrink-0" />
           <input
             type="text"
             autoFocus
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
             placeholder="Type a command or search files..."
-            className="w-full bg-transparent text-sm text-gray-100 placeholder-gray-500 focus:outline-none font-mono"
+            className="w-full bg-transparent text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none font-mono"
           />
-          <span className="text-[10px] bg-[#181B24] border border-[#232734] px-2 py-0.5 rounded text-gray-400 font-mono">
+          <span className="text-[10px] bg-[var(--bg-panel)] border border-[var(--border-color)] px-2 py-0.5 rounded text-[var(--text-muted)] font-mono shadow-sm">
             ESC
           </span>
         </div>
 
         {/* Results List */}
-        <div className="max-h-80 overflow-y-auto p-1 divide-y divide-[#232734]/30">
+        <div className="max-h-80 overflow-y-auto p-1 divide-y divide-[var(--border-color)]/30">
           {filtered.length === 0 ? (
-            <div className="p-4 text-center text-xs text-gray-500 font-mono">
+            <div className="p-4 text-center text-xs text-[var(--text-muted)] font-mono">
               No matching files or commands found
             </div>
           ) : (
@@ -123,14 +126,14 @@ export const CommandPaletteModal: React.FC = () => {
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`w-full px-3 py-2.5 rounded-lg flex items-center justify-between text-xs transition-colors ${
-                    isSelected ? 'bg-[#181B24] text-white border border-[#38BDF8]/30' : 'text-gray-300 hover:bg-[#181B24]/50'
+                    isSelected ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--accent-cyan)]/40 font-medium' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <Icon className={`w-4 h-4 ${isSelected ? 'text-[#FF4D4D]' : 'text-gray-400'}`} />
+                    <Icon className={`w-4 h-4 ${isSelected ? 'text-[var(--accent-coral)]' : 'text-[var(--text-muted)]'}`} />
                     <span className="font-mono">{item.title}</span>
                   </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#0B0D11] text-gray-400 border border-[#232734]">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-color)]">
                     {item.category}
                   </span>
                 </button>
@@ -140,14 +143,14 @@ export const CommandPaletteModal: React.FC = () => {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-2 border-t border-[#232734] bg-[#0B0D11] text-[10px] text-gray-500 flex items-center justify-between px-3 font-mono">
-          <div className="flex items-center space-x-1.5 text-gray-400">
-            <ToriiIcon className="w-3 h-3" />
-            <span className="font-semibold text-gray-300">RenKairo Command Palette</span>
+        <div className="p-2 border-t border-[var(--border-color)] bg-[var(--bg-card)] text-[10px] text-[var(--text-muted)] flex items-center justify-between px-3 font-mono">
+          <div className="flex items-center space-x-1.5 text-[var(--text-secondary)]">
+            <ToriiIcon color="var(--accent-coral)" className="w-3 h-3" />
+            <span className="font-semibold text-[var(--text-primary)]">RenKairo Command Palette</span>
           </div>
           <div className="flex items-center space-x-3">
-            <span>Navigation: <kbd className="text-gray-300">↑</kbd> <kbd className="text-gray-300">↓</kbd></span>
-            <span>Execute: <kbd className="text-gray-300">↵</kbd></span>
+            <span>Navigation: <kbd className="text-[var(--text-primary)]">↑</kbd> <kbd className="text-[var(--text-primary)]">↓</kbd></span>
+            <span>Execute: <kbd className="text-[var(--text-primary)]">↵</kbd></span>
           </div>
         </div>
       </div>

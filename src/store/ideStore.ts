@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ActivityView, FileNode, ProblemItem, RightSidebarTab, SystemMetrics, TabItem, TerminalTab, WorkloadItem } from '../types/ide';
+import { ActivityView, FileNode, ProblemItem, RightSidebarTab, SystemMetrics, TabItem, TerminalTab, ThemeMode, WorkloadItem } from '../types/ide';
 import { 
   createFile, 
   createFolder, 
@@ -14,6 +14,32 @@ import {
   writeFile 
 } from '../services/fileSystem';
 import { fetchMetrics } from '../services/api';
+
+const applyThemeClass = (theme: ThemeMode) => {
+  try {
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      } else {
+        document.documentElement.classList.add('light');
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  } catch (e) {}
+};
+
+const getInitialTheme = (): ThemeMode => {
+  try {
+    const saved = localStorage.getItem('renkairo_theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch (e) {}
+  return 'dark';
+};
+
+const initialTheme = getInitialTheme();
+applyThemeClass(initialTheme);
 
 const triggerGitRefresh = () => {
   try {
@@ -69,6 +95,9 @@ interface IDEState {
   saveCurrentFile: () => Promise<void>;
 
   // Customization & Aesthetics
+  theme: ThemeMode;
+  setTheme: (theme: ThemeMode) => void;
+  toggleTheme: () => void;
   wallpaperOpacity: number;
   setWallpaperOpacity: (opacity: number) => void;
   fontSize: number;
@@ -416,6 +445,23 @@ export const useIDEStore = create<IDEState>((set, get) => ({
       });
       triggerGitRefresh();
     }
+  },
+
+  theme: initialTheme,
+  setTheme: (theme) => {
+    try {
+      localStorage.setItem('renkairo_theme', theme);
+    } catch (e) {}
+    applyThemeClass(theme);
+    set({ theme });
+  },
+  toggleTheme: () => {
+    const nextTheme: ThemeMode = get().theme === 'dark' ? 'light' : 'dark';
+    try {
+      localStorage.setItem('renkairo_theme', nextTheme);
+    } catch (e) {}
+    applyThemeClass(nextTheme);
+    set({ theme: nextTheme });
   },
 
   wallpaperOpacity: 15,
