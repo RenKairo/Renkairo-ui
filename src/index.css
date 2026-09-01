@@ -126,32 +126,30 @@
   background: linear-gradient(135deg, var(--accent-coral-subtle) 0%, var(--accent-cyan-subtle) 100%);
 }
 
-/* Monaco Editor & Diff Editor Glassy Frosty Styling */
+/* Monaco Editor & Diff Editor Solid High-Visibility Styling */
 .monaco-editor,
 .monaco-editor .monaco-editor-background,
-.monaco-editor-background,
-.monaco-component {
-  background-color: transparent !important;
+.monaco-editor-background {
+  background-color: var(--bg-panel) !important;
 }
 
 .monaco-editor .margin {
-  background-color: rgba(0, 0, 0, 0.15) !important;
+  background-color: var(--editor-gutter) !important;
 }
 
 [data-theme="light"] .monaco-editor,
 .light .monaco-editor {
-  --vscode-editor-background: transparent !important;
+  --vscode-editor-background: #FFFFFF !important;
 }
 
 [data-theme="light"] .monaco-editor .margin,
 .light .monaco-editor .margin {
-  background-color: rgba(255, 255, 255, 0.25) !important;
+  background-color: #FAFAFA !important;
 }
 
 .monaco-diff-editor,
-.monaco-diff-editor .monaco-editor-background,
-.monaco-diff-editor .diffOverview {
-  background-color: transparent !important;
+.monaco-diff-editor .monaco-editor-background {
+  background-color: var(--bg-panel) !important;
 }
 
 .xterm-viewport::-webkit-scrollbar {
