@@ -6,7 +6,6 @@ import {
   HardDrive, 
   Box, 
   Cpu, 
-  FileText, 
   Users, 
   Settings,
   ChevronLeft
@@ -28,7 +27,6 @@ export const ActivityBar: React.FC = () => {
     { id: 'remote', label: 'Remote', icon: HardDrive },
     { id: 'docker', label: 'Docker', icon: Box },
     { id: 'resources', label: 'Resources', icon: Cpu },
-    { id: 'logs', label: 'Logs', icon: FileText },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -59,9 +57,6 @@ export const ActivityBar: React.FC = () => {
                 <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[var(--accent-coral)] text-white text-[9px] font-mono font-bold flex items-center justify-center border border-[var(--bg-panel)] shadow-sm">
                   {gitChangesCount > 99 ? '99+' : gitChangesCount}
                 </span>
-              )}
-              {item.id === 'logs' && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 border border-[var(--bg-panel)]"></span>
               )}
               {item.id === 'remote' && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-sky-400 border border-[var(--bg-panel)]"></span>

@@ -7,7 +7,6 @@ import { SourceControlPanel } from './components/activity/SourceControlPanel';
 import { RemotePanel } from './components/activity/RemotePanel';
 import { DockerPanel } from './components/activity/DockerPanel';
 import { CloudResourcesPanel } from './components/activity/CloudResourcesPanel';
-import { LogsPanel } from './components/activity/LogsPanel';
 import { TeamPanel } from './components/activity/TeamPanel';
 import { SettingsPanel } from './components/activity/SettingsPanel';
 import { EditorCanvas } from './components/editor/EditorCanvas';
@@ -92,7 +91,6 @@ export const App: React.FC = () => {
       case 'remote': return <RemotePanel />;
       case 'docker': return <DockerPanel />;
       case 'resources': return <CloudResourcesPanel />;
-      case 'logs': return <LogsPanel />;
       case 'team': return <TeamPanel />;
       case 'settings': return <SettingsPanel />;
       default: return <FileExplorer />;

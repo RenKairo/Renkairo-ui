@@ -312,7 +312,7 @@ export const ObservabilityDeck: React.FC = () => {
                   className="p-2 bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50 rounded-lg flex items-center space-x-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all text-left shadow-sm cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
-                  <span className="text-[11px]">Open Logs</span>
+                  <span className="text-[11px]">Open Output</span>
                 </button>
               </div>
             </div>
