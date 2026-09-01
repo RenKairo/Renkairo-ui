@@ -17,7 +17,7 @@ import { ActivityView } from '../../types/ide';
 import { ToriiIcon } from '../common/ToriiIcon';
 
 export const ActivityBar: React.FC = () => {
-  const { activeActivity, setActiveActivity } = useIDEStore();
+  const { theme, activeActivity, setActiveActivity } = useIDEStore();
   const { gitStatus } = useGitStore();
   const gitChangesCount = gitStatus?.totalChanges || 0;
 
@@ -44,29 +44,31 @@ export const ActivityBar: React.FC = () => {
             <button
               key={item.id}
               onClick={() => setActiveActivity(item.id)}
-              title={item.label}
-              className={`w-full py-2.5 flex flex-col items-center justify-center relative group transition-all focus:outline-none ${
-                isActive 
-                  ? 'text-[var(--accent-coral)]' 
+              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all group relative cursor-pointer ${
+                isActive
+                  ? 'bg-[var(--bg-card)] text-[var(--accent-coral)] shadow-sm'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
               }`}
+              title={item.label}
             >
-              {/* Active Left Coral Accent Bar */}
+              <Icon className="w-5 h-5 transition-transform group-hover:scale-105" />
               {isActive && (
-                <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-[var(--accent-coral)] rounded-r cyber-glow-coral"></div>
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[var(--accent-coral)] rounded-r cyber-glow-coral" />
               )}
-              
-              <div className="relative">
-                <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'drop-shadow-[0_0_8px_var(--glow-coral)]' : ''}`} />
-                {item.id === 'git' && gitChangesCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2 bg-[var(--accent-coral)] text-white text-[9px] font-bold font-mono px-1 rounded-full min-w-[14px] h-[14px] flex items-center justify-center border border-[var(--bg-panel)] shadow-sm">
-                    {gitChangesCount > 99 ? '99+' : gitChangesCount}
-                  </span>
-                )}
-              </div>
-              <span className="text-[9px] mt-1 font-medium tracking-tight opacity-90 group-hover:opacity-100">
-                {item.label.split(' ')[0]}
-              </span>
+              {item.id === 'git' && gitChangesCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[var(--accent-coral)] text-white text-[9px] font-mono font-bold flex items-center justify-center border border-[var(--bg-panel)] shadow-sm">
+                  {gitChangesCount > 99 ? '99+' : gitChangesCount}
+                </span>
+              )}
+              {item.id === 'logs' && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 border border-[var(--bg-panel)]"></span>
+              )}
+              {item.id === 'remote' && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-sky-400 border border-[var(--bg-panel)]"></span>
+              )}
+              {item.id === 'team' && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-400 border border-[var(--bg-panel)]"></span>
+              )}
             </button>
           );
         })}
@@ -81,7 +83,7 @@ export const ActivityBar: React.FC = () => {
         {/* Decorative Torii Japanese Wallpaper Thumbnail */}
         <div 
           className="w-11 h-14 rounded border border-[var(--border-color)] bg-[var(--bg-card)] bg-cover bg-center relative overflow-hidden flex flex-col justify-end p-1 group shadow-sm"
-          style={{ backgroundImage: `url('/wallpaper.png')` }}
+          style={{ backgroundImage: theme === 'light' ? "url('/wallpaper-light.jpeg')" : "url('/wallpaper-dark.png')" }}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-panel)] via-[var(--bg-panel)]/40 to-transparent"></div>
           {/* Subtle Torii Graphic */}

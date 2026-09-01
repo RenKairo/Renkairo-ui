@@ -100,8 +100,8 @@ export const EditorCanvas: React.FC = () => {
       <div 
         className="absolute inset-0 pointer-events-none z-0 transition-opacity duration-300 bg-cover bg-center"
         style={{ 
-          opacity: wallpaperOpacity / 100,
-          backgroundImage: `url('/wallpaper.png')`
+          opacity: (theme === 'light' ? Math.max(wallpaperOpacity, 30) : wallpaperOpacity) / 100,
+          backgroundImage: theme === 'light' ? `url('/wallpaper-light.jpeg')` : `url('/wallpaper-dark.png')`
         }}
       >
         <div className="absolute inset-0" style={{ background: 'var(--wallpaper-overlay)' }}></div>

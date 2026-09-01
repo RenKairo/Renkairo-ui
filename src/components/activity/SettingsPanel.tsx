@@ -25,7 +25,7 @@ export const SettingsPanel: React.FC = () => {
 
   return (
     <aside className="w-full bg-[var(--bg-panel)] border-r border-[var(--border-color)] flex flex-col select-none h-full z-10 font-sans transition-colors duration-150">
-      <div className="h-9 px-3 border-b border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-muted)] font-semibold uppercase tracking-wider">
+      <div className="h-9 px-3 border-b border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-muted)] font-semibold uppercase tracking-wider bg-[var(--bg-panel)]">
         <span>IDE PREFERENCES</span>
       </div>
 
@@ -39,17 +39,25 @@ export const SettingsPanel: React.FC = () => {
               onClick={() => setTheme('dark')}
               className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer transition-all shadow-sm ${
                 theme === 'dark' 
-                  ? 'bg-[#12151C] border-[var(--accent-coral)] text-white shadow-[0_0_12px_var(--glow-coral)]' 
-                  : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--accent-cyan)]/40'
+                  ? 'bg-[var(--bg-card)] border-[var(--accent-coral)] shadow-[0_0_12px_var(--glow-coral)]' 
+                  : 'bg-[var(--bg-card)] border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50'
               }`}
             >
               <div className="flex items-center space-x-2.5">
-                <div className="w-6 h-6 rounded-md bg-[#0B0D11] border border-[#232734] flex items-center justify-center text-amber-400">
+                <div className={`w-7 h-7 rounded-md border flex items-center justify-center ${
+                  theme === 'dark' 
+                    ? 'bg-[var(--bg-base)] border-[var(--border-color)] text-amber-400' 
+                    : 'bg-[var(--bg-base)] border-[var(--border-color)] text-amber-500'
+                }`}>
                   <Moon className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <div className="font-semibold text-xs text-white">East-Asian Cyber Dark</div>
-                  <div className="text-[10px] text-gray-400">Obsidian & Torii Coral Crimson</div>
+                  <div className="font-semibold text-xs text-[var(--text-primary)]">
+                    East-Asian Cyber Dark
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)]">
+                    Obsidian & Torii Coral Crimson
+                  </div>
                 </div>
               </div>
               {theme === 'dark' && <Check className="w-4 h-4 text-[var(--accent-coral)]" />}
@@ -60,17 +68,25 @@ export const SettingsPanel: React.FC = () => {
               onClick={() => setTheme('light')}
               className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer transition-all shadow-sm ${
                 theme === 'light' 
-                  ? 'bg-[#FFFFFF] border-[var(--accent-coral)] text-[#0F172A] shadow-[0_0_12px_var(--glow-coral)]' 
-                  : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--accent-cyan)]/40'
+                  ? 'bg-[var(--bg-card)] border-[var(--accent-coral)] shadow-[0_0_12px_var(--glow-coral)]' 
+                  : 'bg-[var(--bg-card)] border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50'
               }`}
             >
               <div className="flex items-center space-x-2.5">
-                <div className="w-6 h-6 rounded-md bg-[#F8FAFC] border border-[#CBD5E1] flex items-center justify-center text-amber-500">
+                <div className={`w-7 h-7 rounded-md border flex items-center justify-center ${
+                  theme === 'light' 
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600' 
+                    : 'bg-[var(--bg-base)] border-[var(--border-color)] text-amber-400'
+                }`}>
                   <Sun className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <div className="font-semibold text-xs text-[var(--text-primary)]">Kyoto Porcelain Light</div>
-                  <div className="text-[10px] text-[var(--text-muted)]">Clean Canvas & Sapphire Indigo</div>
+                  <div className="font-semibold text-xs text-[var(--text-primary)]">
+                    Kyoto Porcelain Light
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)]">
+                    Clean Canvas & Sapphire Indigo
+                  </div>
                 </div>
               </div>
               {theme === 'light' && <Check className="w-4 h-4 text-[var(--accent-coral)]" />}
