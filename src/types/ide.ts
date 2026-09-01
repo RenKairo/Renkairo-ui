@@ -103,6 +103,8 @@ export type RightSidebarTab = 'OVERVIEW' | 'SERVERS' | 'DOCKER' | 'COMPUTE';
 
 export interface SystemMetrics {
   timestamp: number;
+  hostname?: string;
+  osName?: string;
   cpu: {
     usage: number;
     cores: number;
@@ -180,4 +182,50 @@ export interface ClipboardItem {
   isDir: boolean;
   action: 'copy' | 'cut';
 }
+
+export interface ServerEndpoint {
+  id: string;
+  name: string;
+  port: number;
+  url: string;
+  status: 'online' | 'offline';
+  latencyMs?: number;
+  type: string;
+}
+
+export interface DockerContainerInfo {
+  id: string;
+  name: string;
+  image: string;
+  ports: string;
+  status: string;
+  created: string;
+  state: string;
+}
+
+export interface ComputeMetrics {
+  cores: { id: number; model: string; speed: number; usage: number }[];
+  memory: { heapUsed: number; heapTotal: number; rss: number; external: number };
+  loadAvg: number[];
+  platform: string;
+  arch: string;
+  uptime: number;
+  osRelease: string;
+}
+
+export interface GitBranchInfo {
+  name: string;
+  current?: boolean;
+  isCurrent?: boolean;
+  isRemote?: boolean;
+}
+
+export interface GitCommitInfo {
+  hash: string;
+  message: string;
+  author: string;
+  date: string;
+}
+
+
 

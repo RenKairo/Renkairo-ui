@@ -4,6 +4,8 @@ node_modules/
 
 # Production builds
 build/
+dist/
+dist_electron/
 
 # Rust / Tauri target builds
 src-tauri/target/

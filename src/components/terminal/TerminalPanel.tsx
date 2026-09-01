@@ -316,8 +316,15 @@ export const TerminalPanel: React.FC = () => {
       term.loadAddon(fitAddon);
       term.open(container);
 
-      const isFile = window.location.protocol === 'file:';
-      const baseUrl = isFile
+      // WebSocket URL with shell, cwd & compact_path query parameters
+      const isElectron = typeof window !== 'undefined' && (
+        Boolean(window.electronAPI) ||
+        window.location.protocol === 'file:' ||
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === ''
+      );
+      const baseUrl = isElectron
         ? 'ws://localhost:8000/api/ws/terminal'
         : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ws/terminal`;
       

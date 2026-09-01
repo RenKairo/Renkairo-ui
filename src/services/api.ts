@@ -1,7 +1,7 @@
 import { FileNode, FolderBrowseResult, SystemMetrics } from '../types/ide';
 
 const API_BASE = typeof window !== 'undefined' && window.location.protocol === 'file:'
-  ? 'http://localhost:8000/api'
+  ? 'http://127.0.0.1:8000/api'
   : '/api';
 
 // Web File System Access API state
@@ -586,32 +586,35 @@ export const requestNativeFolderDialog = async (defaultPath?: string): Promise<s
 };
 
 export const fetchMetrics = async (): Promise<SystemMetrics> => {
-  if (typeof window !== 'undefined' && window.location.protocol !== 'file:') {
-    try {
-      const res = await fetch(`${API_BASE}/system/metrics`);
-      if (res.ok) return await res.json();
-    } catch (err) {}
-  }
+  try {
+    const res = await fetch(`${API_BASE}/system/metrics`);
+    if (res.ok) return await res.json();
+  } catch (err) {}
 
-  const cpu = Math.round(20 + Math.random() * 10);
-  const ram = Math.round(40 + Math.random() * 5);
-  const gpu = Math.round(55 + Math.random() * 8);
-  const vram = Number((32.1 + (Math.random() * 0.4 - 0.2)).toFixed(1));
-  const network = Math.round(120 + Math.random() * 20);
+  const cpu = Math.round(15 + Math.random() * 10);
+  const ram = Math.round(35 + Math.random() * 5);
+  const gpu = Math.round(10 + Math.random() * 8);
+
+  const fallbackCores = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 8) : 8;
+  const memoryPerf = (typeof performance !== 'undefined' && (performance as any).memory?.jsHeapSizeLimit)
+    ? Number(((performance as any).memory.jsHeapSizeLimit / (1024 * 1024 * 1024)).toFixed(1))
+    : 16.0;
 
   return {
     timestamp: Date.now(),
-    cpu: { usage: cpu, cores: 16, model: 'AMD Ryzen 9' },
-    ram: { usage: ram, used_gb: Number((32 * (ram / 100)).toFixed(1)), total_gb: 32.0 },
+    hostname: typeof window !== 'undefined' ? window.location.hostname : 'Localhost',
+    osName: 'Host Workstation',
+    cpu: { usage: cpu, cores: fallbackCores, model: `Host System Processor (${fallbackCores} Cores)` },
+    ram: { usage: ram, used_gb: Number((memoryPerf * (ram / 100)).toFixed(1)), total_gb: memoryPerf },
     gpu: {
-      model: 'NVIDIA A100',
+      model: 'Host Graphics Controller',
       usage: gpu,
-      vram_used_gb: vram,
-      vram_total_gb: 48.0,
-      vram_percent: Number(((vram / 48.0) * 100).toFixed(1))
+      vram_used_gb: 1.0,
+      vram_total_gb: 4.0,
+      vram_percent: 25.0
     },
-    storage: { percent: 25, used_gb: 256.0, total_gb: 1000.0 },
-    network: { mbps: network, percent: Math.round((network / 1000) * 100) }
+    storage: { percent: 30, used_gb: 150.0, total_gb: 500.0 },
+    network: { mbps: 25, percent: 3 }
   };
 };
 
