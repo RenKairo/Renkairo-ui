@@ -7,8 +7,7 @@ import {
   Box, 
   Cpu, 
   Users, 
-  Settings,
-  ChevronLeft
+  Settings
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useGitStore } from '../../store/gitStore';
@@ -41,7 +40,7 @@ export const ActivityBar: React.FC = () => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveActivity(item.id)}
+              onClick={() => setActiveActivity(isActive ? null : item.id)}
               className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all group relative cursor-pointer ${
                 isActive
                   ? 'bg-[var(--bg-card)] text-[var(--accent-coral)] shadow-sm'
@@ -71,9 +70,6 @@ export const ActivityBar: React.FC = () => {
 
       {/* Bottom Panel Artwork Banner */}
       <div className="w-full flex flex-col items-center px-1 pb-1">
-        <button title="Collapse Sidebars" className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-2">
-          <ChevronLeft className="w-4 h-4" />
-        </button>
 
         {/* Decorative Torii Japanese Wallpaper Thumbnail */}
         <div 

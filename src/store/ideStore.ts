@@ -49,8 +49,8 @@ const triggerGitRefresh = () => {
 
 interface IDEState {
   // Navigation & Layout State
-  activeActivity: ActivityView;
-  setActiveActivity: (view: ActivityView) => void;
+  activeActivity: ActivityView | null;
+  setActiveActivity: (view: ActivityView | null) => void;
   leftSidebarWidth: number;
   setLeftSidebarWidth: (width: number) => void;
   rightSidebarWidth: number;

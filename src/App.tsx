@@ -93,7 +93,7 @@ export const App: React.FC = () => {
       case 'resources': return <CloudResourcesPanel />;
       case 'team': return <TeamPanel />;
       case 'settings': return <SettingsPanel />;
-      default: return <FileExplorer />;
+      default: return null;
     }
   };
 
@@ -108,21 +108,23 @@ export const App: React.FC = () => {
         <ActivityBar />
 
         {/* Dynamic Resizable Left Activity Panel */}
-        <div 
-          style={{ width: `${leftSidebarWidth}px` }} 
-          className="h-full relative shrink-0 flex flex-col bg-[var(--bg-base)] overflow-hidden"
-        >
-          {renderActivityPanel()}
-
-          {/* Left-to-Center Resize Handle */}
-          <div
-            onMouseDown={handleLeftResizeMouseDown}
-            className="w-2 h-full absolute top-0 -right-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
-            title="Drag to resize left panel"
+        {activeActivity && (
+          <div 
+            style={{ width: `${leftSidebarWidth}px` }} 
+            className="h-full relative shrink-0 flex flex-col bg-[var(--bg-base)] overflow-hidden"
           >
-            <div className="w-0.5 h-12 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-cyan)] group-active:bg-[var(--accent-coral)] transition-colors" />
+            {renderActivityPanel()}
+
+            {/* Left-to-Center Resize Handle */}
+            <div
+              onMouseDown={handleLeftResizeMouseDown}
+              className="w-2 h-full absolute top-0 -right-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
+              title="Drag to resize left panel"
+            >
+              <div className="w-0.5 h-12 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-cyan)] group-active:bg-[var(--accent-coral)] transition-colors" />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Center Main Stage (Editor Canvas + Bottom Terminal Panel) */}
         <div className={`flex-1 min-w-0 flex flex-col overflow-hidden relative ${isDraggingLeft || isDraggingRight ? 'pointer-events-none' : ''}`}>
