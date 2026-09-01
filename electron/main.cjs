@@ -1,7 +1,9 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 function createWindow() {
+  const iconPath = path.join(__dirname, '../public/torii-gate.svg');
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -9,6 +11,7 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: '#0B0D11',
     title: 'RenKairo IDE - Next-Gen Cloud & AI Engineering Canvas',
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     show: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),

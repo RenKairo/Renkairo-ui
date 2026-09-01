@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { FileNode } from '../../types/ide';
+import { ToriiIcon } from '../common/ToriiIcon';
 
 const getFileIcon = (filename: string) => {
   const lower = filename.toLowerCase();
@@ -417,7 +418,10 @@ export const FileExplorer: React.FC = () => {
       ) : !workspacePath ? (
         /* 2. No Folder Opened State */
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-          <FolderTree className="w-10 h-10 text-gray-600 mb-3" />
+          <div className="w-12 h-12 rounded-xl bg-[#12151C] border border-[#232734] flex items-center justify-center mb-3 shadow-lg p-2 relative group">
+            <div className="absolute inset-0 bg-gradient-to-t from-[#FF4D4D]/20 to-transparent opacity-50 rounded-xl"></div>
+            <ToriiIcon className="w-7 h-7 drop-shadow-[0_0_8px_rgba(255,77,77,0.5)] group-hover:scale-105 transition-transform" />
+          </div>
           <h3 className="text-xs font-semibold text-gray-300 mb-1 font-mono uppercase tracking-wider">No Folder Opened</h3>
           <p className="text-[11px] text-gray-500 mb-4">Open a folder from your computer to start editing and creating files.</p>
           

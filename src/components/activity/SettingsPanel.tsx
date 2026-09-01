@@ -1,6 +1,7 @@
 import React from 'react';
 import { Settings, Sliders, Eye, Type, Image, Check } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
+import { ToriiIcon } from '../common/ToriiIcon';
 
 export const SettingsPanel: React.FC = () => {
   const { 
@@ -162,6 +163,19 @@ export const SettingsPanel: React.FC = () => {
             </div>
             <div className="p-2 rounded bg-[#0B0D11] border border-[#232734] text-gray-400 flex items-center justify-between cursor-pointer hover:text-white">
               <span>Midnight Pure Black</span>
+            </div>
+          </div>
+        </div>
+
+        {/* About RenKairo Brand Card */}
+        <div className="border-t border-[#232734] pt-3">
+          <div className="bg-[#12151C] border border-[#232734] rounded-lg p-3 flex items-center space-x-3 group">
+            <div className="w-9 h-9 rounded-lg bg-[#0B0D11] border border-[#232734] flex items-center justify-center shrink-0 p-1.5 shadow-inner">
+              <ToriiIcon className="w-6 h-6 drop-shadow-[0_0_8px_rgba(255,77,77,0.6)] group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="overflow-hidden">
+              <div className="font-bold text-white text-xs tracking-wide font-mono">RenKairo IDE</div>
+              <div className="text-[10px] text-gray-400 font-mono">v1.0.0 • Cloud & AI Engineering Canvas</div>
             </div>
           </div>
         </div>

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { ActivityView } from '../../types/ide';
+import { ToriiIcon } from '../common/ToriiIcon';
 
 export const ActivityBar: React.FC = () => {
   const { activeActivity, setActiveActivity } = useIDEStore();
@@ -72,8 +73,8 @@ export const ActivityBar: React.FC = () => {
         >
           <div className="absolute inset-0 bg-gradient-to-t from-[#0B0D11] via-[#12151C]/40 to-transparent"></div>
           {/* Subtle Torii Graphic */}
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 text-gray-700 text-xs opacity-70 group-hover:text-[#FF4D4D] transition-colors">
-            ⛩
+          <div className="absolute top-1.5 left-1/2 -translate-x-1/2 opacity-70 group-hover:opacity-100 transition-opacity">
+            <ToriiIcon className="w-3.5 h-3.5 drop-shadow-[0_0_6px_rgba(255,77,77,0.7)]" />
           </div>
           <span className="text-[7px] font-mono text-center text-gray-400 z-10 tracking-widest font-semibold uppercase">
             RENKAIRO

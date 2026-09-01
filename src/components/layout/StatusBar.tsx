@@ -10,6 +10,7 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
+import { ToriiIcon } from '../common/ToriiIcon';
 
 export const StatusBar: React.FC = () => {
   const { cursorPos, problems, rootName, isFolderOpening } = useIDEStore();
@@ -19,7 +20,13 @@ export const StatusBar: React.FC = () => {
   return (
     <footer className="h-6 bg-[#0B0D11] border-t border-[#232734] px-3 flex items-center justify-between text-[11px] text-gray-400 select-none z-30 font-sans">
       {/* Left: Branch & Problems Counter / Live Status */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-3">
+        {/* Brand Icon Tag */}
+        <div className="flex items-center space-x-1.5 pr-2.5 border-r border-[#232734] group cursor-default">
+          <ToriiIcon className="w-3.5 h-3.5 group-hover:drop-shadow-[0_0_4px_rgba(255,77,77,0.8)] transition-all" />
+          <span className="font-mono text-[10px] text-gray-300 font-bold tracking-tight">RENKAIRO</span>
+        </div>
+
         {isFolderOpening ? (
           <div className="flex items-center space-x-1.5 text-[#38BDF8] font-mono animate-pulse">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />

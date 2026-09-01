@@ -12,6 +12,7 @@ import {
   Check
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
+import { ToriiIcon } from '../common/ToriiIcon';
 
 export const TopCommandBar: React.FC = () => {
   const { 
@@ -36,9 +37,9 @@ export const TopCommandBar: React.FC = () => {
             className="flex items-center space-x-2 px-2 py-1 rounded hover:bg-[#181B24] transition-colors focus:outline-none"
           >
             {/* Japanese Torii Emblem */}
-            <div className="w-5 h-5 rounded bg-[#12151C] border border-[#232734] flex items-center justify-center relative overflow-hidden group">
+            <div className="w-5 h-5 rounded bg-[#12151C] border border-[#232734] flex items-center justify-center relative overflow-hidden group p-0.5">
               <div className="absolute inset-0 bg-gradient-to-t from-[#FF4D4D]/20 to-transparent opacity-60"></div>
-              <span className="text-[#FF4D4D] text-[10px] font-bold tracking-tighter z-10">⛩</span>
+              <ToriiIcon className="w-3.5 h-3.5 z-10 drop-shadow-[0_0_6px_rgba(255,77,77,0.6)] group-hover:scale-110 transition-transform" />
             </div>
             <span className="font-semibold text-gray-200 tracking-wide font-mono">
               {rootName ? rootName : 'RenKairo IDE'}
@@ -130,9 +131,14 @@ export const TopCommandBar: React.FC = () => {
                 <span className="font-semibold text-white">System Status</span>
               </div>
               <div className="space-y-2 text-xs">
-                <div className="bg-[#181B24] p-2 rounded border border-[#232734]">
-                  <p className="font-medium text-white">RenKairo Core</p>
-                  <p className="text-[10px] text-gray-400">{workspacePath ? `Active: ${rootName}` : 'Ready to open folder'}</p>
+                <div className="bg-[#181B24] p-2 rounded border border-[#232734] flex items-center space-x-2.5">
+                  <div className="w-6 h-6 rounded bg-[#12151C] border border-[#232734] flex items-center justify-center shrink-0 p-0.5">
+                    <ToriiIcon className="w-4 h-4 drop-shadow-[0_0_4px_rgba(255,77,77,0.5)]" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">RenKairo Core</p>
+                    <p className="text-[10px] text-gray-400">{workspacePath ? `Active: ${rootName}` : 'Ready to open folder'}</p>
+                  </div>
                 </div>
               </div>
             </div>

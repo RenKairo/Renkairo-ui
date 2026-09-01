@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, FileCode, Terminal, Save, FolderOpen, RotateCw, Image, FolderSync } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
+import { ToriiIcon } from '../common/ToriiIcon';
 
 export const CommandPaletteModal: React.FC = () => {
   const { 
@@ -86,7 +87,10 @@ export const CommandPaletteModal: React.FC = () => {
       >
         {/* Search Header */}
         <div className="p-3 border-b border-[#232734] flex items-center space-x-3 bg-[#0B0D11]/60">
-          <Search className="w-4 h-4 text-[#38BDF8]" />
+          <div className="w-5 h-5 rounded bg-[#181B24] border border-[#232734] flex items-center justify-center shrink-0 p-0.5">
+            <ToriiIcon className="w-3.5 h-3.5 drop-shadow-[0_0_4px_rgba(255,77,77,0.5)]" />
+          </div>
+          <Search className="w-4 h-4 text-[#38BDF8] shrink-0" />
           <input
             type="text"
             autoFocus
@@ -136,9 +140,15 @@ export const CommandPaletteModal: React.FC = () => {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-2 border-t border-[#232734] bg-[#0B0D11] text-[10px] text-gray-500 flex justify-between px-3 font-mono">
-          <span>Navigation: <kbd className="text-gray-300">↑</kbd> <kbd className="text-gray-300">↓</kbd></span>
-          <span>Execute: <kbd className="text-gray-300">↵</kbd></span>
+        <div className="p-2 border-t border-[#232734] bg-[#0B0D11] text-[10px] text-gray-500 flex items-center justify-between px-3 font-mono">
+          <div className="flex items-center space-x-1.5 text-gray-400">
+            <ToriiIcon className="w-3 h-3" />
+            <span className="font-semibold text-gray-300">RenKairo Command Palette</span>
+          </div>
+          <div className="flex items-center space-x-3">
+            <span>Navigation: <kbd className="text-gray-300">↑</kbd> <kbd className="text-gray-300">↓</kbd></span>
+            <span>Execute: <kbd className="text-gray-300">↵</kbd></span>
+          </div>
         </div>
       </div>
     </div>

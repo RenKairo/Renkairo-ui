@@ -16,6 +16,7 @@ import {
 import { useIDEStore } from '../../store/ideStore';
 import { openExternalTerminal } from '../../services/api';
 import { getMonacoOptionsForTier, formatFileSize } from '../../services/largeFileService';
+import { ToriiIcon } from '../common/ToriiIcon';
 
 export const EditorCanvas: React.FC = () => {
   const { 
@@ -337,9 +338,9 @@ export const EditorCanvas: React.FC = () => {
           /* 5. Empty Start State */
           <div className="h-full flex flex-col items-center justify-center text-gray-400 select-none p-6">
             {/* Japanese Torii Emblem */}
-            <div className="w-16 h-16 rounded-2xl bg-[#12151C] border border-[#232734] flex items-center justify-center mb-4 shadow-2xl relative overflow-hidden">
+            <div className="w-16 h-16 rounded-2xl bg-[#12151C] border border-[#232734] flex items-center justify-center mb-4 shadow-2xl relative overflow-hidden group p-3">
               <div className="absolute inset-0 bg-gradient-to-t from-[#FF4D4D]/20 to-transparent"></div>
-              <span className="text-3xl text-[#FF4D4D] z-10 drop-shadow-[0_0_12px_rgba(255,77,77,0.5)]">⛩</span>
+              <ToriiIcon className="w-10 h-10 z-10 drop-shadow-[0_0_12px_rgba(255,77,77,0.6)] group-hover:scale-105 transition-transform" />
             </div>
 
             <h2 className="text-lg font-bold text-white tracking-wide mb-1 font-mono">RenKairo IDE</h2>

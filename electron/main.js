@@ -128,6 +128,7 @@ function startBackendServer() {
 }
 
 function createWindow() {
+  const iconPath = path.join(ROOT_DIR, 'public/torii-gate.svg');
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -135,6 +136,7 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: '#0B0D11',
     title: 'RenKairo IDE - Next-Gen Cloud & AI Engineering Canvas',
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
