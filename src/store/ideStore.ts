@@ -464,7 +464,7 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     set({ theme: nextTheme });
   },
 
-  wallpaperOpacity: 15,
+  wallpaperOpacity: 50,
   setWallpaperOpacity: (opacity) => set({ wallpaperOpacity: opacity }),
 
   fontSize: 13,

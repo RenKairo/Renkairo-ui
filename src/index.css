@@ -34,7 +34,7 @@
     --glow-coral: rgba(255, 77, 77, 0.25);
     --glow-cyan: rgba(56, 189, 248, 0.25);
     --modal-backdrop: rgba(0, 0, 0, 0.75);
-    --wallpaper-overlay: linear-gradient(to top, #0B0D11 0%, rgba(11, 13, 17, 0.6) 50%, rgba(11, 13, 17, 0.8) 100%);
+    --wallpaper-overlay: linear-gradient(to top, rgba(11, 13, 17, 0.25) 0%, rgba(11, 13, 17, 0.05) 50%, rgba(11, 13, 17, 0.15) 100%);
     --shadow-dropdown: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 0 0 1px #232734;
   }
 
@@ -70,7 +70,7 @@
     --glow-coral: rgba(225, 29, 72, 0.2);
     --glow-cyan: rgba(2, 132, 199, 0.2);
     --modal-backdrop: rgba(15, 23, 42, 0.4);
-    --wallpaper-overlay: linear-gradient(to top, rgba(243, 244, 246, 0.35) 0%, rgba(243, 244, 246, 0.1) 50%, rgba(243, 244, 246, 0.2) 100%);
+    --wallpaper-overlay: linear-gradient(to top, rgba(243, 244, 246, 0.15) 0%, rgba(243, 244, 246, 0.05) 50%, rgba(243, 244, 246, 0.1) 100%);
     --shadow-dropdown: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px #E2E8F0;
   }
 
@@ -126,23 +126,32 @@
   background: linear-gradient(135deg, var(--accent-coral-subtle) 0%, var(--accent-cyan-subtle) 100%);
 }
 
-/* Monaco Editor Custom Styling */
-.monaco-editor {
+/* Monaco Editor & Diff Editor Glassy Frosty Styling */
+.monaco-editor,
+.monaco-editor .monaco-editor-background,
+.monaco-editor-background,
+.monaco-component {
   background-color: transparent !important;
 }
 
 .monaco-editor .margin {
-  background-color: var(--editor-gutter) !important;
+  background-color: rgba(0, 0, 0, 0.15) !important;
 }
 
 [data-theme="light"] .monaco-editor,
 .light .monaco-editor {
-  --vscode-editor-background: #FFFFFF !important;
+  --vscode-editor-background: transparent !important;
 }
 
 [data-theme="light"] .monaco-editor .margin,
 .light .monaco-editor .margin {
-  background-color: #FAFAFA !important;
+  background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.monaco-diff-editor,
+.monaco-diff-editor .monaco-editor-background,
+.monaco-diff-editor .diffOverview {
+  background-color: transparent !important;
 }
 
 .xterm-viewport::-webkit-scrollbar {

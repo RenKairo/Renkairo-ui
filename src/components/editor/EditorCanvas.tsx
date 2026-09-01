@@ -96,16 +96,36 @@ export const EditorCanvas: React.FC = () => {
 
   return (
     <div className="flex-1 flex flex-col bg-[var(--bg-panel)] relative overflow-hidden h-full transition-colors duration-150">
-      {/* Background Atmosphere */}
+      {/* Background Atmosphere - Fixed 50% Opacity Background Wallpapers */}
       <div 
-        className="absolute inset-0 pointer-events-none z-0 transition-opacity duration-300 bg-cover bg-center"
+        className="absolute inset-0 pointer-events-none z-0 transition-opacity duration-300 bg-cover bg-center bg-fixed"
         style={{ 
-          opacity: (theme === 'light' ? Math.max(wallpaperOpacity, 30) : wallpaperOpacity) / 100,
+          opacity: (wallpaperOpacity ?? 50) / 100,
           backgroundImage: theme === 'light' ? `url('/wallpaper-light.jpeg')` : `url('/wallpaper-dark.png')`
         }}
       >
         <div className="absolute inset-0" style={{ background: 'var(--wallpaper-overlay)' }}></div>
       </div>
+
+      {/* Glassy Frosty Backdrop Filter Layer (Activates when Code Appears) */}
+      <div 
+        className={`absolute inset-0 pointer-events-none z-[1] transition-all duration-300 ease-in-out ${
+          activeTab && !activeTab.isBinary && !isFolderOpening && !fileLoadingProgress
+            ? 'opacity-100'
+            : 'opacity-0'
+        }`}
+        style={{
+          backdropFilter: activeTab && !activeTab.isBinary && !isFolderOpening && !fileLoadingProgress 
+            ? 'blur(14px) saturate(140%)' 
+            : 'none',
+          WebkitBackdropFilter: activeTab && !activeTab.isBinary && !isFolderOpening && !fileLoadingProgress 
+            ? 'blur(14px) saturate(140%)' 
+            : 'none',
+          backgroundColor: theme === 'dark' 
+            ? 'rgba(18, 21, 28, 0.45)' 
+            : 'rgba(255, 255, 255, 0.50)'
+        }}
+      />
 
       {/* Tab Bar Header (Only visible if tabs exist or workspace is active) */}
       {tabs.length > 0 && (
