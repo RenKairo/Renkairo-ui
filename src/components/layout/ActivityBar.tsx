@@ -6,10 +6,8 @@ import {
   HardDrive, 
   Box, 
   Cpu, 
-  FileText, 
   Users, 
-  Settings,
-  ChevronLeft
+  Settings
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useGitStore } from '../../store/gitStore';
@@ -28,7 +26,6 @@ export const ActivityBar: React.FC = () => {
     { id: 'remote', label: 'Remote', icon: HardDrive },
     { id: 'docker', label: 'Docker', icon: Box },
     { id: 'resources', label: 'Resources', icon: Cpu },
-    { id: 'logs', label: 'Logs', icon: FileText },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -43,7 +40,7 @@ export const ActivityBar: React.FC = () => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveActivity(item.id)}
+              onClick={() => setActiveActivity(isActive ? null : item.id)}
               className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all group relative cursor-pointer ${
                 isActive
                   ? 'bg-[var(--bg-card)] text-[var(--accent-coral)] shadow-sm'
@@ -60,9 +57,6 @@ export const ActivityBar: React.FC = () => {
                   {gitChangesCount > 99 ? '99+' : gitChangesCount}
                 </span>
               )}
-              {item.id === 'logs' && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 border border-[var(--bg-panel)]"></span>
-              )}
               {item.id === 'remote' && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-sky-400 border border-[var(--bg-panel)]"></span>
               )}
@@ -76,9 +70,6 @@ export const ActivityBar: React.FC = () => {
 
       {/* Bottom Panel Artwork Banner */}
       <div className="w-full flex flex-col items-center px-1 pb-1">
-        <button title="Collapse Sidebars" className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-2">
-          <ChevronLeft className="w-4 h-4" />
-        </button>
 
         {/* Decorative Torii Japanese Wallpaper Thumbnail */}
         <div 

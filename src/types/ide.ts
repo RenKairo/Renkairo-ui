@@ -93,7 +93,6 @@ export type ActivityView =
   | 'remote' 
   | 'docker' 
   | 'resources' 
-  | 'logs' 
   | 'team' 
   | 'settings';
 
