@@ -16,8 +16,28 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
-import { FileNode } from '../../types/ide';
+import { useGitStore } from '../../store/gitStore';
+import { FileNode, GitStatusResult } from '../../types/ide';
 import { ToriiIcon } from '../common/ToriiIcon';
+
+function getGitFileStatus(filePath: string, gitStatus: GitStatusResult | null): string | null {
+  if (!gitStatus || !gitStatus.isRepo) return null;
+  const cleanPath = filePath.replace(/\\/g, '/');
+
+  // 1. Staged
+  const stagedItem = gitStatus.staged.find(s => s.path === cleanPath || s.path.endsWith('/' + cleanPath));
+  if (stagedItem) return stagedItem.status;
+
+  // 2. Unstaged
+  const unstagedItem = gitStatus.unstaged.find(u => u.path === cleanPath || u.path.endsWith('/' + cleanPath));
+  if (unstagedItem) return unstagedItem.status;
+
+  // 3. Untracked
+  const untrackedItem = gitStatus.untracked.find(u => u.path === cleanPath || u.path.endsWith('/' + cleanPath));
+  if (untrackedItem) return 'U';
+
+  return null;
+}
 
 const getFileIcon = (filename: string) => {
   const lower = filename.toLowerCase();
@@ -61,6 +81,8 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
   const [isLoadingChildren, setIsLoadingChildren] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const { openFile, selectedPath, setSelectedPath, createNewFile, createNewFolder, renameNode, moveNode, expandFolder } = useIDEStore();
+  const { gitStatus } = useGitStore();
+  const nodeGitStatus = !node.is_dir ? getGitFileStatus(node.path, gitStatus) : null;
 
   const [renameText, setRenameText] = useState(node.name);
   const [newChildName, setNewChildName] = useState('');
@@ -247,7 +269,27 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
             />
           </form>
         ) : (
-          <span className="truncate font-mono text-[11px] select-none">{node.name}</span>
+          <div className="flex items-center justify-between flex-1 min-w-0 pr-1">
+            <span className={`truncate font-mono text-[11px] select-none ${
+              nodeGitStatus === 'M' ? 'text-amber-300 font-medium' :
+              nodeGitStatus === 'A' || nodeGitStatus === 'U' ? 'text-emerald-300' :
+              nodeGitStatus === 'D' ? 'text-rose-400 line-through' :
+              isSelected ? 'text-white' : 'text-gray-300 group-hover:text-white'
+            }`}>
+              {node.name}
+            </span>
+
+            {nodeGitStatus && (
+              <span className={`text-[9px] font-bold font-mono shrink-0 ml-1.5 ${
+                nodeGitStatus === 'M' ? 'text-amber-400' :
+                nodeGitStatus === 'A' ? 'text-emerald-400' :
+                nodeGitStatus === 'U' ? 'text-cyan-400' :
+                nodeGitStatus === 'D' ? 'text-rose-400' : 'text-gray-400'
+              }`}>
+                {nodeGitStatus}
+              </span>
+            )}
+          </div>
         )}
       </div>
 

@@ -10,12 +10,20 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
+import { useGitStore } from '../../store/gitStore';
 import { ToriiIcon } from '../common/ToriiIcon';
 
 export const StatusBar: React.FC = () => {
-  const { cursorPos, problems, rootName, isFolderOpening } = useIDEStore();
+  const { cursorPos, problems, rootName, isFolderOpening, setActiveActivity } = useIDEStore();
+  const { gitStatus, isSyncing, sync, refreshGitStatus } = useGitStore();
+  
   const errorCount = problems.filter(p => p.severity === 'error').length;
   const warningCount = problems.filter(p => p.severity === 'warning').length;
+
+  const isRepo = gitStatus?.isRepo;
+  const branchName = gitStatus?.branch || '';
+  const ahead = gitStatus?.ahead || 0;
+  const behind = gitStatus?.behind || 0;
 
   return (
     <footer className="h-6 bg-[#0B0D11] border-t border-[#232734] px-3 flex items-center justify-between text-[11px] text-gray-400 select-none z-30 font-sans">
@@ -34,19 +42,43 @@ export const StatusBar: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Active Workspace / Branch */}
+            {/* Active Workspace */}
             <div className="flex items-center space-x-1">
               <FolderOpen className="w-3.5 h-3.5 text-[#FF4D4D]" />
               <span className="font-mono text-gray-200">{rootName || 'No Folder'}</span>
             </div>
 
-            {/* Sync */}
-            <button title="Sync Status" className="flex items-center space-x-1 hover:text-white transition-colors">
-              <RotateCw className="w-3 h-3" />
-            </button>
+            {/* Git Branch & Sync Indicator (VS Code style) */}
+            {isRepo && branchName && (
+              <div className="flex items-center space-x-2 pl-2 border-l border-[#232734]">
+                <button 
+                  onClick={() => setActiveActivity('git')}
+                  title={`Current Git Branch: ${branchName}. Click to open Source Control.`}
+                  className="flex items-center space-x-1 hover:text-white transition-colors group"
+                >
+                  <GitBranch className="w-3.5 h-3.5 text-[#FF4D4D] group-hover:scale-110 transition-transform" />
+                  <span className="font-mono font-semibold text-gray-200">{branchName}</span>
+                </button>
+
+                {/* Ahead / Behind Sync Button */}
+                <button
+                  onClick={sync}
+                  disabled={isSyncing}
+                  title={`Synchronize Changes (↓ ${behind}, ↑ ${ahead}). Click to sync.`}
+                  className="flex items-center space-x-1 hover:text-[#38BDF8] transition-colors font-mono text-[10px] text-gray-400"
+                >
+                  <RotateCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-[#38BDF8]' : ''}`} />
+                  {(ahead > 0 || behind > 0) && (
+                    <span className="text-sky-400 font-semibold">
+                      {behind > 0 && `↓${behind}`} {ahead > 0 && `↑${ahead}`}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
 
             {/* Problems Badges */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 pl-2 border-l border-[#232734]">
               <div className="flex items-center space-x-0.5 text-rose-400">
                 <AlertCircle className="w-3.5 h-3.5" />
                 <span className="font-semibold">{errorCount}</span>

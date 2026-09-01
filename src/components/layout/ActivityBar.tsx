@@ -12,11 +12,14 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
+import { useGitStore } from '../../store/gitStore';
 import { ActivityView } from '../../types/ide';
 import { ToriiIcon } from '../common/ToriiIcon';
 
 export const ActivityBar: React.FC = () => {
   const { activeActivity, setActiveActivity } = useIDEStore();
+  const { gitStatus } = useGitStore();
+  const gitChangesCount = gitStatus?.totalChanges || 0;
 
   const navItems: { id: ActivityView; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'explorer', label: 'Explorer', icon: FolderTree },
@@ -51,7 +54,14 @@ export const ActivityBar: React.FC = () => {
                 <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-[#FF4D4D] rounded-r cyber-glow-coral"></div>
               )}
               
-              <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'drop-shadow-[0_0_8px_rgba(255,77,77,0.5)]' : ''}`} />
+              <div className="relative">
+                <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'drop-shadow-[0_0_8px_rgba(255,77,77,0.5)]' : ''}`} />
+                {item.id === 'git' && gitChangesCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-[#FF4D4D] text-white text-[9px] font-bold font-mono px-1 rounded-full min-w-[14px] h-[14px] flex items-center justify-center border border-[#0B0D11]">
+                    {gitChangesCount > 99 ? '99+' : gitChangesCount}
+                  </span>
+                )}
+              </div>
               <span className="text-[9px] mt-1 font-medium tracking-tight opacity-80 group-hover:opacity-100">
                 {item.label.split(' ')[0]}
               </span>

@@ -19,5 +19,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     renameItem: (oldPath, newPath) => ipcRenderer.invoke('fs:renameItem', oldPath, newPath),
     moveItem: (srcPath, destPath) => ipcRenderer.invoke('fs:moveItem', srcPath, destPath),
     searchCodebase: (options) => ipcRenderer.invoke('fs:searchCodebase', options),
+  },
+  git: {
+    getStatus: (targetRoot) => ipcRenderer.invoke('git:status', targetRoot),
+    getDiff: (options) => ipcRenderer.invoke('git:diff', options),
+    stage: (options) => ipcRenderer.invoke('git:stage', options),
+    unstage: (options) => ipcRenderer.invoke('git:unstage', options),
+    discard: (options) => ipcRenderer.invoke('git:discard', options),
+    commit: (options) => ipcRenderer.invoke('git:commit', options),
+    push: (options) => ipcRenderer.invoke('git:push', options),
+    pull: (options) => ipcRenderer.invoke('git:pull', options),
+    fetch: (targetRoot) => ipcRenderer.invoke('git:fetch', targetRoot),
+    init: (options) => ipcRenderer.invoke('git:init', options),
+    getBranches: (targetRoot) => ipcRenderer.invoke('git:branches', targetRoot),
+    checkout: (options) => ipcRenderer.invoke('git:checkout', options),
+    getRemotes: (targetRoot) => ipcRenderer.invoke('git:remotes', targetRoot),
+    addRemote: (options) => ipcRenderer.invoke('git:addRemote', options),
+    getLog: (options) => ipcRenderer.invoke('git:log', options),
+    clone: (options) => ipcRenderer.invoke('git:clone', options),
   }
 });

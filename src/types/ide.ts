@@ -19,6 +19,69 @@ export interface TabItem {
   truncated?: boolean;
   totalSize?: number;
   mimeType?: string;
+  isDiff?: boolean;
+  diffOriginal?: string;
+  diffModified?: string;
+  diffStaged?: boolean;
+  diffStatus?: string;
+}
+
+export interface GitFileStatus {
+  path: string;
+  status: string; // 'M' | 'A' | 'D' | 'R' | 'U' | 'C' | '??'
+  oldPath?: string;
+}
+
+export interface GitStatusResult {
+  isRepo: boolean;
+  rootPath: string;
+  branch: string;
+  upstream: string;
+  ahead: number;
+  behind: number;
+  remoteUrl: string;
+  githubUrl: string | null;
+  staged: GitFileStatus[];
+  unstaged: GitFileStatus[];
+  untracked: GitFileStatus[];
+  conflicts: GitFileStatus[];
+  totalChanges: number;
+}
+
+export interface GitDiffResult {
+  filePath: string;
+  staged: boolean;
+  original: string;
+  modified: string;
+  diffText: string;
+}
+
+export interface GitBranchItem {
+  name: string;
+  isCurrent: boolean;
+  isRemote: boolean;
+  upstream?: string;
+}
+
+export interface GitBranchResult {
+  current: string;
+  branches: GitBranchItem[];
+}
+
+export interface GitRemoteItem {
+  name: string;
+  fetchUrl: string;
+  pushUrl: string;
+  githubUrl?: string | null;
+}
+
+export interface GitCommitItem {
+  hash: string;
+  shortHash: string;
+  authorName: string;
+  authorEmail: string;
+  date: string;
+  message: string;
 }
 
 export type ActivityView = 

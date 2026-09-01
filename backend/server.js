@@ -8,6 +8,24 @@ import os from 'os';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import pty from 'node-pty';
+import {
+  getGitStatus,
+  getGitDiff,
+  stageGit,
+  unstageGit,
+  discardGit,
+  commitGit,
+  pushGit,
+  pullGit,
+  fetchGit,
+  initGit,
+  getBranchesGit,
+  checkoutBranchGit,
+  getRemotesGit,
+  addRemoteGit,
+  getCommitLogGit,
+  cloneRepoGit
+} from './gitEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -586,6 +604,196 @@ app.post('/api/open-external-terminal', (req, res) => {
       spawn('x-terminal-emulator', ['--working-directory', currentWorkspace], { detached: true });
     }
     res.json({ status: 'ok', message: 'External terminal launched' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------
+// Real Git Engine REST Endpoints
+// ----------------------------------------------------
+
+app.get('/api/git/status', async (req, res) => {
+  const rootParam = req.query.root;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    const status = await getGitStatus(targetDir);
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/diff', async (req, res) => {
+  const { path: filePath, staged, root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    const diff = await getGitDiff(targetDir, { filePath, staged });
+    res.json(diff);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/stage', async (req, res) => {
+  const { paths, root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    await stageGit(targetDir, paths);
+    const status = await getGitStatus(targetDir);
+    res.json({ status: 'ok', gitStatus: status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/unstage', async (req, res) => {
+  const { paths, root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    await unstageGit(targetDir, paths);
+    const status = await getGitStatus(targetDir);
+    res.json({ status: 'ok', gitStatus: status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/discard', async (req, res) => {
+  const { paths, isUntracked, root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    await discardGit(targetDir, { paths, isUntracked });
+    const status = await getGitStatus(targetDir);
+    res.json({ status: 'ok', gitStatus: status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/commit', async (req, res) => {
+  const { message, amend, stageAll, root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    await commitGit(targetDir, { message, amend, stageAll });
+    const status = await getGitStatus(targetDir);
+    res.json({ status: 'ok', gitStatus: status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/push', async (req, res) => {
+  const { remote, branch, setUpstream, force, root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    await pushGit(targetDir, { remote, branch, setUpstream, force });
+    const status = await getGitStatus(targetDir);
+    res.json({ status: 'ok', gitStatus: status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/pull', async (req, res) => {
+  const { remote, branch, rebase, root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    await pullGit(targetDir, { remote, branch, rebase });
+    const status = await getGitStatus(targetDir);
+    res.json({ status: 'ok', gitStatus: status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/fetch', async (req, res) => {
+  const { root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    await fetchGit(targetDir);
+    const status = await getGitStatus(targetDir);
+    res.json({ status: 'ok', gitStatus: status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/init', async (req, res) => {
+  const { initialBranch, root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    await initGit(targetDir, { initialBranch });
+    const status = await getGitStatus(targetDir);
+    res.json({ status: 'ok', gitStatus: status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/git/branches', async (req, res) => {
+  const rootParam = req.query.root;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    const branches = await getBranchesGit(targetDir);
+    res.json(branches);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/checkout', async (req, res) => {
+  const { branch, createNew, startPoint, root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    await checkoutBranchGit(targetDir, { branch, createNew, startPoint });
+    const status = await getGitStatus(targetDir);
+    res.json({ status: 'ok', gitStatus: status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/git/remotes', async (req, res) => {
+  const rootParam = req.query.root;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    const remotes = await getRemotesGit(targetDir);
+    res.json(remotes);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/remotes', async (req, res) => {
+  const { name, url, root: rootParam } = req.body;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    await addRemoteGit(targetDir, { name, url });
+    const remotes = await getRemotesGit(targetDir);
+    res.json({ status: 'ok', remotes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/git/log', async (req, res) => {
+  const rootParam = req.query.root;
+  const maxCount = parseInt(req.query.maxCount, 10) || 30;
+  const targetDir = rootParam ? resolveWorkspacePath(rootParam) : currentWorkspace;
+  try {
+    const log = await getCommitLogGit(targetDir, maxCount);
+    res.json(log);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/git/clone', async (req, res) => {
+  const { url, targetPath, directoryName } = req.body;
+  try {
+    await cloneRepoGit({ url, targetPath: targetPath || currentWorkspace, directoryName });
+    res.json({ status: 'ok' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

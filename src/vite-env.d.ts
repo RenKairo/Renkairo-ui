@@ -42,6 +42,24 @@ export interface ElectronAPI {
   openPath: (fullPath: string) => Promise<string>;
   getDesktopSources?: () => Promise<{ id: string; name: string }[]>;
   fs: ElectronFS;
+  git?: {
+    getStatus: (targetRoot?: string) => Promise<any>;
+    getDiff: (options: { filePath: string; staged?: boolean; root?: string }) => Promise<any>;
+    stage: (options: { paths?: string[]; root?: string }) => Promise<any>;
+    unstage: (options: { paths?: string[]; root?: string }) => Promise<any>;
+    discard: (options: { paths?: string[]; isUntracked?: boolean; root?: string }) => Promise<any>;
+    commit: (options: { message: string; amend?: boolean; stageAll?: boolean; root?: string }) => Promise<any>;
+    push: (options?: { remote?: string; branch?: string; setUpstream?: boolean; force?: boolean; root?: string }) => Promise<any>;
+    pull: (options?: { remote?: string; branch?: string; rebase?: boolean; root?: string }) => Promise<any>;
+    fetch: (targetRoot?: string) => Promise<any>;
+    init: (options?: { initialBranch?: string; root?: string }) => Promise<any>;
+    getBranches: (targetRoot?: string) => Promise<any>;
+    checkout: (options: { branch: string; createNew?: boolean; startPoint?: string; root?: string }) => Promise<any>;
+    getRemotes: (targetRoot?: string) => Promise<any>;
+    addRemote: (options: { name?: string; url: string; root?: string }) => Promise<any>;
+    getLog: (options?: { maxCount?: number; root?: string }) => Promise<any>;
+    clone: (options: { url: string; targetPath?: string; directoryName?: string }) => Promise<any>;
+  };
 }
 
 declare global {

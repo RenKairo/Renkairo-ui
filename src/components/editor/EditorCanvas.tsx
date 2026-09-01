@@ -1,19 +1,27 @@
-import React from 'react';
-import Editor from '@monaco-editor/react';
+import React, { useState } from 'react';
+import Editor, { DiffEditor } from '@monaco-editor/react';
 import { 
   X, 
   SplitSquareHorizontal, 
   MoreHorizontal, 
   ChevronRight, 
   FolderOpen, 
-  FolderSync,
-  Loader2,
-  HardDrive,
-  Binary,
-  Zap,
-  AlertTriangle
+  FolderSync, 
+  Loader2, 
+  HardDrive, 
+  Binary, 
+  Zap, 
+  AlertTriangle,
+  Plus,
+  Minus,
+  Undo2,
+  FileCode,
+  Columns2,
+  Rows2,
+  GitBranch
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
+import { useGitStore } from '../../store/gitStore';
 import { openExternalTerminal } from '../../services/api';
 import { getMonacoOptionsForTier, formatFileSize } from '../../services/largeFileService';
 import { ToriiIcon } from '../common/ToriiIcon';
@@ -22,24 +30,29 @@ export const EditorCanvas: React.FC = () => {
   const { 
     tabs, 
     activeTabId, 
-    targetLine,
+    targetLine, 
     closeTab, 
     setActiveTabId, 
     updateTabContent, 
-    setCursorPos,
-    wallpaperOpacity,
-    saveCurrentFile,
-    setActiveTerminalTab,
-    fontSize,
-    tabSize,
-    minimapEnabled,
-    openFolder,
-    changeScopeFolder,
-    workspacePath,
-    rootName,
-    isFolderOpening,
-    fileLoadingProgress
+    setCursorPos, 
+    wallpaperOpacity, 
+    saveCurrentFile, 
+    setActiveTerminalTab, 
+    fontSize, 
+    tabSize, 
+    minimapEnabled, 
+    openFolder, 
+    changeScopeFolder, 
+    workspacePath, 
+    rootName, 
+    isFolderOpening, 
+    fileLoadingProgress,
+    openFile
   } = useIDEStore();
+
+  const { stageFile, unstageFile, discardFile } = useGitStore();
+
+  const [diffSideBySide, setDiffSideBySide] = useState(true);
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
@@ -113,6 +126,10 @@ export const EditorCanvas: React.FC = () => {
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#FF4D4D] cyber-glow-coral"></div>
                   )}
 
+                  {tab.isDiff && (
+                    <SplitSquareHorizontal className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+                  )}
+
                   <span className="font-mono text-[11px] truncate">{tab.title}</span>
 
                   {tab.isDirty && (
@@ -169,7 +186,7 @@ export const EditorCanvas: React.FC = () => {
       )}
 
       {/* Breadcrumb Navigation Trail */}
-      {activeTab && (
+      {activeTab && !activeTab.isDiff && (
         <div className="h-6 bg-[#12151C]/80 border-b border-[#232734] px-4 flex items-center justify-between text-[11px] font-mono text-gray-400 select-none z-10">
           <div className="flex items-center space-x-1.5">
             {breadcrumbs.map((crumb, idx) => (
@@ -203,8 +220,86 @@ export const EditorCanvas: React.FC = () => {
         </div>
       )}
 
+      {/* Dedicated Git Diff Header Bar */}
+      {activeTab && activeTab.isDiff && (
+        <div className="h-8 bg-[#12151C] border-b border-[#232734] px-4 flex items-center justify-between text-[11px] font-mono text-gray-300 select-none z-10">
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 text-[#38BDF8] font-semibold">
+              <SplitSquareHorizontal className="w-3.5 h-3.5" />
+              <span>DIFF</span>
+            </div>
+
+            <span className="text-gray-500">|</span>
+
+            <span className="text-gray-200 font-semibold">{activeTab.path}</span>
+
+            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+              activeTab.diffStaged ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+            }`}>
+              {activeTab.diffStaged ? 'Staged (Index ↔ HEAD)' : 'Working Tree (Disk ↔ Index)'}
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {/* Toggle Side-by-Side vs Inline */}
+            <button
+              onClick={() => setDiffSideBySide(!diffSideBySide)}
+              title={diffSideBySide ? 'Switch to Inline Diff' : 'Switch to Side-by-Side Diff'}
+              className="p-1 px-2 bg-[#181B24] hover:bg-[#232734] border border-[#232734] rounded text-gray-300 hover:text-white flex items-center space-x-1 text-[10px] transition-colors"
+            >
+              {diffSideBySide ? <Columns2 className="w-3 h-3" /> : <Rows2 className="w-3 h-3" />}
+              <span>{diffSideBySide ? 'Side-by-Side' : 'Inline'}</span>
+            </button>
+
+            {/* Stage / Unstage Action */}
+            {activeTab.diffStaged ? (
+              <button
+                onClick={() => unstageFile(activeTab.path)}
+                className="px-2 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded flex items-center space-x-1 text-[10px] font-semibold transition-colors"
+              >
+                <Minus className="w-3 h-3" />
+                <span>Unstage</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => stageFile(activeTab.path)}
+                className="px-2 py-0.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded flex items-center space-x-1 text-[10px] font-semibold transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Stage File</span>
+              </button>
+            )}
+
+            {/* Discard Changes (if unstaged) */}
+            {!activeTab.diffStaged && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`Discard working tree changes to "${activeTab.path}"?`)) {
+                    discardFile(activeTab.path);
+                    closeTab(activeTab.id);
+                  }
+                }}
+                className="px-2 py-0.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/40 text-rose-400 rounded flex items-center space-x-1 text-[10px] font-semibold transition-colors"
+              >
+                <Undo2 className="w-3 h-3" />
+                <span>Discard</span>
+              </button>
+            )}
+
+            {/* Open Raw File */}
+            <button
+              onClick={() => openFile(activeTab.path, activeTab.path.split(/[/\\]/).pop() || activeTab.path)}
+              className="p-1 hover:text-white text-gray-400 transition-colors"
+              title="Open File for Editing"
+            >
+              <FileCode className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Large File & Safe Mode Notice Banner */}
-      {activeTab && (activeTab.tier === 'large' || activeTab.tier === 'huge' || activeTab.truncated) && (
+      {activeTab && !activeTab.isDiff && (activeTab.tier === 'large' || activeTab.tier === 'huge' || activeTab.truncated) && (
         <div className="h-7 bg-amber-500/10 border-b border-amber-500/30 px-4 flex items-center justify-between text-[11px] font-mono text-amber-300 select-none z-10">
           <div className="flex items-center space-x-2">
             <Zap className="w-3.5 h-3.5 text-amber-400" />
@@ -221,7 +316,7 @@ export const EditorCanvas: React.FC = () => {
         </div>
       )}
 
-      {/* Monaco Editor Container / Home Screen / Loading Screen */}
+      {/* Monaco Editor Container / Diff Editor / Home Screen / Loading Screen */}
       <div className="flex-1 relative z-10">
         {/* 1. Folder Opening Animation */}
         {isFolderOpening ? (
@@ -287,8 +382,28 @@ export const EditorCanvas: React.FC = () => {
               <span>Inspect in Terminal</span>
             </button>
           </div>
+        ) : activeTab?.isDiff ? (
+          /* 4. Monaco Diff Editor (VS Code Git Diff) */
+          <DiffEditor
+            height="100%"
+            language={activeTab.language}
+            original={activeTab.diffOriginal ?? ''}
+            modified={activeTab.diffModified ?? ''}
+            theme="vs-dark"
+            options={{
+              readOnly: true,
+              renderSideBySide: diffSideBySide,
+              fontSize: fontSize,
+              minimap: { enabled: minimapEnabled },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              diffWordWrap: 'off',
+              ignoreTrimWhitespace: false,
+              renderIndicators: true,
+            }}
+          />
         ) : activeTab ? (
-          /* 4. Optimized Monaco Editor */
+          /* 5. Standard Monaco Code Editor */
           <Editor
             height="100%"
             language={activeTab.language}
@@ -335,7 +450,7 @@ export const EditorCanvas: React.FC = () => {
             }}
           />
         ) : (
-          /* 5. Empty Start State */
+          /* 6. Empty Start State */
           <div className="h-full flex flex-col items-center justify-center text-gray-400 select-none p-6">
             {/* Japanese Torii Emblem */}
             <div className="w-16 h-16 rounded-2xl bg-[#12151C] border border-[#232734] flex items-center justify-center mb-4 shadow-2xl relative overflow-hidden group p-3">

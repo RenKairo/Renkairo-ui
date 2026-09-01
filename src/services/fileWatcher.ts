@@ -1,4 +1,5 @@
 import { useIDEStore } from '../store/ideStore';
+import { useGitStore } from '../store/gitStore';
 import { readFile, refreshDirectoryTree } from './fileSystem';
 
 class FileWatcherService {
@@ -90,6 +91,9 @@ class FileWatcherService {
         }
       }
     }
+
+    // 3. Refresh Git Status
+    useGitStore.getState().refreshGitStatus();
   }
 
   // Sync on window focus / tab activation (VS Code model)
@@ -111,6 +115,9 @@ class FileWatcherService {
         }
       }
     }
+
+    // 3. Refresh Git Status
+    useGitStore.getState().refreshGitStatus();
   }
 }
 

@@ -3,6 +3,24 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import {
+  getGitStatus,
+  getGitDiff,
+  stageGit,
+  unstageGit,
+  discardGit,
+  commitGit,
+  pushGit,
+  pullGit,
+  fetchGit,
+  initGit,
+  getBranchesGit,
+  checkoutBranchGit,
+  getRemotesGit,
+  addRemoteGit,
+  getCommitLogGit,
+  cloneRepoGit
+} from '../backend/gitEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -646,6 +664,98 @@ ipcMain.handle('desktopCapturer:getSources', async () => {
     console.error('[Desktop Capturer Error]:', err);
     return [];
   }
+});
+
+// ----------------------------------------------------
+// Git Engine Electron IPC Handlers
+// ----------------------------------------------------
+ipcMain.handle('git:status', async (event, targetRoot) => {
+  const target = targetRoot || activeRootWorkspacePath;
+  return await getGitStatus(target);
+});
+
+ipcMain.handle('git:diff', async (event, options) => {
+  const target = options?.root || activeRootWorkspacePath;
+  return await getGitDiff(target, options);
+});
+
+ipcMain.handle('git:stage', async (event, { paths, root }) => {
+  const target = root || activeRootWorkspacePath;
+  await stageGit(target, paths);
+  return await getGitStatus(target);
+});
+
+ipcMain.handle('git:unstage', async (event, { paths, root }) => {
+  const target = root || activeRootWorkspacePath;
+  await unstageGit(target, paths);
+  return await getGitStatus(target);
+});
+
+ipcMain.handle('git:discard', async (event, { paths, isUntracked, root }) => {
+  const target = root || activeRootWorkspacePath;
+  await discardGit(target, { paths, isUntracked });
+  return await getGitStatus(target);
+});
+
+ipcMain.handle('git:commit', async (event, { message, amend, stageAll, root }) => {
+  const target = root || activeRootWorkspacePath;
+  await commitGit(target, { message, amend, stageAll });
+  return await getGitStatus(target);
+});
+
+ipcMain.handle('git:push', async (event, { remote, branch, setUpstream, force, root }) => {
+  const target = root || activeRootWorkspacePath;
+  await pushGit(target, { remote, branch, setUpstream, force });
+  return await getGitStatus(target);
+});
+
+ipcMain.handle('git:pull', async (event, { remote, branch, rebase, root }) => {
+  const target = root || activeRootWorkspacePath;
+  await pullGit(target, { remote, branch, rebase });
+  return await getGitStatus(target);
+});
+
+ipcMain.handle('git:fetch', async (event, root) => {
+  const target = root || activeRootWorkspacePath;
+  await fetchGit(target);
+  return await getGitStatus(target);
+});
+
+ipcMain.handle('git:init', async (event, { initialBranch, root }) => {
+  const target = root || activeRootWorkspacePath;
+  await initGit(target, { initialBranch });
+  return await getGitStatus(target);
+});
+
+ipcMain.handle('git:branches', async (event, root) => {
+  const target = root || activeRootWorkspacePath;
+  return await getBranchesGit(target);
+});
+
+ipcMain.handle('git:checkout', async (event, { branch, createNew, startPoint, root }) => {
+  const target = root || activeRootWorkspacePath;
+  await checkoutBranchGit(target, { branch, createNew, startPoint });
+  return await getGitStatus(target);
+});
+
+ipcMain.handle('git:remotes', async (event, root) => {
+  const target = root || activeRootWorkspacePath;
+  return await getRemotesGit(target);
+});
+
+ipcMain.handle('git:addRemote', async (event, { name, url, root }) => {
+  const target = root || activeRootWorkspacePath;
+  await addRemoteGit(target, { name, url });
+  return await getRemotesGit(target);
+});
+
+ipcMain.handle('git:log', async (event, { maxCount, root } = {}) => {
+  const target = root || activeRootWorkspacePath;
+  return await getCommitLogGit(target, maxCount || 30);
+});
+
+ipcMain.handle('git:clone', async (event, { url, targetPath, directoryName }) => {
+  return await cloneRepoGit({ url, targetPath: targetPath || activeRootWorkspacePath, directoryName });
 });
 
 // App Lifecycle

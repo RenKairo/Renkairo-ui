@@ -15,6 +15,12 @@ import {
 } from '../services/fileSystem';
 import { fetchMetrics } from '../services/api';
 
+const triggerGitRefresh = () => {
+  try {
+    import('./gitStore').then((m) => m.useGitStore.getState().refreshGitStatus()).catch(() => {});
+  } catch (e) {}
+};
+
 interface IDEState {
   // Navigation & Layout State
   activeActivity: ActivityView;
@@ -143,6 +149,7 @@ export const useIDEStore = create<IDEState>((set, get) => ({
           tabs: [],
           activeTabId: null
         });
+        triggerGitRefresh();
       }
     } finally {
       set({ isFolderOpening: false });
@@ -162,6 +169,7 @@ export const useIDEStore = create<IDEState>((set, get) => ({
           tabs: [],
           activeTabId: null
         });
+        triggerGitRefresh();
       }
     } finally {
       set({ isFolderOpening: false });
@@ -195,6 +203,7 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     );
 
     set({ fileTree: tree, tabs: updatedTabs });
+    triggerGitRefresh();
   },
 
   expandFolder: async (dirRelPath: string) => {
@@ -405,6 +414,7 @@ export const useIDEStore = create<IDEState>((set, get) => ({
       set({
         tabs: tabs.map((t) => (t.id === activeTabId ? { ...t, isDirty: false } : t))
       });
+      triggerGitRefresh();
     }
   },
 
