@@ -23,7 +23,9 @@ export const TopCommandBar: React.FC = () => {
     rootName, 
     workspacePath,
     openFolder,
-    changeScopeFolder
+    changeScopeFolder,
+    isRightSidebarOpen,
+    toggleRightSidebar
   } = useIDEStore();
 
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
@@ -166,11 +168,26 @@ export const TopCommandBar: React.FC = () => {
           )}
         </button>
 
-        {/* User Profile Avatar */}
-        <div className="flex items-center space-x-2 pl-2 border-l border-[var(--border-color)]">
-          <div className="w-6 h-6 rounded-full bg-[var(--bg-card)] border border-[var(--accent-coral)]/60 flex items-center justify-center overflow-hidden shadow-sm">
-            <User className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
-          </div>
+        {/* User Profile Avatar & System Overview Panel Toggle */}
+        <div className="pl-2 border-l border-[var(--border-color)]">
+          <button
+            onClick={toggleRightSidebar}
+            title={isRightSidebarOpen ? "Hide System Overview Panel" : "Open System Overview Panel"}
+            className={`flex items-center space-x-1.5 px-2 py-1 rounded-md transition-all cursor-pointer focus:outline-none ${
+              isRightSidebarOpen 
+                ? 'bg-[var(--accent-coral)]/15 text-[var(--accent-coral)] border border-[var(--accent-coral)]/40 shadow-sm' 
+                : 'hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'
+            }`}
+          >
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center overflow-hidden transition-colors ${
+              isRightSidebarOpen ? 'bg-[var(--accent-coral)]/20' : 'bg-[var(--bg-card)]'
+            }`}>
+              <User className={`w-3.5 h-3.5 ${isRightSidebarOpen ? 'text-[var(--accent-coral)]' : 'text-[var(--text-muted)]'}`} />
+            </div>
+            <span className="hidden md:inline font-mono text-[10px] font-semibold">
+              {isRightSidebarOpen ? 'System Overview' : 'Profile'}
+            </span>
+          </button>
         </div>
       </div>
     </header>

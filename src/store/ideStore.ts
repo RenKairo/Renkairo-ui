@@ -55,6 +55,9 @@ interface IDEState {
   setLeftSidebarWidth: (width: number) => void;
   rightSidebarWidth: number;
   setRightSidebarWidth: (width: number) => void;
+  isRightSidebarOpen: boolean;
+  setIsRightSidebarOpen: (open: boolean) => void;
+  toggleRightSidebar: () => void;
 
   // Real Workspace & Local Folder State (Starts with NO folder)
   workspacePath: string | null;
@@ -154,6 +157,9 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     } catch (e) {}
     set({ rightSidebarWidth: width });
   },
+  isRightSidebarOpen: true,
+  setIsRightSidebarOpen: (open) => set({ isRightSidebarOpen: open }),
+  toggleRightSidebar: () => set((state) => ({ isRightSidebarOpen: !state.isRightSidebarOpen })),
 
   // App starts with NO folder open
   workspacePath: null,

@@ -101,7 +101,7 @@ export const EditorCanvas: React.FC = () => {
         className="absolute inset-0 pointer-events-none z-0 transition-all duration-300 bg-center bg-no-repeat bg-fixed"
         style={{ 
           opacity: theme === 'light' ? 0.7 : (wallpaperOpacity ?? 50) / 100,
-          backgroundImage: theme === 'light' ? `url('/wallpaper-pagoda.jpg')` : `url('/wallpaper-dark-pagoda.jpg')`,
+          backgroundImage: theme === 'light' ? `url('./wallpaper-pagoda.jpg')` : `url('./wallpaper-dark-pagoda.jpg')`,
           backgroundSize: 'cover'
         }}
       >

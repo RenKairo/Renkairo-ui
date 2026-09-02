@@ -12,7 +12,8 @@ import {
   ChevronDown, 
   Layers, 
   Box, 
-  CheckCircle2 
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { ComputeMetrics, DockerContainerInfo, RightSidebarTab, ServerEndpoint } from '../../types/ide';
@@ -55,7 +56,8 @@ export const ObservabilityDeck: React.FC = () => {
     loadMetrics,
     setActiveTerminalTab,
     openFile,
-    rootName
+    rootName,
+    toggleRightSidebar
   } = useIDEStore();
 
   const [servers, setServers] = useState<ServerEndpoint[]>([]);
@@ -116,6 +118,15 @@ export const ObservabilityDeck: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Close System Overview Panel Button */}
+        <button
+          onClick={toggleRightSidebar}
+          title="Close System Overview Panel"
+          className="p-1 hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       <div className="p-3 space-y-4 flex-1">

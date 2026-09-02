@@ -23,7 +23,8 @@ export const App: React.FC = () => {
     leftSidebarWidth, 
     setLeftSidebarWidth, 
     rightSidebarWidth, 
-    setRightSidebarWidth 
+    setRightSidebarWidth,
+    isRightSidebarOpen
   } = useIDEStore();
 
   const [isDraggingLeft, setIsDraggingLeft] = useState(false);
@@ -136,21 +137,23 @@ export const App: React.FC = () => {
         </div>
 
         {/* Dynamic Resizable Right Observability & Compute Deck Sidebar */}
-        <div 
-          style={{ width: `${rightSidebarWidth}px` }} 
-          className="h-full relative shrink-0 flex flex-col bg-[var(--bg-base)] overflow-hidden"
-        >
-          {/* Center-to-Right Resize Handle */}
-          <div
-            onMouseDown={handleRightResizeMouseDown}
-            className="w-2 h-full absolute top-0 -left-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
-            title="Drag to resize right observability deck"
+        {isRightSidebarOpen && (
+          <div 
+            style={{ width: `${rightSidebarWidth}px` }} 
+            className="h-full relative shrink-0 flex flex-col bg-[var(--bg-base)] overflow-hidden transition-all"
           >
-            <div className="w-0.5 h-12 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-cyan)] group-active:bg-[var(--accent-coral)] transition-colors" />
-          </div>
+            {/* Center-to-Right Resize Handle */}
+            <div
+              onMouseDown={handleRightResizeMouseDown}
+              className="w-2 h-full absolute top-0 -left-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
+              title="Drag to resize right observability deck"
+            >
+              <div className="w-0.5 h-12 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-cyan)] group-active:bg-[var(--accent-coral)] transition-colors" />
+            </div>
 
-          <ObservabilityDeck />
-        </div>
+            <ObservabilityDeck />
+          </div>
+        )}
       </div>
 
       {/* Bottom Global Status Bar */}

@@ -74,7 +74,7 @@ export const ActivityBar: React.FC = () => {
         {/* Decorative Torii Japanese Wallpaper Thumbnail */}
         <div 
           className="w-11 h-14 rounded border border-[var(--border-color)] bg-[var(--bg-card)] bg-cover bg-center relative overflow-hidden flex flex-col justify-end p-1 group shadow-sm"
-          style={{ backgroundImage: theme === 'light' ? "url('/wallpaper-pagoda.jpg')" : "url('/wallpaper-dark-pagoda.jpg')" }}
+          style={{ backgroundImage: theme === 'light' ? "url('./wallpaper-pagoda.jpg')" : "url('./wallpaper-dark-pagoda.jpg')" }}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-panel)] via-[var(--bg-panel)]/40 to-transparent"></div>
           {/* Subtle Torii Graphic */}
