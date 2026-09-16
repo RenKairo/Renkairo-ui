@@ -3,7 +3,11 @@ import { HardDrive, Server, Plus, Power, Wifi, ShieldCheck, Terminal } from 'luc
 import { useIDEStore } from '../../store/ideStore';
 
 export const RemotePanel: React.FC = () => {
-  const { setActiveTerminalTab } = useIDEStore();
+  const { 
+    setActiveTerminalTab, 
+    setConnectServerModalOpen, 
+    requestTerminalSession 
+  } = useIDEStore();
   const [connections, setConnections] = useState([
     { id: '1', name: 'gpu-cluster-01', host: '192.168.1.120', ping: '12ms', status: 'connected', region: 'us-east-1' },
     { id: '2', name: 'prod-api-server', host: 'api.renkairo.io', ping: '45ms', status: 'disconnected', region: 'eu-central-1' },
@@ -17,13 +21,7 @@ export const RemotePanel: React.FC = () => {
   };
 
   const addConnection = () => {
-    const name = prompt('Enter Remote Host Name (e.g. dev-server):');
-    if (!name) return;
-    const host = prompt('Enter IP or Domain (e.g. 192.168.1.50):') || '127.0.0.1';
-    setConnections([
-      ...connections,
-      { id: Date.now().toString(), name, host, ping: '18ms', status: 'connected', region: 'us-east-1' }
-    ]);
+    setConnectServerModalOpen(true);
   };
 
   return (
@@ -71,7 +69,13 @@ export const RemotePanel: React.FC = () => {
 
                 <div className="flex items-center space-x-1">
                   <button 
-                    onClick={() => { setActiveTerminalTab('TERMINAL'); }} 
+                    onClick={() => {
+                      requestTerminalSession({
+                        shellType: 'ssh',
+                        name: `SSH: Azhar@${c.host}`,
+                        sshConfig: { host: c.host, user: 'Azhar', port: 22 }
+                      });
+                    }} 
                     title="Open SSH Terminal"
                     className="p-1 hover:text-[var(--text-primary)] text-[var(--text-muted)]"
                   >

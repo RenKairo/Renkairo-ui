@@ -12,10 +12,12 @@ import {
   Minimize2,
   X, 
   FolderTree,
-  Check
+  Check,
+  Server,
+  Wifi
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
-import { TerminalTab } from '../../types/ide';
+import { SSHConnectionConfig, TerminalTab } from '../../types/ide';
 
 interface SessionItem {
   id: string;
@@ -23,6 +25,7 @@ interface SessionItem {
   shellType: string;
   cwd: string | null;
   compactPath?: boolean;
+  sshConfig?: SSHConnectionConfig;
 }
 
 interface SessionInstance {
@@ -77,7 +80,10 @@ export const TerminalPanel: React.FC = () => {
     setTerminalHeight,
     terminalCopyOnSelect,
     terminalCompactPath,
-    setTerminalCompactPath
+    setTerminalCompactPath,
+    terminalSessionRequest,
+    clearTerminalSessionRequest,
+    setConnectServerModalOpen
   } = useIDEStore();
 
   const [shellType, setShellType] = useState('powershell');
@@ -208,7 +214,9 @@ export const TerminalPanel: React.FC = () => {
   const createNewSession = (
     type: string = shellType, 
     customCwd: string | null = workspacePath,
-    isCompact: boolean = terminalCompactPath
+    isCompact: boolean = terminalCompactPath,
+    sshConfig?: SSHConnectionConfig,
+    customName?: string
   ) => {
     const id = `term_sess_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const count = sessions.filter((s) => s.shellType === type).length + 1;
@@ -217,16 +225,18 @@ export const TerminalPanel: React.FC = () => {
       cmd: 'CMD',
       python: 'Python',
       node: 'Node.js',
-      bash: 'Bash'
+      bash: 'Bash',
+      ssh: 'SSH'
     };
-    const name = `${labelNames[type] || 'Terminal'} ${count}`;
+    const name = customName || (type === 'ssh' && sshConfig ? `SSH: ${sshConfig.user}@${sshConfig.host}` : `${labelNames[type] || 'Terminal'} ${count}`);
 
     const newSession: SessionItem = {
       id,
       name,
       shellType: type,
       cwd: customCwd,
-      compactPath: isCompact
+      compactPath: isCompact,
+      sshConfig
     };
 
     setSessions((prev) => [...prev, newSession]);
@@ -276,6 +286,21 @@ export const TerminalPanel: React.FC = () => {
       }
     }
   }, [workspacePath]);
+
+  // Handle programmatic terminal session requests (e.g. from Connect Server modal)
+  useEffect(() => {
+    if (terminalSessionRequest) {
+      const req = terminalSessionRequest;
+      clearTerminalSessionRequest();
+      createNewSession(
+        req.shellType,
+        workspacePath,
+        terminalCompactPath,
+        req.sshConfig,
+        req.name
+      );
+    }
+  }, [terminalSessionRequest]);
 
   // Initialize XTerm instance for each session once mounted
   useEffect(() => {
@@ -329,11 +354,15 @@ export const TerminalPanel: React.FC = () => {
         : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ws/terminal`;
       
       let wsUrl = `${baseUrl}?shell=${encodeURIComponent(session.shellType)}`;
-      if (session.cwd) {
-        wsUrl += `&cwd=${encodeURIComponent(session.cwd)}`;
+      if (session.shellType === 'ssh' && session.sshConfig) {
+        wsUrl += `&host=${encodeURIComponent(session.sshConfig.host)}&user=${encodeURIComponent(session.sshConfig.user || 'Azhar')}&port=${encodeURIComponent(session.sshConfig.port || 22)}`;
+      } else {
+        if (session.cwd) {
+          wsUrl += `&cwd=${encodeURIComponent(session.cwd)}`;
+        }
+        const isCompact = session.compactPath !== undefined ? session.compactPath : terminalCompactPath;
+        wsUrl += `&compact_path=${isCompact ? '1' : '0'}`;
       }
-      const isCompact = session.compactPath !== undefined ? session.compactPath : terminalCompactPath;
-      wsUrl += `&compact_path=${isCompact ? '1' : '0'}`;
 
       const ws = new WebSocket(wsUrl);
 
@@ -533,6 +562,10 @@ export const TerminalPanel: React.FC = () => {
               value={shellType}
               onChange={(e) => {
                 const newType = e.target.value;
+                if (newType === 'ssh') {
+                  setConnectServerModalOpen(true);
+                  return;
+                }
                 setShellType(newType);
                 createNewSession(newType, workspacePath, terminalCompactPath);
               }}
@@ -543,6 +576,7 @@ export const TerminalPanel: React.FC = () => {
               <option value="python" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🐍 Python REPL</option>
               <option value="node" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🟢 Node.js REPL</option>
               <option value="bash" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🐧 Git Bash / WSL</option>
+              <option value="ssh" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🌐 Remote SSH Server (LAN)...</option>
             </select>
           </div>
 
@@ -567,18 +601,25 @@ export const TerminalPanel: React.FC = () => {
           <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar">
             {sessions.map((sess) => {
               const isActive = sess.id === activeSessionId;
+              const isSSH = sess.shellType === 'ssh';
               return (
                 <div
                   key={sess.id}
                   onClick={() => setActiveSessionId(sess.id)}
                   className={`px-2 py-0.5 rounded flex items-center space-x-1.5 text-[10px] cursor-pointer transition-colors border ${
                     isActive 
-                      ? 'bg-[var(--bg-panel)] text-[var(--accent-cyan)] border-[var(--accent-cyan)]/40 font-semibold shadow-sm' 
+                      ? isSSH
+                        ? 'bg-[var(--bg-panel)] text-[var(--accent-coral)] border-[var(--accent-coral)]/50 font-semibold shadow-sm'
+                        : 'bg-[var(--bg-panel)] text-[var(--accent-cyan)] border-[var(--accent-cyan)]/40 font-semibold shadow-sm' 
                       : 'bg-transparent text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  <Terminal className={`w-3 h-3 ${isActive ? 'text-[var(--accent-cyan)]' : 'text-[var(--text-subtle)]'}`} />
-                  <span className="truncate max-w-[120px]">{sess.name}</span>
+                  {isSSH ? (
+                    <Server className={`w-3 h-3 ${isActive ? 'text-[var(--accent-coral)]' : 'text-[var(--text-subtle)]'}`} />
+                  ) : (
+                    <Terminal className={`w-3 h-3 ${isActive ? 'text-[var(--accent-cyan)]' : 'text-[var(--text-subtle)]'}`} />
+                  )}
+                  <span className="truncate max-w-[140px]">{sess.name}</span>
                   <button
                     onClick={(e) => closeSession(sess.id, e)}
                     className="p-0.5 hover:text-rose-500 rounded transition-colors ml-0.5"
@@ -596,10 +637,22 @@ export const TerminalPanel: React.FC = () => {
               <div 
                 className="flex items-center space-x-1.5 text-[var(--text-muted)] font-mono"
               >
-                <span className="text-[var(--text-subtle)]">CWD:</span>
-                <span className="text-[var(--accent-cyan)] font-semibold max-w-[280px] truncate" title={activeSessionCwd || 'Workspace'}>
-                  {getFormattedCwd(activeSessionCwd)}
-                </span>
+                {activeSession?.shellType === 'ssh' && activeSession.sshConfig ? (
+                  <>
+                    <span className="text-[var(--text-subtle)]">Remote Server:</span>
+                    <span className="text-[var(--accent-coral)] font-semibold max-w-[320px] truncate" title={`SSH to ${activeSession.sshConfig.user}@${activeSession.sshConfig.host}:${activeSession.sshConfig.port || 22}`}>
+                      {activeSession.sshConfig.user}@{activeSession.sshConfig.host}
+                      {activeSession.sshConfig.port && activeSession.sshConfig.port !== 22 ? `:${activeSession.sshConfig.port}` : ''}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-[var(--text-subtle)]">CWD:</span>
+                    <span className="text-[var(--accent-cyan)] font-semibold max-w-[280px] truncate" title={activeSessionCwd || 'Workspace'}>
+                      {getFormattedCwd(activeSessionCwd)}
+                    </span>
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -14,6 +14,7 @@ import { TerminalPanel } from './components/terminal/TerminalPanel';
 import { ObservabilityDeck } from './components/sidebar/ObservabilityDeck';
 import { StatusBar } from './components/layout/StatusBar';
 import { CommandPaletteModal } from './components/layout/CommandPaletteModal';
+import { ConnectServerModal } from './components/common/ConnectServerModal';
 import { useIDEStore } from './store/ideStore';
 import { fileWatcher } from './services/fileWatcher';
 
@@ -161,6 +162,9 @@ export const App: React.FC = () => {
 
       {/* Global Command Palette Modal */}
       <CommandPaletteModal />
+
+      {/* Global Remote SSH Connect Server Modal */}
+      <ConnectServerModal />
     </div>
   );
 };

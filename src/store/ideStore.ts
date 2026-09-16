@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ActivityView, FileNode, ProblemItem, RightSidebarTab, SystemMetrics, TabItem, TerminalTab, ThemeMode, WorkloadItem } from '../types/ide';
+import { ActivityView, FileNode, ProblemItem, RightSidebarTab, SystemMetrics, TabItem, TerminalSessionRequest, TerminalTab, ThemeMode, WorkloadItem } from '../types/ide';
 import { 
   createFile, 
   createFolder, 
@@ -124,6 +124,13 @@ interface IDEState {
   activeTerminalTab: TerminalTab;
   setActiveTerminalTab: (tab: TerminalTab) => void;
   problems: ProblemItem[];
+
+  // Connect Server Modal & Terminal Session Requests
+  isConnectServerModalOpen: boolean;
+  setConnectServerModalOpen: (open: boolean) => void;
+  terminalSessionRequest: TerminalSessionRequest | null;
+  requestTerminalSession: (req: Omit<TerminalSessionRequest, 'id'>) => void;
+  clearTerminalSessionRequest: () => void;
 
   // Right Observability Sidebar State
   activeRightTab: RightSidebarTab;
@@ -516,6 +523,18 @@ export const useIDEStore = create<IDEState>((set, get) => ({
   setActiveTerminalTab: (tab) => set({ activeTerminalTab: tab }),
 
   problems: [],
+
+  isConnectServerModalOpen: false,
+  setConnectServerModalOpen: (open) => set({ isConnectServerModalOpen: open }),
+  terminalSessionRequest: null,
+  requestTerminalSession: (req) => set({
+    terminalSessionRequest: {
+      ...req,
+      id: `req_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+    },
+    activeTerminalTab: 'TERMINAL'
+  }),
+  clearTerminalSessionRequest: () => set({ terminalSessionRequest: null }),
 
   activeRightTab: 'OVERVIEW',
   setActiveRightTab: (tab) => set({ activeRightTab: tab }),

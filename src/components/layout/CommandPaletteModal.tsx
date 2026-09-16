@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileCode, Terminal, Save, FolderOpen, RotateCw, Image, FolderSync, Moon, Sun } from 'lucide-react';
+import { Search, FileCode, Terminal, Save, FolderOpen, RotateCw, Image, FolderSync, Moon, Sun, Server } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { ToriiIcon } from '../common/ToriiIcon';
 
@@ -17,7 +17,8 @@ export const CommandPaletteModal: React.FC = () => {
     openFolder,
     changeScopeFolder,
     refreshTree,
-    fileTree
+    fileTree,
+    setConnectServerModalOpen
   } = useIDEStore();
 
   const [query, setQuery] = useState('');
@@ -56,6 +57,16 @@ export const CommandPaletteModal: React.FC = () => {
     { id: 'refresh_tree', title: 'View: Refresh File Explorer', category: 'Explorer', icon: RotateCw, action: () => refreshTree() },
     { id: 'save', title: 'File: Save Current File', category: 'Action', icon: Save, action: () => saveCurrentFile() },
     { id: 'new_terminal', title: 'Terminal: Open Terminal Session', category: 'Action', icon: Terminal, action: () => setActiveTerminalTab('TERMINAL') },
+    { 
+      id: 'connect_server', 
+      title: 'Remote: Connect to Server (SSH)...', 
+      category: 'Remote', 
+      icon: Server, 
+      action: () => {
+        setCommandPaletteOpen(false);
+        setConnectServerModalOpen(true);
+      } 
+    },
     { id: 'wallpaper_opacity', title: `Toggle Wallpaper Opacity (${wallpaperOpacity}%)`, category: 'Aesthetics', icon: Image, action: () => setWallpaperOpacity(wallpaperOpacity >= 40 ? 15 : wallpaperOpacity + 10) }
   ];
 

@@ -57,7 +57,8 @@ export const ObservabilityDeck: React.FC = () => {
     setActiveTerminalTab,
     openFile,
     rootName,
-    toggleRightSidebar
+    toggleRightSidebar,
+    setConnectServerModalOpen
   } = useIDEStore();
 
   const [servers, setServers] = useState<ServerEndpoint[]>([]);
@@ -284,7 +285,7 @@ export const ObservabilityDeck: React.FC = () => {
               <span className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wider block mb-2">QUICK ACTIONS</span>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <button 
-                  onClick={() => setActiveTerminalTab('PORTS')}
+                  onClick={() => setConnectServerModalOpen(true)}
                   className="p-2 bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50 rounded-lg flex items-center space-x-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all text-left shadow-sm cursor-pointer"
                 >
                   <Server className="w-3.5 h-3.5 text-[var(--accent-coral)]" />

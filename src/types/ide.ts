@@ -225,6 +225,15 @@ export interface GitCommitInfo {
   author: string;
   date: string;
 }
+export interface SSHConnectionConfig {
+  host: string;
+  user: string;
+  port?: number;
+}
 
-
-
+export interface TerminalSessionRequest {
+  id: string;
+  shellType: 'powershell' | 'cmd' | 'python' | 'node' | 'bash' | 'ssh' | string;
+  name?: string;
+  sshConfig?: SSHConnectionConfig;
+}

@@ -1156,7 +1156,24 @@ wssTerminal.on('connection', (ws, req) => {
   let shell = isWin ? 'powershell.exe' : (process.env.SHELL || 'bash');
   let args = isWin ? ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass', '-Command', psPrompt] : ['-i'];
 
-  if (isWin) {
+  if (shellType === 'ssh') {
+    const host = urlParams.get('host') || '127.0.0.1';
+    const user = urlParams.get('user') || 'Azhar';
+    const port = urlParams.get('port') || '22';
+
+    shell = isWin ? 'ssh.exe' : 'ssh';
+    args = [];
+    if (port && port !== '22') {
+      args.push('-p', String(port));
+    }
+    // Automatically accept new host keys so users on LAN are not blocked by yes/no prompts
+    args.push('-o', 'StrictHostKeyChecking=accept-new');
+    args.push(`${user}@${host}`);
+
+    try {
+      ws.send(`\x1b[1;36m[RenKairo Remote SSH]\x1b[0m Connecting to \x1b[1;32m${user}@${host}\x1b[0m${port !== '22' ? ` (Port ${port})` : ''}...\r\n\x1b[90mCommand: ssh ${port !== '22' ? `-p ${port} ` : ''}${user}@${host}\x1b[0m\r\n\r\n`);
+    } catch (e) {}
+  } else if (isWin) {
     if (shellType === 'cmd') {
       shell = 'cmd.exe';
       args = ['/k'];
@@ -1238,7 +1255,11 @@ wssTerminal.on('connection', (ws, req) => {
 
     ptyProcess.onExit(({ exitCode }) => {
       if (ws.readyState === ws.OPEN) {
-        ws.send(`\r\n\x1b[31mShell session closed (exit code ${exitCode}).\x1b[0m\r\n`);
+        if (shellType === 'ssh') {
+          ws.send(`\r\n\x1b[33m[RenKairo] SSH session disconnected (exit code ${exitCode}).\x1b[0m\r\n`);
+        } else {
+          ws.send(`\r\n\x1b[31mShell session closed (exit code ${exitCode}).\x1b[0m\r\n`);
+        }
       }
     });
 
