@@ -12,6 +12,7 @@ import {
   Check
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
+import { useAuthStore } from '../../store/authStore';
 import { ToriiIcon } from '../common/ToriiIcon';
 
 export const TopCommandBar: React.FC = () => {
@@ -27,6 +28,8 @@ export const TopCommandBar: React.FC = () => {
     isRightSidebarOpen,
     toggleRightSidebar
   } = useIDEStore();
+
+  const { user, isAuthenticated, setAuthModalOpen } = useAuthStore();
 
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -168,25 +171,31 @@ export const TopCommandBar: React.FC = () => {
           )}
         </button>
 
-        {/* User Profile Avatar & System Overview Panel Toggle */}
-        <div className="pl-2 border-l border-[var(--border-color)]">
+        {/* User Profile Avatar & Login Trigger */}
+        <div className="pl-2 border-l border-[var(--border-color)] flex items-center space-x-2">
+          <button
+            onClick={() => setAuthModalOpen(true)}
+            title={isAuthenticated && user ? `Logged in as ${user.username}` : "Sign In / Register"}
+            className="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-color)] transition-all cursor-pointer focus:outline-none"
+          >
+            <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-rose-500 to-red-600 flex items-center justify-center text-white text-[10px] font-bold font-mono shadow-sm">
+              {isAuthenticated && user ? user.username.charAt(0).toUpperCase() : <User className="w-3 h-3 text-white" />}
+            </div>
+            <span className="hidden md:inline font-mono text-[10px] font-semibold truncate max-w-[100px]">
+              {isAuthenticated && user ? user.username : 'Sign In'}
+            </span>
+          </button>
+
           <button
             onClick={toggleRightSidebar}
             title={isRightSidebarOpen ? "Hide System Overview Panel" : "Open System Overview Panel"}
-            className={`flex items-center space-x-1.5 px-2 py-1 rounded-md transition-all cursor-pointer focus:outline-none ${
+            className={`p-1.5 rounded-md transition-all cursor-pointer focus:outline-none ${
               isRightSidebarOpen 
                 ? 'bg-[var(--accent-coral)]/15 text-[var(--accent-coral)] border border-[var(--accent-coral)]/40 shadow-sm' 
                 : 'hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'
             }`}
           >
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center overflow-hidden transition-colors ${
-              isRightSidebarOpen ? 'bg-[var(--accent-coral)]/20' : 'bg-[var(--bg-card)]'
-            }`}>
-              <User className={`w-3.5 h-3.5 ${isRightSidebarOpen ? 'text-[var(--accent-coral)]' : 'text-[var(--text-muted)]'}`} />
-            </div>
-            <span className="hidden md:inline font-mono text-[10px] font-semibold">
-              {isRightSidebarOpen ? 'System Overview' : 'Profile'}
-            </span>
+            <Activity className="w-4 h-4" />
           </button>
         </div>
       </div>

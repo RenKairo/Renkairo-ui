@@ -1160,6 +1160,9 @@ wssTerminal.on('connection', (ws, req) => {
     const host = urlParams.get('host') || '127.0.0.1';
     const user = urlParams.get('user') || 'Azhar';
     const port = urlParams.get('port') || '22';
+    const workspaceId = urlParams.get('workspace_id') || 'default';
+    const workspaceName = urlParams.get('workspace_name') || workspaceId;
+    const sshPassword = urlParams.get('password') || '';
 
     shell = isWin ? 'ssh.exe' : 'ssh';
     args = [];
@@ -1168,10 +1171,15 @@ wssTerminal.on('connection', (ws, req) => {
     }
     // Automatically accept new host keys so users on LAN are not blocked by yes/no prompts
     args.push('-o', 'StrictHostKeyChecking=accept-new');
+    args.push('-t');
     args.push(`${user}@${host}`);
 
+    // Remote RenKairo Workspace & Log Management Setup Command
+    const remoteInitCmd = `mkdir -p ~/.renkairo/workspaces/${workspaceName} ~/.renkairo/logs && cd ~/.renkairo/workspaces/${workspaceName} && echo "[$(date)] [RenKairo Log Manager] Created workspace log directory ~/.renkairo/logs" >> ~/.renkairo/logs/workspace-${workspaceName}.log && exec bash -l`;
+    args.push(remoteInitCmd);
+
     try {
-      ws.send(`\x1b[1;36m[RenKairo Remote SSH]\x1b[0m Connecting to \x1b[1;32m${user}@${host}\x1b[0m${port !== '22' ? ` (Port ${port})` : ''}...\r\n\x1b[90mCommand: ssh ${port !== '22' ? `-p ${port} ` : ''}${user}@${host}\x1b[0m\r\n\r\n`);
+      ws.send(`\x1b[1;36m[RenKairo Remote SSH & Shiro Workspace]\x1b[0m Connecting to \x1b[1;32m${user}@${host}\x1b[0m...\r\n\x1b[90mScoping Workspace: ~/.renkairo/workspaces/${workspaceName}\x1b[0m\r\n\x1b[90mLog Manager: ~/.renkairo/logs\x1b[0m\r\n\r\n`);
     } catch (e) {}
   } else if (isWin) {
     if (shellType === 'cmd') {
@@ -1228,9 +1236,22 @@ wssTerminal.on('connection', (ws, req) => {
   }
 
   if (ptyProcess) {
+    let hasInjectedPassword = false;
+    const sshPassword = urlParams.get('password') || '';
+
     ptyProcess.onData((data) => {
       if (ws.readyState === ws.OPEN) {
         ws.send(data);
+      }
+      if (shellType === 'ssh' && sshPassword && !hasInjectedPassword) {
+        if (data.includes('password:') || data.includes("'s password:")) {
+          hasInjectedPassword = true;
+          setTimeout(() => {
+            try {
+              ptyProcess.write(`${sshPassword}\r\n`);
+            } catch (e) {}
+          }, 100);
+        }
       }
     });
 

@@ -15,7 +15,9 @@ import { ObservabilityDeck } from './components/sidebar/ObservabilityDeck';
 import { StatusBar } from './components/layout/StatusBar';
 import { CommandPaletteModal } from './components/layout/CommandPaletteModal';
 import { ConnectServerModal } from './components/common/ConnectServerModal';
+import { AuthModal } from './components/common/AuthModal';
 import { useIDEStore } from './store/ideStore';
+import { useAuthStore } from './store/authStore';
 import { fileWatcher } from './services/fileWatcher';
 
 export const App: React.FC = () => {
@@ -28,11 +30,14 @@ export const App: React.FC = () => {
     isRightSidebarOpen
   } = useIDEStore();
 
+  const { initAuth } = useAuthStore();
+
   const [isDraggingLeft, setIsDraggingLeft] = useState(false);
   const [isDraggingRight, setIsDraggingRight] = useState(false);
 
   useEffect(() => {
     fileWatcher.init();
+    initAuth();
   }, []);
 
   // Left Sidebar Drag-to-Resize Handler
@@ -165,6 +170,9 @@ export const App: React.FC = () => {
 
       {/* Global Remote SSH Connect Server Modal */}
       <ConnectServerModal />
+
+      {/* Global User Authentication Modal */}
+      <AuthModal />
     </div>
   );
 };

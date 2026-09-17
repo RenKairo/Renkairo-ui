@@ -355,7 +355,7 @@ export const TerminalPanel: React.FC = () => {
       
       let wsUrl = `${baseUrl}?shell=${encodeURIComponent(session.shellType)}`;
       if (session.shellType === 'ssh' && session.sshConfig) {
-        wsUrl += `&host=${encodeURIComponent(session.sshConfig.host)}&user=${encodeURIComponent(session.sshConfig.user || 'Azhar')}&port=${encodeURIComponent(session.sshConfig.port || 22)}`;
+        wsUrl += `&host=${encodeURIComponent(session.sshConfig.host)}&user=${encodeURIComponent(session.sshConfig.user || 'Azhar')}&port=${encodeURIComponent(session.sshConfig.port || 22)}&workspace_id=${encodeURIComponent(session.sshConfig.workspaceId || 'default')}`;
       } else {
         if (session.cwd) {
           wsUrl += `&cwd=${encodeURIComponent(session.cwd)}`;

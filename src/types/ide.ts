@@ -229,6 +229,9 @@ export interface SSHConnectionConfig {
   host: string;
   user: string;
   port?: number;
+  workspaceId?: string;
+  workspaceName?: string;
+  password?: string;
 }
 
 export interface TerminalSessionRequest {

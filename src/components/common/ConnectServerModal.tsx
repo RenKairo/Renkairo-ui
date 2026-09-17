@@ -28,6 +28,9 @@ export const ConnectServerModal: React.FC = () => {
   const [host, setHost] = useState('');
   const [user, setUser] = useState('Azhar');
   const [port, setPort] = useState('22');
+  const [password, setPassword] = useState('');
+  const [workspaceName, setWorkspaceName] = useState('default');
+  const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
   const [recentHosts, setRecentHosts] = useState<string[]>([]);
 
@@ -104,14 +107,17 @@ export const ConnectServerModal: React.FC = () => {
       setTerminalHeight(280);
     }
 
-    // Dispatch terminal session request
+    // Dispatch terminal session request with workspace scope & log management
     requestTerminalSession({
       shellType: 'ssh',
-      name: `SSH: ${targetUser}@${targetHost}`,
+      name: `SSH Workspace: ${targetUser}@${targetHost}`,
       sshConfig: {
         host: targetHost,
         user: targetUser,
-        port: parseInt(targetPort, 10) || 22
+        port: parseInt(targetPort, 10) || 22,
+        workspaceId: workspaceName.trim() || 'default',
+        workspaceName: workspaceName.trim() || 'default',
+        password: password.trim()
       }
     });
 
@@ -204,6 +210,37 @@ export const ConnectServerModal: React.FC = () => {
                 onChange={(e) => setPort(e.target.value)}
                 placeholder="22"
                 className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-primary)] focus:outline-none shadow-sm transition-colors text-center"
+              />
+            </div>
+          </div>
+
+          {/* Workspace Scope & Password Credentials Grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Workspace Folder Name */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold text-[var(--text-primary)] uppercase tracking-wider font-mono">
+                Workspace Scope Name
+              </label>
+              <input
+                type="text"
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                placeholder="default"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--accent-cyan)] focus:outline-none shadow-sm transition-colors"
+              />
+            </div>
+
+            {/* SSH Password (Auto Authentication) */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider font-mono">
+                Server Password (Optional)
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Auto-inject password"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-primary)] focus:outline-none shadow-sm transition-colors"
               />
             </div>
           </div>
