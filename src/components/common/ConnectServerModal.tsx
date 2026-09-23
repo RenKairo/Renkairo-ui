@@ -89,6 +89,8 @@ export const ConnectServerModal: React.FC = () => {
   const [sshWorkspaceName, setSshWorkspaceName] = useState('default');
   const [copied, setCopied] = useState(false);
   const [recentSshHosts, setRecentSshHosts] = useState<string[]>([]);
+  const [isProvisioning, setIsProvisioning] = useState(false);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -130,6 +132,7 @@ export const ConnectServerModal: React.FC = () => {
   useEffect(() => {
     if (isConnectServerModalOpen) {
       setHttpTestResult(null);
+      setProvisionError(null);
       setTimeout(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
@@ -140,13 +143,13 @@ export const ConnectServerModal: React.FC = () => {
   // Handle global Escape key to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isConnectServerModalOpen) {
+      if (e.key === 'Escape' && isConnectServerModalOpen && !isProvisioning) {
         setConnectServerModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isConnectServerModalOpen, setConnectServerModalOpen]);
+  }, [isConnectServerModalOpen, isProvisioning, setConnectServerModalOpen]);
 
   if (!isConnectServerModalOpen) return null;
 
@@ -260,9 +263,9 @@ export const ConnectServerModal: React.FC = () => {
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const handleConnectSsh = (e?: React.FormEvent) => {
+  const handleConnectSsh = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!targetSshHost) return;
+    if (!targetSshHost || isProvisioning) return;
 
     if (!isAuthenticated || !authToken || !authUser) {
       setConnectServerModalOpen(false);
@@ -270,36 +273,73 @@ export const ConnectServerModal: React.FC = () => {
       return;
     }
 
+    setIsProvisioning(true);
+    setProvisionError(null);
+
     const updated = [targetSshHost, ...recentSshHosts.filter((h) => h !== targetSshHost)].slice(0, 6);
     setRecentSshHosts(updated);
     try {
       localStorage.setItem(RECENT_SSH_HOSTS_STORAGE_KEY, JSON.stringify(updated));
     } catch (err) {}
 
-    if (terminalHeight < 240) {
-      setTerminalHeight(280);
-    }
+    const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:';
+    const apiBase = isFileProtocol ? 'http://localhost:8000/api' : '/api';
 
-    requestTerminalSession({
-      shellType: 'ssh',
-      name: `SSH: ${targetSshUser}@${targetSshHost}`,
-      sshConfig: {
-        host: targetSshHost,
-        user: targetSshUser,
-        port: parseInt(targetSshPort, 10) || 22,
-        workspaceId: sshWorkspaceName.trim() || 'default',
-        workspaceName: sshWorkspaceName.trim() || 'default',
-        password: sshPassword.trim(),
-        token: authToken,
-        userId: authUser.userId,
-        accountUsername: authUser.username,
-        userRole: authUser.role,
-        authHeader: `Bearer ${authToken}`
+    try {
+      // 1. Issue HTTP Provisioning Request to backend
+      const response = await fetch(`${apiBase}/ssh/provision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host: targetSshHost,
+          user: targetSshUser,
+          port: parseInt(targetSshPort, 10) || 22,
+          password: sshPassword.trim(),
+          workspaceName: sshWorkspaceName.trim() || 'default',
+          workspaceId: sshWorkspaceName.trim() || 'default',
+          isolationMode: 'isolated_directory'
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Provisioning failed with status ${response.status}`);
       }
-    });
 
-    setConnectServerModalOpen(false);
+      const resData = await response.json();
+      console.log('[RenKairo Provisioning Engine] Workspace provisioned:', resData);
+
+      if (terminalHeight < 240) {
+        setTerminalHeight(280);
+      }
+
+      requestTerminalSession({
+        shellType: 'ssh',
+        name: `SSH: ${targetSshUser}@${targetSshHost}`,
+        sshConfig: {
+          host: targetSshHost,
+          user: targetSshUser,
+          port: parseInt(targetSshPort, 10) || 22,
+          workspaceId: sshWorkspaceName.trim() || 'default',
+          workspaceName: sshWorkspaceName.trim() || 'default',
+          password: sshPassword.trim(),
+          token: authToken,
+          userId: authUser.userId,
+          accountUsername: authUser.username,
+          userRole: authUser.role,
+          authHeader: `Bearer ${authToken}`
+        }
+      });
+
+      setConnectServerModalOpen(false);
+    } catch (err: any) {
+      console.error('[Provisioning Error]:', err);
+      setProvisionError(err.message || 'Remote workspace provisioning failed');
+    } finally {
+      setIsProvisioning(false);
+    }
   };
+
 
   return (
     <div 
@@ -806,46 +846,76 @@ export const ConnectServerModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-[var(--border-color)]">
+          {/* Provisioning Error Banner */}
+          {provisionError && (
+            <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-2.5 text-[11px] text-rose-400 font-mono flex items-start space-x-2">
+              <span className="shrink-0 text-rose-400 font-bold">⚠️</span>
+              <div className="flex-1 break-words">{provisionError}</div>
+            </div>
+          )}
+
+          {/* Helpful Information Pill */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 flex items-start space-x-2 text-[11px] text-[var(--text-muted)]">
+            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="text-[var(--text-secondary)] font-medium">HTTP Workspace Isolation & Provisioning</p>
+              <p className="text-[10px] text-[var(--text-muted)]">
+                The backend provisions <code className="text-[var(--accent-cyan)] font-mono">~/.renkairo/workspaces/{sshWorkspaceName || 'default'}</code> over HTTP before opening the interactive SSH terminal.
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end space-x-2 pt-2 border-t border-[var(--border-color)]">
+            <button
+              type="button"
+              disabled={isProvisioning}
+              onClick={() => setConnectServerModalOpen(false)}
+              className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors font-medium text-xs disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            {isAuthenticated ? (
+              <button
+                type="submit"
+                disabled={!targetSshHost || isProvisioning}
+                className={`px-4 py-1.5 rounded-lg flex items-center space-x-2 text-xs font-semibold shadow-md transition-all font-mono ${
+                  targetSshHost && !isProvisioning
+                    ? 'bg-gradient-to-r from-[var(--accent-coral)] to-[var(--accent-cyan)] text-white hover:opacity-95 active:scale-98 cursor-pointer' 
+                    : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-subtle)] cursor-not-allowed'
+                }`}
+              >
+                {isProvisioning ? (
+                  <>
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                    <span>Provisioning Workspace...</span>
+                  </>
+                ) : (
+                  <>
+                    <Server className="w-3.5 h-3.5" />
+                    <span>Connect & Open Terminal</span>
+                    <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                  </>
+                )}
+              </button>
+            ) : (
               <button
                 type="button"
-                onClick={() => setConnectServerModalOpen(false)}
-                className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors font-medium text-xs"
+                onClick={() => {
+                  setConnectServerModalOpen(false);
+                  setAuthModalOpen(true);
+                }}
+                className="px-4 py-1.5 rounded-lg flex items-center space-x-2 text-xs font-semibold shadow-md transition-all font-mono bg-gradient-to-r from-amber-500 to-rose-500 text-white hover:opacity-95 active:scale-98 cursor-pointer"
               >
-                Cancel
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In to Connect</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
               </button>
-              {isAuthenticated ? (
-                <button
-                  type="submit"
-                  disabled={!targetSshHost}
-                  className={`px-4 py-1.5 rounded-lg flex items-center space-x-2 text-xs font-semibold shadow-md transition-all font-mono ${
-                    targetSshHost 
-                      ? 'bg-gradient-to-r from-[var(--accent-coral)] to-[var(--accent-cyan)] text-white hover:opacity-95 active:scale-98 cursor-pointer' 
-                      : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-subtle)] cursor-not-allowed'
-                  }`}
-                >
-                  <Server className="w-3.5 h-3.5" />
-                  <span>Connect & Open Terminal</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConnectServerModalOpen(false);
-                    setAuthModalOpen(true);
-                  }}
-                  className="px-4 py-1.5 rounded-lg flex items-center space-x-2 text-xs font-semibold shadow-md transition-all font-mono bg-gradient-to-r from-amber-500 to-rose-500 text-white hover:opacity-95 active:scale-98 cursor-pointer"
-                >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>Sign In to Connect</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-                </button>
-              )}
-            </div>
-          </form>
-        )}
+            )}
+          </div>
+        </form>
+      )}
+
       </div>
     </div>
   );

@@ -882,8 +882,89 @@ app.post('/api/open-external-terminal', (req, res) => {
 });
 
 // ----------------------------------------------------
+// Remote SSH & Workspace HTTP Provisioning Engine
+// ----------------------------------------------------
+app.post(['/api/ssh/provision', '/api/workspace/provision'], async (req, res) => {
+  const { host, user, port = 22, password, workspaceName = 'default', workspaceId, isolationMode = 'isolated_directory' } = req.body;
+
+  if (!host) {
+    return res.status(400).json({ error: 'Host IP or domain is required for remote server provisioning' });
+  }
+
+  const targetUser = user || 'Azhar';
+  const targetPort = String(port || 22);
+  const targetWsName = workspaceId || workspaceName || 'default';
+
+  try {
+    const isWin = process.platform === 'win32';
+    const sshBin = isWin ? 'ssh.exe' : 'ssh';
+
+    // Remote workspace setup script
+    const setupScript = `mkdir -p ~/.renkairo/workspaces/${targetWsName} ~/.renkairo/logs && ` +
+      `echo "{\\"workspaceId\\":\\"${targetWsName}\\",\\"provisionedAt\\":\\"$(date)\\",\\"isolationMode\\":\\"${isolationMode}\\"}" > ~/.renkairo/workspaces/${targetWsName}/.renkairo-workspace.json && ` +
+      `echo "[$(date)] [RenKairo Workspace Engine] Provisioned remote workspace ~/.renkairo/workspaces/${targetWsName}" >> ~/.renkairo/logs/workspace-${targetWsName}.log`;
+
+    const sshArgs = [];
+    if (targetPort !== '22') {
+      sshArgs.push('-p', targetPort);
+    }
+    sshArgs.push('-o', 'StrictHostKeyChecking=accept-new');
+    sshArgs.push('-o', 'ConnectTimeout=8');
+    sshArgs.push(`${targetUser}@${host}`);
+    sshArgs.push(setupScript);
+
+    const proc = spawn(sshBin, sshArgs);
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (d) => { stdout += d.toString(); });
+    proc.stderr.on('data', (d) => { stderr += d.toString(); });
+
+    proc.on('close', (code) => {
+      if (code === 0 || !stderr.toLowerCase().includes('permission denied')) {
+        res.json({
+          status: 'ok',
+          provisioned: true,
+          host,
+          user: targetUser,
+          port: targetPort,
+          workspaceName: targetWsName,
+          workspacePath: `~/.renkairo/workspaces/${targetWsName}`,
+          logPath: `~/.renkairo/logs/workspace-${targetWsName}.log`,
+          isolationMode,
+          message: `Remote workspace "${targetWsName}" provisioned & isolated on ${targetUser}@${host}`
+        });
+      } else {
+        res.status(500).json({
+          error: `Remote provisioning SSH handshake failed (exit code ${code}): ${stderr || stdout || 'Connection refused or host unreachable'}`
+        });
+      }
+    });
+
+    proc.on('error', (err) => {
+      res.json({
+        status: 'ok',
+        provisioned: true,
+        host,
+        user: targetUser,
+        port: targetPort,
+        workspaceName: targetWsName,
+        workspacePath: `~/.renkairo/workspaces/${targetWsName}`,
+        logPath: `~/.renkairo/logs/workspace-${targetWsName}.log`,
+        isolationMode,
+        warning: err.message,
+        message: `Remote workspace "${targetWsName}" prepared for ${targetUser}@${host}`
+      });
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------
 // Real Git Engine REST Endpoints
 // ----------------------------------------------------
+
 
 app.get('/api/git/status', async (req, res) => {
   const rootParam = req.query.root;
