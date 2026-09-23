@@ -1,10 +1,9 @@
 import { Project, CreateProjectPayload } from '../types/project';
-
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+import { getProjectApiUrl } from './apiConfig';
 
 export const projectService = {
   async createProject(payload: CreateProjectPayload): Promise<Project> {
-    const res = await fetch(`${API_BASE_URL}/projects`, {
+    const res = await fetch(`${getProjectApiUrl()}/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -14,19 +13,19 @@ export const projectService = {
   },
 
   async getUserProjects(userId: string): Promise<Project[]> {
-    const res = await fetch(`${API_BASE_URL}/projects/user/${userId}`);
+    const res = await fetch(`${getProjectApiUrl()}/projects/user/${userId}`);
     if (!res.ok) throw new Error('Failed to fetch user projects');
     return res.json();
   },
 
   async getProject(projectId: string): Promise<Project> {
-    const res = await fetch(`${API_BASE_URL}/projects/${projectId}`);
+    const res = await fetch(`${getProjectApiUrl()}/projects/${projectId}`);
     if (!res.ok) throw new Error('Failed to fetch project');
     return res.json();
   },
 
   async deleteProject(projectId: string): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+    const res = await fetch(`${getProjectApiUrl()}/projects/${projectId}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete project');

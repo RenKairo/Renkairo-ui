@@ -5,6 +5,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 import { spawn, execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 let pty = null;
@@ -1140,6 +1141,55 @@ wssFs.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'connected', workspace: currentWorkspace }));
 });
 
+// ----------------------------------------------------
+// Shiro Backend Security & JWT Verification
+// ----------------------------------------------------
+const SHIRO_JWT_SECRET = process.env.SHIRO_JWT_SECRET || 'renkairo-shiro-super-secret-jwt-signing-key-2026-secure!';
+
+function verifyShiroToken(token) {
+  if (!token || typeof token !== 'string') return null;
+
+  // Offline demo/mock fallback token
+  if (token === 'renkairo-mock-jwt-token-local-dev-mode') {
+    return {
+      sub: 'usr_demo_88',
+      username: 'developer',
+      email: 'developer@renkairo.io',
+      role: 'PRINCIPAL_ENGINEER',
+      token_type: 'ACCESS'
+    };
+  }
+
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+
+  const [headerB64, payloadB64, signature] = parts;
+  const dataToSign = `${headerB64}.${payloadB64}`;
+
+  try {
+    const expectedSig = crypto
+      .createHmac('sha256', SHIRO_JWT_SECRET)
+      .update(dataToSign)
+      .digest('base64url');
+
+    if (expectedSig !== signature) {
+      return null;
+    }
+
+    const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf8');
+    const claims = JSON.parse(payloadJson);
+
+    const now = Math.floor(Date.now() / 1000);
+    if (claims.exp && now > claims.exp) {
+      return null; // Expired token
+    }
+
+    return claims;
+  } catch (err) {
+    return null;
+  }
+}
+
 // REAL Interactive Shell Terminal Process per WebSocket Session (using node-pty)
 wssTerminal.on('connection', (ws, req) => {
   const isWin = process.platform === 'win32';
@@ -1164,6 +1214,27 @@ wssTerminal.on('connection', (ws, req) => {
     const workspaceName = urlParams.get('workspace_name') || workspaceId;
     const sshPassword = urlParams.get('password') || '';
 
+    // Extract Shiro token from query parameter or authorization header
+    const authHeader = req.headers['authorization'];
+    const token = urlParams.get('token') || (authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null);
+
+    const claims = verifyShiroToken(token);
+
+    if (!claims) {
+      console.warn(`[RenKairo Security] Denied unauthorized SSH terminal attempt to ${user}@${host}:${port}`);
+      try {
+        ws.send(
+          `\r\n\x1b[1;31m[RenKairo Security Alert]\x1b[0m 401 Unauthorized: Valid Shiro JWT token required.\r\n` +
+          `\x1b[33mAnonymous SSH connection rejected. Please sign in to your RenKairo account.\x1b[0m\r\n\r\n`
+        );
+      } catch (e) {}
+      ws.close(4401, 'Unauthorized: Valid Shiro JWT token required');
+      return;
+    }
+
+    const accountUser = claims.username || urlParams.get('account_user') || 'renkairo_user';
+    console.log(`[RenKairo Security] Authenticated SSH connection for '${accountUser}' (ID: ${claims.sub}, Role: ${claims.role || 'DEVELOPER'}) to ${user}@${host}:${port}`);
+
     shell = isWin ? 'ssh.exe' : 'ssh';
     args = [];
     if (port && port !== '22') {
@@ -1174,12 +1245,17 @@ wssTerminal.on('connection', (ws, req) => {
     args.push('-t');
     args.push(`${user}@${host}`);
 
-    // Remote RenKairo Workspace & Log Management Setup Command
-    const remoteInitCmd = `mkdir -p ~/.renkairo/workspaces/${workspaceName} ~/.renkairo/logs && cd ~/.renkairo/workspaces/${workspaceName} && echo "[$(date)] [RenKairo Log Manager] Created workspace log directory ~/.renkairo/logs" >> ~/.renkairo/logs/workspace-${workspaceName}.log && exec bash -l`;
+    // Remote RenKairo Workspace & Log Management Setup Command (scoped per authenticated account)
+    const remoteInitCmd = `mkdir -p ~/.renkairo/workspaces/${accountUser}/${workspaceName} ~/.renkairo/logs && cd ~/.renkairo/workspaces/${accountUser}/${workspaceName} && echo "[$(date)] [RenKairo Log Manager] [Account: ${accountUser}] Created workspace log directory ~/.renkairo/logs" >> ~/.renkairo/logs/workspace-${workspaceName}.log && exec bash -l`;
     args.push(remoteInitCmd);
 
     try {
-      ws.send(`\x1b[1;36m[RenKairo Remote SSH & Shiro Workspace]\x1b[0m Connecting to \x1b[1;32m${user}@${host}\x1b[0m...\r\n\x1b[90mScoping Workspace: ~/.renkairo/workspaces/${workspaceName}\x1b[0m\r\n\x1b[90mLog Manager: ~/.renkairo/logs\x1b[0m\r\n\r\n`);
+      ws.send(
+        `\x1b[1;32m[RenKairo Security]\x1b[0m Authenticated as \x1b[1;36m${accountUser}\x1b[0m (Role: ${claims.role || 'DEVELOPER'}, ID: ${claims.sub})\r\n` +
+        `\x1b[1;36m[RenKairo Remote SSH & Shiro Workspace]\x1b[0m Connecting to \x1b[1;32m${user}@${host}\x1b[0m...\r\n` +
+        `\x1b[90mScoping Account Workspace: ~/.renkairo/workspaces/${accountUser}/${workspaceName}\x1b[0m\r\n` +
+        `\x1b[90mLog Manager: ~/.renkairo/logs\x1b[0m\r\n\r\n`
+      );
     } catch (e) {}
   } else if (isWin) {
     if (shellType === 'cmd') {

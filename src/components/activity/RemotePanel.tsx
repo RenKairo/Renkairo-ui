@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { HardDrive, Server, Plus, Power, Wifi, ShieldCheck, Terminal } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
+import { useAuthStore } from '../../store/authStore';
+import { getBackendBaseUrl, subscribeBackendUrlChange } from '../../services/apiConfig';
 
 export const RemotePanel: React.FC = () => {
   const { 
@@ -8,6 +10,13 @@ export const RemotePanel: React.FC = () => {
     setConnectServerModalOpen, 
     requestTerminalSession 
   } = useIDEStore();
+  const { user, token, isAuthenticated, setAuthModalOpen } = useAuthStore();
+  const [backendUrl, setBackendUrl] = useState(getBackendBaseUrl);
+
+  React.useEffect(() => {
+    return subscribeBackendUrlChange((url) => setBackendUrl(url));
+  }, []);
+
   const [connections, setConnections] = useState([
     { id: '1', name: 'gpu-cluster-01', host: '192.168.1.120', ping: '12ms', status: 'connected', region: 'us-east-1' },
     { id: '2', name: 'prod-api-server', host: 'api.renkairo.io', ping: '45ms', status: 'disconnected', region: 'eu-central-1' },
@@ -21,6 +30,10 @@ export const RemotePanel: React.FC = () => {
   };
 
   const addConnection = () => {
+    if (!isAuthenticated) {
+      setAuthModalOpen(true);
+      return;
+    }
     setConnectServerModalOpen(true);
   };
 
@@ -34,16 +47,38 @@ export const RemotePanel: React.FC = () => {
       </div>
 
       <div className="p-3 space-y-3">
+        {/* Shiro Backend HTTP Endpoint card */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-2 text-xs shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-[var(--accent-coral)] font-semibold">
+              <Server className="w-4 h-4" />
+              <span>Shiro Backend (HTTP)</span>
+            </div>
+            <button 
+              onClick={() => setConnectServerModalOpen(true)}
+              className="text-[10px] text-[var(--accent-cyan)] hover:underline font-mono"
+            >
+              Configure
+            </button>
+          </div>
+          <div className="font-mono text-[11px] text-[var(--text-primary)] truncate bg-[var(--bg-panel)] px-2 py-1 rounded border border-[var(--border-color)]">
+            {backendUrl}
+          </div>
+          <p className="text-[10px] text-[var(--text-muted)]">
+            REST & WebSocket engine running on port 8080.
+          </p>
+        </div>
+
         <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-1.5 text-xs shadow-sm">
           <div className="flex items-center space-x-2 text-[var(--accent-cyan)] font-semibold">
             <ShieldCheck className="w-4 h-4" />
-            <span>SSH Key Auth Active</span>
+            <span>SSH Shell (Port 22)</span>
           </div>
-          <p className="text-[10px] text-[var(--text-muted)]">Connected securely using id_ed25519.</p>
+          <p className="text-[10px] text-[var(--text-muted)]">Terminal sessions with token authentication.</p>
         </div>
 
         <div className="text-[10px] font-mono text-[var(--text-muted)] font-semibold uppercase px-1">
-          CONFIGURED HOSTS ({connections.length})
+          CONFIGURED SSH HOSTS ({connections.length})
         </div>
 
         <div className="space-y-2">
@@ -70,10 +105,23 @@ export const RemotePanel: React.FC = () => {
                 <div className="flex items-center space-x-1">
                   <button 
                     onClick={() => {
+                      if (!isAuthenticated || !token || !user) {
+                        setAuthModalOpen(true);
+                        return;
+                      }
                       requestTerminalSession({
                         shellType: 'ssh',
-                        name: `SSH: Azhar@${c.host}`,
-                        sshConfig: { host: c.host, user: 'Azhar', port: 22 }
+                        name: `SSH: ${user.username}@${c.host}`,
+                        sshConfig: { 
+                          host: c.host, 
+                          user: user.username, 
+                          port: 22,
+                          token,
+                          userId: user.userId,
+                          accountUsername: user.username,
+                          userRole: user.role,
+                          authHeader: `Bearer ${token}`
+                        }
                       });
                     }} 
                     title="Open SSH Terminal"

@@ -11,10 +11,13 @@ import {
   Github,
   Minus,
   Square,
-  X
+  X,
+  Server
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useIDEStore } from '../../store/ideStore';
 import { authService } from '../../services/authService';
+import { getBackendBaseUrl, subscribeBackendUrlChange } from '../../services/apiConfig';
 import { ToriiIcon } from '../common/ToriiIcon';
 
 export const LoginPage: React.FC = () => {
@@ -28,6 +31,13 @@ export const LoginPage: React.FC = () => {
     authError, 
     setAuthError 
   } = useAuthStore();
+  const { setConnectServerModalOpen } = useIDEStore();
+
+  const [backendUrl, setBackendUrl] = useState(getBackendBaseUrl);
+
+  React.useEffect(() => {
+    return subscribeBackendUrlChange((url) => setBackendUrl(url));
+  }, []);
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   
@@ -208,6 +218,22 @@ export const LoginPage: React.FC = () => {
                       ? 'Login to continue to RenKairo IDE' 
                       : 'Register for RenKairo developer access'}
                   </p>
+                  <div className="mt-2.5 flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-zinc-100/90 border border-zinc-200 text-[11px] font-mono">
+                    <div className="flex items-center space-x-1.5 text-zinc-700 truncate">
+                      <Server className="w-3.5 h-3.5 text-[#e11d48] shrink-0" />
+                      <span className="truncate">Server: {backendUrl}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthModalOpen(false);
+                        setConnectServerModalOpen(true);
+                      }}
+                      className="text-[#e11d48] font-semibold hover:underline text-[10px] shrink-0 ml-2 cursor-pointer"
+                    >
+                      Change
+                    </button>
+                  </div>
                 </div>
 
                 {/* Error Banner */}

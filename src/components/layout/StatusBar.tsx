@@ -7,15 +7,22 @@ import {
   CheckCheck,
   Terminal,
   Loader2,
-  FolderOpen
+  FolderOpen,
+  Server
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useGitStore } from '../../store/gitStore';
 import { ToriiIcon } from '../common/ToriiIcon';
+import { getBackendBaseUrl, subscribeBackendUrlChange } from '../../services/apiConfig';
 
 export const StatusBar: React.FC = () => {
-  const { cursorPos, problems, rootName, isFolderOpening, setActiveActivity } = useIDEStore();
+  const { cursorPos, problems, rootName, isFolderOpening, setActiveActivity, setConnectServerModalOpen } = useIDEStore();
   const { gitStatus, isSyncing, sync, refreshGitStatus } = useGitStore();
+  const [backendUrl, setBackendUrl] = React.useState(getBackendBaseUrl);
+
+  React.useEffect(() => {
+    return subscribeBackendUrlChange((url) => setBackendUrl(url));
+  }, []);
   
   const errorCount = problems.filter(p => p.severity === 'error').length;
   const warningCount = problems.filter(p => p.severity === 'warning').length;
@@ -99,6 +106,16 @@ export const StatusBar: React.FC = () => {
         <span className="hidden sm:inline">UTF-8</span>
         <span className="hidden sm:inline">LF</span>
         
+        {/* Remote Shiro Backend Indicator */}
+        <button
+          onClick={() => setConnectServerModalOpen(true)}
+          title={`Active Shiro Backend: ${backendUrl}. Click to change remote server.`}
+          className="flex items-center space-x-1 text-[var(--accent-coral)] hover:text-white transition-colors cursor-pointer group px-1 py-0.5 rounded hover:bg-[var(--bg-card)]"
+        >
+          <Server className="w-3 h-3 group-hover:scale-110 transition-transform" />
+          <span className="truncate max-w-[140px] font-mono">{backendUrl.replace(/^https?:\/\//i, '')}</span>
+        </button>
+
         {/* Environment Indicator */}
         <div className="flex items-center space-x-1 text-[var(--accent-cyan)]">
           <Terminal className="w-3 h-3" />

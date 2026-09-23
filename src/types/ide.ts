@@ -232,6 +232,11 @@ export interface SSHConnectionConfig {
   workspaceId?: string;
   workspaceName?: string;
   password?: string;
+  token?: string;
+  userId?: string;
+  accountUsername?: string;
+  userRole?: string;
+  authHeader?: string;
 }
 
 export interface TerminalSessionRequest {

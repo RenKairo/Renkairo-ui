@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { WorkspaceGatewayEvent } from '../types/workspace';
+import { getWorkspaceWsUrl } from '../services/apiConfig';
 
 interface UseWorkspaceGatewayOptions {
   workspaceId: string;
@@ -20,7 +21,7 @@ export function useWorkspaceGateway({
   useEffect(() => {
     if (!workspaceId) return;
 
-    const wsUrl = `ws://localhost:8080/ws/workspace/${workspaceId}`;
+    const wsUrl = getWorkspaceWsUrl(workspaceId);
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
 

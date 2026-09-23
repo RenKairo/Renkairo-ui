@@ -356,6 +356,18 @@ export const TerminalPanel: React.FC = () => {
       let wsUrl = `${baseUrl}?shell=${encodeURIComponent(session.shellType)}`;
       if (session.shellType === 'ssh' && session.sshConfig) {
         wsUrl += `&host=${encodeURIComponent(session.sshConfig.host)}&user=${encodeURIComponent(session.sshConfig.user || 'Azhar')}&port=${encodeURIComponent(session.sshConfig.port || 22)}&workspace_id=${encodeURIComponent(session.sshConfig.workspaceId || 'default')}`;
+        if (session.sshConfig.token) {
+          wsUrl += `&token=${encodeURIComponent(session.sshConfig.token)}`;
+        }
+        if (session.sshConfig.userId) {
+          wsUrl += `&user_id=${encodeURIComponent(session.sshConfig.userId)}`;
+        }
+        if (session.sshConfig.accountUsername) {
+          wsUrl += `&account_user=${encodeURIComponent(session.sshConfig.accountUsername)}`;
+        }
+        if (session.sshConfig.password) {
+          wsUrl += `&password=${encodeURIComponent(session.sshConfig.password)}`;
+        }
       } else {
         if (session.cwd) {
           wsUrl += `&cwd=${encodeURIComponent(session.cwd)}`;
@@ -369,6 +381,16 @@ export const TerminalPanel: React.FC = () => {
       ws.onopen = () => {
         try {
           fitAddon.fit();
+          if (session.shellType === 'ssh' && session.sshConfig?.token) {
+            ws.send(JSON.stringify({
+              type: 'auth',
+              authorization: session.sshConfig.authHeader || `Bearer ${session.sshConfig.token}`,
+              token: session.sshConfig.token,
+              userId: session.sshConfig.userId,
+              username: session.sshConfig.accountUsername,
+              role: session.sshConfig.userRole
+            }));
+          }
           ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
         } catch (e) {}
       };
