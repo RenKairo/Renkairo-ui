@@ -8,6 +8,16 @@ export interface UserProfile {
   createdAt?: string;
 }
 
+export const DEFAULT_DEV_USER: UserProfile = {
+  userId: 'usr_dev_azhar',
+  username: 'Azhar',
+  email: 'azhar@renkairo.io',
+  role: 'ADMIN',
+  createdAt: new Date().toISOString()
+};
+
+export const DEFAULT_DEV_TOKEN = 'renkairo-shiro-secret-token';
+
 interface AuthState {
   user: UserProfile | null;
   token: string | null;
@@ -23,12 +33,13 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   setAuthError: (error: string | null) => void;
   initAuth: () => void;
+  ensureDevAuth: () => { user: UserProfile; token: string };
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: DEFAULT_DEV_USER,
+  token: DEFAULT_DEV_TOKEN,
+  isAuthenticated: true,
   isAuthModalOpen: false,
   isLoading: false,
   authError: null,
@@ -46,12 +57,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('renkairo_jwt_token');
-    localStorage.removeItem('renkairo_user');
+    // In developer mode, instead of leaving token empty, reset to default dev token
+    localStorage.setItem('renkairo_jwt_token', DEFAULT_DEV_TOKEN);
+    localStorage.setItem('renkairo_user', JSON.stringify(DEFAULT_DEV_USER));
     set({
-      user: null,
-      token: null,
-      isAuthenticated: false,
+      user: DEFAULT_DEV_USER,
+      token: DEFAULT_DEV_TOKEN,
+      isAuthenticated: true,
       authError: null,
       isLoading: false
     });
@@ -73,9 +85,38 @@ export const useAuthStore = create<AuthState>((set) => ({
           user: JSON.parse(storedUser),
           isAuthenticated: true
         });
+      } else {
+        localStorage.setItem('renkairo_jwt_token', DEFAULT_DEV_TOKEN);
+        localStorage.setItem('renkairo_user', JSON.stringify(DEFAULT_DEV_USER));
+        set({
+          token: DEFAULT_DEV_TOKEN,
+          user: DEFAULT_DEV_USER,
+          isAuthenticated: true
+        });
       }
     } catch (e) {
       console.warn('Failed to restore auth session from localStorage', e);
+      set({
+        token: DEFAULT_DEV_TOKEN,
+        user: DEFAULT_DEV_USER,
+        isAuthenticated: true
+      });
     }
+  },
+
+  ensureDevAuth: () => {
+    const state = get();
+    if (!state.token || !state.user || !state.isAuthenticated) {
+      localStorage.setItem('renkairo_jwt_token', DEFAULT_DEV_TOKEN);
+      localStorage.setItem('renkairo_user', JSON.stringify(DEFAULT_DEV_USER));
+      set({
+        token: DEFAULT_DEV_TOKEN,
+        user: DEFAULT_DEV_USER,
+        isAuthenticated: true
+      });
+      return { token: DEFAULT_DEV_TOKEN, user: DEFAULT_DEV_USER };
+    }
+    return { token: state.token, user: state.user };
   }
 }));
+

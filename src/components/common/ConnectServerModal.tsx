@@ -267,11 +267,10 @@ export const ConnectServerModal: React.FC = () => {
     if (e) e.preventDefault();
     if (!targetSshHost || isProvisioning) return;
 
-    if (!isAuthenticated || !authToken || !authUser) {
-      setConnectServerModalOpen(false);
-      setAuthModalOpen(true);
-      return;
-    }
+    // Ensure developer authentication session is active without prompting user
+    const devAuth = useAuthStore.getState().ensureDevAuth();
+    const activeToken = authToken || devAuth.token;
+    const activeUser = authUser || devAuth.user;
 
     setIsProvisioning(true);
     setProvisionError(null);
@@ -323,11 +322,11 @@ export const ConnectServerModal: React.FC = () => {
           workspaceId: sshWorkspaceName.trim() || 'default',
           workspaceName: sshWorkspaceName.trim() || 'default',
           password: sshPassword.trim(),
-          token: authToken,
-          userId: authUser.userId,
-          accountUsername: authUser.username,
-          userRole: authUser.role,
-          authHeader: `Bearer ${authToken}`
+          token: activeToken,
+          userId: activeUser.userId,
+          accountUsername: activeUser.username,
+          userRole: activeUser.role,
+          authHeader: `Bearer ${activeToken}`
         }
       });
 
@@ -875,43 +874,28 @@ export const ConnectServerModal: React.FC = () => {
             >
               Cancel
             </button>
-            {isAuthenticated ? (
-              <button
-                type="submit"
-                disabled={!targetSshHost || isProvisioning}
-                className={`px-4 py-1.5 rounded-lg flex items-center space-x-2 text-xs font-semibold shadow-md transition-all font-mono ${
-                  targetSshHost && !isProvisioning
-                    ? 'bg-gradient-to-r from-[var(--accent-coral)] to-[var(--accent-cyan)] text-white hover:opacity-95 active:scale-98 cursor-pointer' 
-                    : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-subtle)] cursor-not-allowed'
-                }`}
-              >
-                {isProvisioning ? (
-                  <>
-                    <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                    <span>Provisioning Workspace...</span>
-                  </>
-                ) : (
-                  <>
-                    <Server className="w-3.5 h-3.5" />
-                    <span>Connect & Open Terminal</span>
-                    <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-                  </>
-                )}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setConnectServerModalOpen(false);
-                  setAuthModalOpen(true);
-                }}
-                className="px-4 py-1.5 rounded-lg flex items-center space-x-2 text-xs font-semibold shadow-md transition-all font-mono bg-gradient-to-r from-amber-500 to-rose-500 text-white hover:opacity-95 active:scale-98 cursor-pointer"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Sign In to Connect</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-              </button>
-            )}
+            <button
+              type="submit"
+              disabled={!targetSshHost || isProvisioning}
+              className={`px-4 py-1.5 rounded-lg flex items-center space-x-2 text-xs font-semibold shadow-md transition-all font-mono ${
+                targetSshHost && !isProvisioning
+                  ? 'bg-gradient-to-r from-[var(--accent-coral)] to-[var(--accent-cyan)] text-white hover:opacity-95 active:scale-98 cursor-pointer' 
+                  : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-subtle)] cursor-not-allowed'
+              }`}
+            >
+              {isProvisioning ? (
+                <>
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                  <span>Provisioning Workspace...</span>
+                </>
+              ) : (
+                <>
+                  <Server className="w-3.5 h-3.5" />
+                  <span>Connect & Open Terminal</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                </>
+              )}
+            </button>
           </div>
         </form>
       )}
