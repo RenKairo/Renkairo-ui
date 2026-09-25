@@ -64,6 +64,37 @@ export function getWorkspaceWsUrl(workspaceId: string): string {
   return `${wsProtocol}${host}/ws/workspace/${encodeURIComponent(workspaceId)}`;
 }
 
+export function getAuthHeader(): Record<string, string> {
+  try {
+    const token = localStorage.getItem('renkairo_jwt_token');
+    if (token && token.trim()) {
+      return { Authorization: `Bearer ${token.trim()}` };
+    }
+  } catch (e) {}
+  return {};
+}
+
+export async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers || {});
+  try {
+    const token = localStorage.getItem('renkairo_jwt_token');
+    if (token && token.trim() && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token.trim()}`);
+    }
+  } catch (e) {}
+
+  const res = await fetch(input, {
+    ...init,
+    headers
+  });
+
+  if (res.status === 401) {
+    console.warn(`[RenKairo Auth] 401 Unauthorized from ${input.toString()}`);
+  }
+
+  return res;
+}
+
 export interface BackendConnectionTestResult {
   ok: boolean;
   serverReachable: boolean;
