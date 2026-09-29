@@ -394,12 +394,20 @@ export const TerminalPanel: React.FC = () => {
         fontSize: 12,
         cursorBlink: true,
         cursorStyle: 'block',
-        theme: getTerminalTheme(theme)
+        theme: getTerminalTheme(theme),
+        convertEol: true
       });
 
       const fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
       term.open(container);
+
+      setTimeout(() => {
+        try {
+          fitAddon.fit();
+          term.focus();
+        } catch (e) {}
+      }, 50);
 
       // WebSocket URL with shell, cwd & compact_path query parameters
       const isElectron = typeof window !== 'undefined' && (
@@ -417,7 +425,9 @@ export const TerminalPanel: React.FC = () => {
       if (session.executionMode === 'remote' && remoteServerUrl) {
         const wsProto = remoteServerUrl.startsWith('https') ? 'wss:' : 'ws:';
         const host = remoteServerUrl.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
-        wsUrl = `${wsProto}//${host}/ws/terminal?shell=bash`;
+        const userId = useAuthStore.getState().user?.userId || 'developer';
+        const cleanSessionId = session.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+        wsUrl = `${wsProto}//${host}/ws/terminal?shell=bash&user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(cleanSessionId)}`;
         if (authToken) {
           wsUrl += `&token=${encodeURIComponent(authToken)}`;
         }
@@ -461,6 +471,7 @@ export const TerminalPanel: React.FC = () => {
       ws.onopen = () => {
         try {
           fitAddon.fit();
+          term.focus();
           if (session.shellType === 'ssh' && session.sshConfig?.token) {
             ws.send(JSON.stringify({
               type: 'auth',
@@ -471,7 +482,18 @@ export const TerminalPanel: React.FC = () => {
               role: session.sshConfig.userRole
             }));
           }
-          ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+          ws.send(JSON.stringify({ type: 'resize', cols: term.cols || 80, rows: term.rows || 24 }));
+
+          // Double ping resize after initial render to force shell prompt refresh
+          setTimeout(() => {
+            try {
+              fitAddon.fit();
+              term.focus();
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'resize', cols: term.cols || 80, rows: term.rows || 24 }));
+              }
+            } catch (e) {}
+          }, 100);
         } catch (e) {}
       };
 
