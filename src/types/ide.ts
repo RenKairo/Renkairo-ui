@@ -239,9 +239,12 @@ export interface SSHConnectionConfig {
   authHeader?: string;
 }
 
+export type TerminalExecutionMode = 'local' | 'remote';
+
 export interface TerminalSessionRequest {
   id: string;
   shellType: 'powershell' | 'cmd' | 'python' | 'node' | 'bash' | 'ssh' | string;
   name?: string;
   sshConfig?: SSHConnectionConfig;
+  executionMode?: TerminalExecutionMode;
 }

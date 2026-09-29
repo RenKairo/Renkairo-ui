@@ -14,10 +14,13 @@ import {
   FolderTree,
   Check,
   Server,
-  Wifi
+  Wifi,
+  Globe,
+  Laptop
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
-import { SSHConnectionConfig, TerminalTab } from '../../types/ide';
+import { useAuthStore } from '../../store/authStore';
+import { SSHConnectionConfig, TerminalExecutionMode, TerminalTab } from '../../types/ide';
 
 interface SessionItem {
   id: string;
@@ -26,6 +29,7 @@ interface SessionItem {
   cwd: string | null;
   compactPath?: boolean;
   sshConfig?: SSHConnectionConfig;
+  executionMode?: TerminalExecutionMode;
 }
 
 interface SessionInstance {
@@ -83,8 +87,16 @@ export const TerminalPanel: React.FC = () => {
     setTerminalCompactPath,
     terminalSessionRequest,
     clearTerminalSessionRequest,
-    setConnectServerModalOpen
+    setConnectServerModalOpen,
+    isRemoteServerConnected,
+    remoteServerUrl,
+    remoteServerName,
+    remoteExecutionMode,
+    setRemoteExecutionMode,
+    toggleRemoteExecutionMode
   } = useIDEStore();
+
+  const authToken = useAuthStore((s) => s.token);
 
   const [shellType, setShellType] = useState('powershell');
   const [isMaximized, setIsMaximized] = useState(false);
@@ -210,16 +222,57 @@ export const TerminalPanel: React.FC = () => {
     return `~/${leaf}`;
   };
 
+  // Toggle active session execution mode between Local and Shiro Remote Linux backend
+  const handleToggleActiveSessionExecutionMode = () => {
+    if (!isRemoteServerConnected || !activeSessionId) return;
+
+    const currentSession = sessions.find((s) => s.id === activeSessionId);
+    const currentMode = currentSession?.executionMode || 'local';
+    const nextMode: TerminalExecutionMode = currentMode === 'local' ? 'remote' : 'local';
+
+    // 1. Dispose current session WS and term instances
+    const instance = sessionInstances.current.get(activeSessionId);
+    if (instance) {
+      try { instance.ws.close(); } catch (err) {}
+      try { instance.term.dispose(); } catch (err) {}
+      sessionInstances.current.delete(activeSessionId);
+    }
+
+    // 2. Update global preferred execution mode
+    setRemoteExecutionMode(nextMode);
+
+    // 3. Update session item
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id === activeSessionId) {
+          const nextName = nextMode === 'remote'
+            ? `Remote: ${remoteServerName || 'Shiro'}`
+            : (s.shellType === 'powershell' ? 'PowerShell' : s.shellType === 'cmd' ? 'CMD' : 'Terminal');
+          return {
+            ...s,
+            executionMode: nextMode,
+            name: nextName
+          };
+        }
+        return s;
+      })
+    );
+  };
+
   // Spawn a new terminal session
   const createNewSession = (
     type: string = shellType, 
     customCwd: string | null = workspacePath,
     isCompact: boolean = terminalCompactPath,
     sshConfig?: SSHConnectionConfig,
-    customName?: string
+    customName?: string,
+    executionMode?: TerminalExecutionMode
   ) => {
     const id = `term_sess_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const count = sessions.filter((s) => s.shellType === type).length + 1;
+    const effectiveMode: TerminalExecutionMode = executionMode || (
+      type !== 'ssh' && isRemoteServerConnected && remoteExecutionMode === 'remote' ? 'remote' : 'local'
+    );
+    const count = sessions.filter((s) => s.shellType === type && s.executionMode === effectiveMode).length + 1;
     const labelNames: Record<string, string> = {
       powershell: 'PowerShell',
       cmd: 'CMD',
@@ -228,7 +281,13 @@ export const TerminalPanel: React.FC = () => {
       bash: 'Bash',
       ssh: 'SSH'
     };
-    const name = customName || (type === 'ssh' && sshConfig ? `SSH: ${sshConfig.user}@${sshConfig.host}` : `${labelNames[type] || 'Terminal'} ${count}`);
+    const name = customName || (
+      type === 'ssh' && sshConfig
+        ? `SSH: ${sshConfig.user}@${sshConfig.host}`
+        : effectiveMode === 'remote'
+        ? `Remote: ${remoteServerName || 'Shiro'} ${count}`
+        : `${labelNames[type] || 'Terminal'} ${count}`
+    );
 
     const newSession: SessionItem = {
       id,
@@ -236,7 +295,8 @@ export const TerminalPanel: React.FC = () => {
       shellType: type,
       cwd: customCwd,
       compactPath: isCompact,
-      sshConfig
+      sshConfig,
+      executionMode: effectiveMode
     };
 
     setSessions((prev) => [...prev, newSession]);
@@ -353,8 +413,19 @@ export const TerminalPanel: React.FC = () => {
         ? 'ws://localhost:8000/api/ws/terminal'
         : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ws/terminal`;
       
-      let wsUrl = `${baseUrl}?shell=${encodeURIComponent(session.shellType)}`;
-      if (session.shellType === 'ssh' && session.sshConfig) {
+      let wsUrl = '';
+      if (session.executionMode === 'remote' && remoteServerUrl) {
+        const wsProto = remoteServerUrl.startsWith('https') ? 'wss:' : 'ws:';
+        const host = remoteServerUrl.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+        wsUrl = `${wsProto}//${host}/ws/terminal?shell=bash`;
+        if (authToken) {
+          wsUrl += `&token=${encodeURIComponent(authToken)}`;
+        }
+        if (session.cwd) {
+          wsUrl += `&cwd=${encodeURIComponent(session.cwd)}`;
+        }
+      } else if (session.shellType === 'ssh' && session.sshConfig) {
+        wsUrl = `${baseUrl}?shell=${encodeURIComponent(session.shellType)}`;
         wsUrl += `&host=${encodeURIComponent(session.sshConfig.host)}&user=${encodeURIComponent(session.sshConfig.user || 'Azhar')}&port=${encodeURIComponent(session.sshConfig.port || 22)}&workspace_id=${encodeURIComponent(session.sshConfig.workspaceId || 'default')}`;
         if (session.sshConfig.token) {
           wsUrl += `&token=${encodeURIComponent(session.sshConfig.token)}`;
@@ -369,6 +440,7 @@ export const TerminalPanel: React.FC = () => {
           wsUrl += `&password=${encodeURIComponent(session.sshConfig.password)}`;
         }
       } else {
+        wsUrl = `${baseUrl}?shell=${encodeURIComponent(session.shellType)}`;
         if (session.cwd) {
           wsUrl += `&cwd=${encodeURIComponent(session.cwd)}`;
         }
@@ -377,6 +449,14 @@ export const TerminalPanel: React.FC = () => {
       }
 
       const ws = new WebSocket(wsUrl);
+
+      ws.onerror = () => {
+        if (session.executionMode === 'remote') {
+          try {
+            term.write(`\r\n\x1b[1;31m[Shiro Terminal Error]\x1b[0m Could not connect to remote backend at ${remoteServerUrl}.\r\n\x1b[90mEnsure shiro-backend is running and accessible on port 8080.\x1b[0m\r\n`);
+          } catch (e) {}
+        }
+      };
 
       ws.onopen = () => {
         try {
@@ -624,6 +704,7 @@ export const TerminalPanel: React.FC = () => {
             {sessions.map((sess) => {
               const isActive = sess.id === activeSessionId;
               const isSSH = sess.shellType === 'ssh';
+              const isRemote = sess.executionMode === 'remote';
               return (
                 <div
                   key={sess.id}
@@ -632,12 +713,16 @@ export const TerminalPanel: React.FC = () => {
                     isActive 
                       ? isSSH
                         ? 'bg-[var(--bg-panel)] text-[var(--accent-coral)] border-[var(--accent-coral)]/50 font-semibold shadow-sm'
+                        : isRemote
+                        ? 'bg-[var(--bg-panel)] text-emerald-400 border-emerald-500/50 font-semibold shadow-sm'
                         : 'bg-[var(--bg-panel)] text-[var(--accent-cyan)] border-[var(--accent-cyan)]/40 font-semibold shadow-sm' 
                       : 'bg-transparent text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {isSSH ? (
                     <Server className={`w-3 h-3 ${isActive ? 'text-[var(--accent-coral)]' : 'text-[var(--text-subtle)]'}`} />
+                  ) : isRemote ? (
+                    <Globe className={`w-3 h-3 ${isActive ? 'text-emerald-400' : 'text-[var(--text-subtle)]'}`} />
                   ) : (
                     <Terminal className={`w-3 h-3 ${isActive ? 'text-[var(--accent-cyan)]' : 'text-[var(--text-subtle)]'}`} />
                   )}
@@ -671,8 +756,46 @@ export const TerminalPanel: React.FC = () => {
                   <>
                     <span className="text-[var(--text-subtle)]">CWD:</span>
                     <span className="text-[var(--accent-cyan)] font-semibold max-w-[280px] truncate" title={activeSessionCwd || 'Workspace'}>
-                      {getFormattedCwd(activeSessionCwd)}
+                      {activeSession?.executionMode === 'remote' ? '[Remote Linux] ~' : getFormattedCwd(activeSessionCwd)}
                     </span>
+
+                    {/* ⚡ Execution Target Toggle (Local Terminal vs Shiro Linux Backend) */}
+                    <button
+                      type="button"
+                      disabled={!isRemoteServerConnected}
+                      onClick={handleToggleActiveSessionExecutionMode}
+                      title={
+                        !isRemoteServerConnected
+                          ? "Connect to Shiro backend in 'Connect Server' to enable remote terminal execution."
+                          : activeSession?.executionMode === 'remote'
+                          ? `Commands execute on Linux machine (${remoteServerUrl}). Click to switch to Local Terminal.`
+                          : `Commands execute locally. Click to switch to Remote Linux Execution on Shiro Backend (${remoteServerUrl}).`
+                      }
+                      className={`ml-2 px-2 py-0.5 rounded text-[10px] font-mono border transition-all flex items-center space-x-1.5 select-none ${
+                        !isRemoteServerConnected
+                          ? 'opacity-40 bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)] cursor-not-allowed'
+                          : activeSession?.executionMode === 'remote'
+                          ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-400 font-semibold shadow-sm hover:bg-emerald-500/25 cursor-pointer animate-in fade-in'
+                          : 'bg-[var(--accent-cyan)]/15 border-[var(--accent-cyan)]/50 text-[var(--accent-cyan)] font-semibold hover:bg-[var(--accent-cyan)]/25 cursor-pointer'
+                      }`}
+                    >
+                      {activeSession?.executionMode === 'remote' ? (
+                        <>
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          <Globe className="w-3 h-3 text-emerald-400" />
+                          <span className="truncate max-w-[130px]">Remote: {remoteServerName || 'Shiro'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Laptop className="w-3 h-3 text-[var(--accent-cyan)]" />
+                          <span>Local</span>
+                          {!isRemoteServerConnected && <span className="text-[9px] opacity-75">(Offline)</span>}
+                        </>
+                      )}
+                    </button>
                   </>
                 )}
               </div>

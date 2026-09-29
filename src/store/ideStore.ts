@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ActivityView, FileNode, ProblemItem, RightSidebarTab, SystemMetrics, TabItem, TerminalSessionRequest, TerminalTab, ThemeMode, WorkloadItem } from '../types/ide';
+import { ActivityView, FileNode, ProblemItem, RightSidebarTab, SystemMetrics, TabItem, TerminalExecutionMode, TerminalSessionRequest, TerminalTab, ThemeMode, WorkloadItem } from '../types/ide';
 import { 
   createFile, 
   createFolder, 
@@ -131,6 +131,16 @@ interface IDEState {
   terminalSessionRequest: TerminalSessionRequest | null;
   requestTerminalSession: (req: Omit<TerminalSessionRequest, 'id'>) => void;
   clearTerminalSessionRequest: () => void;
+
+  // Remote Server Connection State (Shiro Backend)
+  isRemoteServerConnected: boolean;
+  remoteServerUrl: string | null;
+  remoteServerName: string | null;
+  remoteExecutionMode: TerminalExecutionMode;
+  setRemoteServerConnected: (connected: boolean, url?: string, name?: string) => void;
+  setRemoteExecutionMode: (mode: TerminalExecutionMode) => void;
+  toggleRemoteExecutionMode: () => void;
+  disconnectRemoteServer: () => void;
 
   // Right Observability Sidebar State
   activeRightTab: RightSidebarTab;
@@ -535,6 +545,74 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     activeTerminalTab: 'TERMINAL'
   }),
   clearTerminalSessionRequest: () => set({ terminalSessionRequest: null }),
+
+  // Remote Server Connection State (Shiro Backend)
+  isRemoteServerConnected: (() => {
+    try {
+      return localStorage.getItem('renkairo_remote_server_connected') === 'true';
+    } catch (e) {
+      return false;
+    }
+  })(),
+  remoteServerUrl: (() => {
+    try {
+      return localStorage.getItem('renkairo_backend_url') || 'http://localhost:8080';
+    } catch (e) {
+      return 'http://localhost:8080';
+    }
+  })(),
+  remoteServerName: (() => {
+    try {
+      return localStorage.getItem('renkairo_remote_server_name') || 'Shiro Linux Server';
+    } catch (e) {
+      return 'Shiro Linux Server';
+    }
+  })(),
+  remoteExecutionMode: (() => {
+    try {
+      return (localStorage.getItem('renkairo_remote_execution_mode') as TerminalExecutionMode) || 'local';
+    } catch (e) {
+      return 'local';
+    }
+  })(),
+  setRemoteServerConnected: (connected, url, name) => {
+    try {
+      localStorage.setItem('renkairo_remote_server_connected', String(connected));
+      if (url) localStorage.setItem('renkairo_backend_url', url);
+      if (name) localStorage.setItem('renkairo_remote_server_name', name);
+    } catch (e) {}
+    set((state) => ({
+      isRemoteServerConnected: connected,
+      remoteServerUrl: url !== undefined ? url : state.remoteServerUrl,
+      remoteServerName: name !== undefined ? name : state.remoteServerName,
+      // If disconnected, fallback to local execution
+      remoteExecutionMode: connected ? state.remoteExecutionMode : 'local'
+    }));
+  },
+  setRemoteExecutionMode: (mode) => {
+    try {
+      localStorage.setItem('renkairo_remote_execution_mode', mode);
+    } catch (e) {}
+    set({ remoteExecutionMode: mode });
+  },
+  toggleRemoteExecutionMode: () => {
+    const current = get().remoteExecutionMode;
+    const next = current === 'local' ? 'remote' : 'local';
+    try {
+      localStorage.setItem('renkairo_remote_execution_mode', next);
+    } catch (e) {}
+    set({ remoteExecutionMode: next });
+  },
+  disconnectRemoteServer: () => {
+    try {
+      localStorage.setItem('renkairo_remote_server_connected', 'false');
+      localStorage.setItem('renkairo_remote_execution_mode', 'local');
+    } catch (e) {}
+    set({
+      isRemoteServerConnected: false,
+      remoteExecutionMode: 'local'
+    });
+  },
 
   activeRightTab: 'OVERVIEW',
   setActiveRightTab: (tab) => set({ activeRightTab: tab }),

@@ -41,7 +41,8 @@ export const ConnectServerModal: React.FC = () => {
     setConnectServerModalOpen, 
     requestTerminalSession,
     setTerminalHeight,
-    terminalHeight
+    terminalHeight,
+    setRemoteServerConnected
   } = useIDEStore();
 
   const { 
@@ -198,6 +199,7 @@ export const ConnectServerModal: React.FC = () => {
     if (result.serverReachable || result.ok) {
       // Save backend URL in config & localStorage so all future API calls point here
       setBackendBaseUrl(constructedHttpUrl);
+      setRemoteServerConnected(true, constructedHttpUrl, cleanHttpHost || 'Shiro Linux Server');
 
       // Update recent HTTP hosts
       const updated = [constructedHttpUrl, ...recentHttpHosts.filter((h) => h !== constructedHttpUrl)].slice(0, 6);
@@ -223,6 +225,7 @@ export const ConnectServerModal: React.FC = () => {
     try {
       // Save backend URL first so authService.login posts directly to this server
       setBackendBaseUrl(constructedHttpUrl);
+      setRemoteServerConnected(true, constructedHttpUrl, cleanHttpHost || 'Shiro Linux Server');
       await authService.login('developer@renkairo.io', 'renkairo2026');
 
       // Verify connection with new real token
