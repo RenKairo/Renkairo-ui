@@ -431,7 +431,7 @@ export const TerminalPanel: React.FC = () => {
         if (authToken) {
           wsUrl += `&token=${encodeURIComponent(authToken)}`;
         }
-        if (session.cwd) {
+        if (session.cwd && !/^[a-zA-Z]:[\\/]/.test(session.cwd)) {
           wsUrl += `&cwd=${encodeURIComponent(session.cwd)}`;
         }
       } else if (session.shellType === 'ssh' && session.sshConfig) {
