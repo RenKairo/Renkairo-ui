@@ -37,16 +37,20 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: DEFAULT_DEV_USER,
-  token: DEFAULT_DEV_TOKEN,
-  isAuthenticated: true,
+  user: null,
+  token: null,
+  isAuthenticated: false,
   isAuthModalOpen: false,
   isLoading: false,
   authError: null,
 
   setAuth: (user, token) => {
-    localStorage.setItem('renkairo_jwt_token', token);
-    localStorage.setItem('renkairo_user', JSON.stringify(user));
+    try {
+      localStorage.setItem('renkairo_jwt_token', token);
+      localStorage.setItem('renkairo_user', JSON.stringify(user));
+    } catch (e) {
+      console.warn('Failed to save auth to localStorage', e);
+    }
     set({
       user,
       token,
@@ -57,13 +61,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    // In developer mode, instead of leaving token empty, reset to default dev token
-    localStorage.setItem('renkairo_jwt_token', DEFAULT_DEV_TOKEN);
-    localStorage.setItem('renkairo_user', JSON.stringify(DEFAULT_DEV_USER));
+    try {
+      localStorage.removeItem('renkairo_jwt_token');
+      localStorage.removeItem('renkairo_user');
+    } catch (e) {
+      console.warn('Failed to clear auth from localStorage', e);
+    }
     set({
-      user: DEFAULT_DEV_USER,
-      token: DEFAULT_DEV_TOKEN,
-      isAuthenticated: true,
+      user: null,
+      token: null,
+      isAuthenticated: false,
       authError: null,
       isLoading: false
     });
@@ -86,37 +93,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: true
         });
       } else {
-        localStorage.setItem('renkairo_jwt_token', DEFAULT_DEV_TOKEN);
-        localStorage.setItem('renkairo_user', JSON.stringify(DEFAULT_DEV_USER));
         set({
-          token: DEFAULT_DEV_TOKEN,
-          user: DEFAULT_DEV_USER,
-          isAuthenticated: true
+          token: null,
+          user: null,
+          isAuthenticated: false
         });
       }
     } catch (e) {
       console.warn('Failed to restore auth session from localStorage', e);
       set({
-        token: DEFAULT_DEV_TOKEN,
-        user: DEFAULT_DEV_USER,
-        isAuthenticated: true
+        token: null,
+        user: null,
+        isAuthenticated: false
       });
     }
   },
 
   ensureDevAuth: () => {
     const state = get();
-    if (!state.token || !state.user || !state.isAuthenticated) {
-      localStorage.setItem('renkairo_jwt_token', DEFAULT_DEV_TOKEN);
-      localStorage.setItem('renkairo_user', JSON.stringify(DEFAULT_DEV_USER));
-      set({
-        token: DEFAULT_DEV_TOKEN,
-        user: DEFAULT_DEV_USER,
-        isAuthenticated: true
-      });
-      return { token: DEFAULT_DEV_TOKEN, user: DEFAULT_DEV_USER };
+    if (state.token && state.user && state.isAuthenticated) {
+      return { token: state.token, user: state.user };
     }
-    return { token: state.token, user: state.user };
+    return { token: '', user: null as any };
   }
 }));
-

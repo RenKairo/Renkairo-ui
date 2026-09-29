@@ -48,7 +48,8 @@ export const ConnectServerModal: React.FC = () => {
     user: authUser, 
     token: authToken, 
     isAuthenticated, 
-    setAuthModalOpen 
+    setAuthModalOpen,
+    logout
   } = useAuthStore();
 
   // Mode: 'http' for direct Shiro Backend REST API (Port 8080), or 'ssh' for Linux Terminal Shell (Port 22)
@@ -267,10 +268,13 @@ export const ConnectServerModal: React.FC = () => {
     if (e) e.preventDefault();
     if (!targetSshHost || isProvisioning) return;
 
-    // Ensure developer authentication session is active without prompting user
-    const devAuth = useAuthStore.getState().ensureDevAuth();
-    const activeToken = authToken || devAuth.token;
-    const activeUser = authUser || devAuth.user;
+    const activeToken = authToken || '';
+    const activeUser = authUser || {
+      userId: 'usr_guest',
+      username: targetSshUser || 'developer',
+      email: 'guest@renkairo.io',
+      role: 'DEVELOPER'
+    };
 
     setIsProvisioning(true);
     setProvisionError(null);
@@ -415,24 +419,33 @@ export const ConnectServerModal: React.FC = () => {
           <form onSubmit={handleConnectHttp} className="p-4 space-y-4 text-xs font-sans">
             {/* Account Authentication Status Banner */}
             {isAuthenticated && authUser ? (
-              authToken === 'renkairo-mock-jwt-token-local-dev-mode' ? (
+              (authToken === 'renkairo-mock-jwt-token-local-dev-mode' || authToken === 'renkairo-shiro-secret-token') ? (
                 <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs font-mono">
                   <div className="flex items-center space-x-2">
                     <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
                     <div>
                       <span className="text-[var(--text-primary)] font-semibold">{authUser.username}</span>
-                      <span className="text-amber-400 text-[10px] ml-1.5">(Local Mock Account)</span>
+                      <span className="text-amber-400 text-[10px] ml-1.5">(Mock Token Detected)</span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleQuickDemoLogin}
-                    disabled={isDemoLoggingIn}
-                    className="px-2.5 py-1 rounded bg-[var(--accent-coral)] text-white text-[10px] font-semibold hover:opacity-90 transition-opacity flex items-center space-x-1"
-                  >
-                    {isDemoLoggingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogIn className="w-3 h-3" />}
-                    <span>Sign in as Developer</span>
-                  </button>
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      type="button"
+                      onClick={() => logout()}
+                      className="px-2 py-1 rounded bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-rose-500 text-[var(--text-secondary)] hover:text-rose-400 text-[10px] font-semibold transition-colors cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleQuickDemoLogin}
+                      disabled={isDemoLoggingIn}
+                      className="px-2.5 py-1 rounded bg-[var(--accent-coral)] text-white text-[10px] font-semibold hover:opacity-90 transition-opacity flex items-center space-x-1"
+                    >
+                      {isDemoLoggingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogIn className="w-3 h-3" />}
+                      <span>Sign in as Developer</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs font-mono">
@@ -443,9 +456,18 @@ export const ConnectServerModal: React.FC = () => {
                       <span className="text-[var(--text-muted)] text-[10px] ml-1.5">({authUser.role || 'DEVELOPER'})</span>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-1 text-[10px] text-emerald-400 font-semibold shrink-0">
-                    <KeyRound className="w-3 h-3" />
-                    <span>Authenticated JWT</span>
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <div className="flex items-center space-x-1 text-[10px] text-emerald-400 font-semibold">
+                      <KeyRound className="w-3 h-3" />
+                      <span>Authenticated JWT</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => logout()}
+                      className="px-2 py-0.5 rounded bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-rose-500 text-[var(--text-muted)] hover:text-rose-400 text-[10px] transition-colors cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
                   </div>
                 </div>
               )

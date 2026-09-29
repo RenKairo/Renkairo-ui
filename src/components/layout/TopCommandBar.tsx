@@ -9,7 +9,8 @@ import {
   FolderOpen,
   FolderSync,
   User,
-  Check
+  Check,
+  LogOut
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useAuthStore } from '../../store/authStore';
@@ -29,7 +30,7 @@ export const TopCommandBar: React.FC = () => {
     toggleRightSidebar
   } = useIDEStore();
 
-  const { user, isAuthenticated, setAuthModalOpen } = useAuthStore();
+  const { user, isAuthenticated, setAuthModalOpen, logout } = useAuthStore();
 
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -185,6 +186,16 @@ export const TopCommandBar: React.FC = () => {
               {isAuthenticated && user ? user.username : 'Sign In'}
             </span>
           </button>
+
+          {isAuthenticated && user && (
+            <button
+              onClick={() => logout()}
+              title="Sign Out"
+              className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer focus:outline-none"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           <button
             onClick={toggleRightSidebar}

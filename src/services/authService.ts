@@ -119,23 +119,24 @@ export const authService = {
   },
 
   async getMe(): Promise<UserProfile | null> {
-    const { token, user, ensureDevAuth } = useAuthStore.getState();
-    const currentToken = token || ensureDevAuth().token;
+    const { token, user, logout } = useAuthStore.getState();
+    if (!token) return null;
 
     try {
       const response = await fetch(`${getAuthApiUrl()}/me`, {
         headers: {
-          Authorization: `Bearer ${currentToken}`
+          Authorization: `Bearer ${token}`
         }
       });
       if (response.status === 401) {
-        console.warn('Current JWT token unauthorized on backend. Preserving active developer session.');
-        return user || ensureDevAuth().user;
+        console.warn('Current JWT token is unauthorized or expired on backend. Logging out.');
+        logout();
+        return null;
       }
-      if (!response.ok) return user || ensureDevAuth().user;
+      if (!response.ok) return user;
       return await response.json();
     } catch {
-      return user || ensureDevAuth().user;
+      return user;
     }
   }
 };

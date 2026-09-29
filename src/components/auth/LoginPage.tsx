@@ -198,7 +198,13 @@ export const LoginPage: React.FC = () => {
                     Open Workspace →
                   </button>
                   <button
-                    onClick={logout}
+                    onClick={() => {
+                      logout();
+                      setMode('login');
+                      setUsernameOrEmail('');
+                      setPassword('');
+                      setAuthError(null);
+                    }}
                     className="w-full h-10 rounded-xl bg-zinc-100 text-zinc-600 font-medium text-xs hover:bg-zinc-200 transition-all cursor-pointer"
                   >
                     Sign Out

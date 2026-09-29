@@ -117,7 +117,7 @@ export async function testBackendHttpConnection(
   url = url.replace(/\/+$/, '');
 
   const startTime = Date.now();
-  const isMockToken = token === 'renkairo-mock-jwt-token-local-dev-mode';
+  const isMockToken = token === 'renkairo-mock-jwt-token-local-dev-mode' || token === 'renkairo-shiro-secret-token';
 
   // Step 1: Reachability check via public endpoint /api/cloud/resources
   try {
