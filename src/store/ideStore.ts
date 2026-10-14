@@ -14,6 +14,7 @@ import {
   writeFile 
 } from '../services/fileSystem';
 import { fetchMetrics } from '../services/api';
+import { executionService, ExecutionResponseResult } from '../services/executionService';
 
 const applyThemeClass = (theme: ThemeMode) => {
   try {
@@ -149,6 +150,13 @@ interface IDEState {
   metricsHistory: { cpu: number[]; ram: number[] };
   workloads: WorkloadItem[];
   loadMetrics: () => Promise<void>;
+
+  // Remote HTTP Code Execution State
+  isExecutingCode: boolean;
+  lastExecutionResult: ExecutionResponseResult | null;
+  executionLogs: string[];
+  runActiveFileCode: () => Promise<void>;
+  clearExecutionLogs: () => void;
 }
 
 export const useIDEStore = create<IDEState>((set, get) => ({
@@ -665,5 +673,74 @@ export const useIDEStore = create<IDEState>((set, get) => ({
         { id: 'wl_watcher', name: 'Native Workspace File Watcher', status: 'In Progress', framework: 'OS fs.watch', target: 'Current Workspace', progress: 100 }
       ]
     });
+  },
+
+  isExecutingCode: false,
+  lastExecutionResult: null,
+  executionLogs: [],
+  clearExecutionLogs: () => set({ executionLogs: [], lastExecutionResult: null }),
+  runActiveFileCode: async () => {
+    const { tabs, activeTabId, saveCurrentFile, setActiveTerminalTab } = get();
+    const activeTab = tabs.find((t) => t.id === activeTabId);
+    if (!activeTab) return;
+
+    await saveCurrentFile();
+    setActiveTerminalTab('OUTPUT');
+
+    const timestamp = new Date().toLocaleTimeString();
+    const startMsg = `[${timestamp}] [RenKairo Executor] Dispatching '${activeTab.title}' (${activeTab.language || 'auto'}) to Shiro Cloud Execution Engine...`;
+
+    set((state) => ({
+      isExecutingCode: true,
+      executionLogs: [...state.executionLogs, startMsg]
+    }));
+
+    try {
+      const result = await executionService.runCode({
+        code: activeTab.content,
+        language: activeTab.language || 'auto',
+        filePath: activeTab.path,
+        workspaceId: get().workspacePath || 'ws-default',
+        provider: 'DOCKER',
+        timeoutSeconds: 30
+      });
+
+      const finishTime = new Date().toLocaleTimeString();
+      const statusMsg = `[${finishTime}] [${result.status}] Execution finished in ${result.executionTimeMs}ms via ${result.providerUsed} (Exit Code: ${result.exitCode})`;
+
+      const newLogs: string[] = [statusMsg];
+      if (result.stdout && result.stdout.trim()) {
+        newLogs.push(result.stdout.trim());
+      }
+      if (result.stderr && result.stderr.trim()) {
+        newLogs.push(`[STDERR]\n${result.stderr.trim()}`);
+      }
+
+      set((state) => ({
+        isExecutingCode: false,
+        lastExecutionResult: result,
+        executionLogs: [...state.executionLogs, ...newLogs]
+      }));
+    } catch (err: any) {
+      const failTime = new Date().toLocaleTimeString();
+      const errorMsg = `[${failTime}] [ERROR] Execution failed: ${err.message || 'Could not connect to Shiro backend'}.\nPlease ensure shiro-backend is running on port 8080.`;
+
+      set((state) => ({
+        isExecutingCode: false,
+        lastExecutionResult: {
+          executionId: 'exec-error',
+          language: activeTab.language || 'unknown',
+          status: 'ERROR',
+          exitCode: 1,
+          stdout: '',
+          stderr: err.message || 'Connection to Shiro backend failed',
+          executionTimeMs: 0,
+          timestamp: new Date().toISOString(),
+          providerUsed: 'NONE',
+          gpuUsed: false
+        },
+        executionLogs: [...state.executionLogs, errorMsg]
+      }));
+    }
   }
 }));

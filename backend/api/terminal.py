@@ -24,13 +24,22 @@ async def websocket_terminal(websocket: WebSocket):
             cmd = ["python.exe", "-i"]
         elif shell_type == "node":
             cmd = ["node.exe"]
+        elif shell_type == "jshell":
+            cmd = ["jshell.exe"]
         elif shell_type == "bash":
             cmd = ["bash.exe", "-i"]
         else:
             cmd = ["powershell.exe", "-NoExit", "-NoLogo", "-ExecutionPolicy", "Bypass", "-Command", ps_prompt]
     else:
-        shell = os.environ.get("SHELL", "bash")
-        cmd = [shell, "-i"]
+        if shell_type == "python":
+            cmd = ["python3", "-i"]
+        elif shell_type == "node":
+            cmd = ["node"]
+        elif shell_type == "jshell":
+            cmd = ["jshell"]
+        else:
+            shell = os.environ.get("SHELL", "bash")
+            cmd = [shell, "-i"]
 
     req_cwd = query_params.get("cwd")
     cwd = os.getcwd()

@@ -48,7 +48,9 @@ export const EditorCanvas: React.FC = () => {
     rootName, 
     isFolderOpening, 
     fileLoadingProgress,
-    openFile
+    openFile,
+    runActiveFileCode,
+    isExecutingCode
   } = useIDEStore();
 
   const { stageFile, unstageFile, discardFile } = useGitStore();
@@ -158,15 +160,17 @@ export const EditorCanvas: React.FC = () => {
           <div className="flex items-center space-x-1 text-[var(--text-muted)] pr-2">
             {/* Run Code Button */}
             <button 
-              onClick={() => {
-                saveCurrentFile();
-                setActiveTerminalTab('TERMINAL');
-              }} 
-              title="Run Code (Java, Python, Node, C++)" 
-              className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/20 rounded flex items-center space-x-1 font-mono text-[11px] font-semibold transition-all focus:outline-none"
+              onClick={() => runActiveFileCode()} 
+              disabled={isExecutingCode}
+              title="Run Code via Shiro HTTP Execution Engine (Java, Python, Node, C++)" 
+              className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/20 rounded flex items-center space-x-1.5 font-mono text-[11px] font-semibold transition-all focus:outline-none disabled:opacity-50 cursor-pointer"
             >
-              <span className="text-emerald-500">▶</span>
-              <span>Run Code</span>
+              {isExecutingCode ? (
+                <Loader2 className="w-3 h-3 text-emerald-500 animate-spin" />
+              ) : (
+                <span className="text-emerald-500">▶</span>
+              )}
+              <span>{isExecutingCode ? 'Running...' : 'Run Code'}</span>
             </button>
 
             {/* Open Windows Terminal Button */}

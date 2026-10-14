@@ -1348,12 +1348,26 @@ wssTerminal.on('connection', (ws, req) => {
     } else if (shellType === 'node') {
       shell = 'node.exe';
       args = [];
+    } else if (shellType === 'jshell') {
+      shell = 'jshell.exe';
+      args = [];
     } else if (shellType === 'bash') {
       shell = 'bash.exe';
       args = ['-i'];
     } else if (shellType === 'powershell') {
       shell = 'powershell.exe';
       args = ['-NoExit', '-NoLogo', '-ExecutionPolicy', 'Bypass', '-Command', psPrompt];
+    }
+  } else {
+    if (shellType === 'python') {
+      shell = 'python3';
+      args = ['-i'];
+    } else if (shellType === 'node') {
+      shell = 'node';
+      args = [];
+    } else if (shellType === 'jshell') {
+      shell = 'jshell';
+      args = [];
     }
   }
 

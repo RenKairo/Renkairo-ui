@@ -16,7 +16,9 @@ import {
   Server,
   Wifi,
   Globe,
-  Laptop
+  Laptop,
+  Play,
+  Loader2
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useAuthStore } from '../../store/authStore';
@@ -93,7 +95,12 @@ export const TerminalPanel: React.FC = () => {
     remoteServerName,
     remoteExecutionMode,
     setRemoteExecutionMode,
-    toggleRemoteExecutionMode
+    toggleRemoteExecutionMode,
+    isExecutingCode,
+    lastExecutionResult,
+    executionLogs,
+    clearExecutionLogs,
+    runActiveFileCode
   } = useIDEStore();
 
   const authToken = useAuthStore((s) => s.token);
@@ -278,6 +285,7 @@ export const TerminalPanel: React.FC = () => {
       cmd: 'CMD',
       python: 'Python',
       node: 'Node.js',
+      jshell: 'Java REPL',
       bash: 'Bash',
       ssh: 'SSH'
     };
@@ -699,6 +707,7 @@ export const TerminalPanel: React.FC = () => {
               <option value="cmd" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">💻 Command Prompt (CMD)</option>
               <option value="python" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🐍 Python REPL</option>
               <option value="node" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🟢 Node.js REPL</option>
+              <option value="jshell" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">☕ Java REPL (jshell)</option>
               <option value="bash" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🐧 Git Bash / WSL</option>
               <option value="ssh" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🌐 Remote SSH Server (LAN)...</option>
             </select>
@@ -886,10 +895,86 @@ export const TerminalPanel: React.FC = () => {
         )}
 
         {activeTerminalTab === 'OUTPUT' && (
-          <div className="h-full overflow-y-auto p-2 font-mono text-xs text-[var(--text-secondary)] space-y-1">
-            <div className="text-emerald-500">[INFO] RenKairo backend process initialized successfully.</div>
-            <div className="text-[var(--text-muted)]">[INFO] Watching workspace directory for modifications...</div>
-            <div className="text-[var(--accent-cyan)]">[BUILD] React + Vite production bundle compiled.</div>
+          <div className="h-full flex flex-col font-mono text-xs overflow-hidden">
+            {/* Output Toolbar */}
+            <div className="h-7 px-3 bg-[var(--bg-panel)] border-b border-[var(--border-color)] flex items-center justify-between text-[11px] shrink-0">
+              <div className="flex items-center space-x-2">
+                <span className="text-[var(--text-muted)]">Console:</span>
+                <span className="text-[var(--text-primary)] font-semibold">Shiro Code Execution Engine</span>
+                {isExecutingCode && (
+                  <span className="flex items-center space-x-1 text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded text-[10px]">
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                    <span>Executing...</span>
+                  </span>
+                )}
+                {lastExecutionResult && !isExecutingCode && (
+                  <div className="flex items-center space-x-1.5">
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      lastExecutionResult.status === 'SUCCESS'
+                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                    }`}>
+                      {lastExecutionResult.status}
+                    </span>
+                    <span className="text-[var(--text-muted)] text-[10px]">
+                      {lastExecutionResult.language} • {lastExecutionResult.executionTimeMs}ms • Exit: {lastExecutionResult.exitCode}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => runActiveFileCode()}
+                  disabled={isExecutingCode}
+                  title="Run active file again"
+                  className="flex items-center space-x-1 px-2 py-0.5 rounded bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-emerald-400 border border-[var(--border-color)] text-[10px] transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <Play className="w-2.5 h-2.5" />
+                  <span>Run Again</span>
+                </button>
+                <button
+                  onClick={clearExecutionLogs}
+                  title="Clear Output Console"
+                  className="p-1 hover:text-[var(--text-primary)] text-[var(--text-muted)] transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* Output Log Stream */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-1 bg-[var(--bg-base)]">
+              {executionLogs.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] text-xs space-y-2 select-none">
+                  <div className="p-2 rounded-full bg-[var(--bg-card)] border border-[var(--border-color)]">
+                    <Play className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <span>No execution output yet.</span>
+                  <span className="text-[10px] text-[var(--text-subtle)]">
+                    Click <strong className="text-emerald-400">▶ Run Code</strong> on the editor toolbar to execute your Java, Python, Node, or C++ file via Shiro.
+                  </span>
+                </div>
+              ) : (
+                executionLogs.map((log, idx) => {
+                  const isError = log.includes('[ERROR]') || log.startsWith('[STDERR]');
+                  const isInfo = log.includes('[RenKairo Executor]') || log.includes('[SUCCESS]');
+                  return (
+                    <div
+                      key={idx}
+                      className={`whitespace-pre-wrap leading-relaxed ${
+                        isError
+                          ? 'text-rose-400 bg-rose-500/5 p-1 rounded border border-rose-500/20'
+                          : isInfo
+                          ? 'text-[var(--accent-cyan)] font-medium'
+                          : 'text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      {log}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         )}
 

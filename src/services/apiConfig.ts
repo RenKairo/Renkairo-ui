@@ -57,6 +57,10 @@ export function getWorkspaceApiUrl(): string {
   return `${getBackendBaseUrl()}/api/v1`;
 }
 
+export function getExecutionApiUrl(): string {
+  return `${getBackendBaseUrl()}/api/cloud/execution`;
+}
+
 export function getWorkspaceWsUrl(workspaceId: string): string {
   const httpUrl = getBackendBaseUrl();
   const wsProtocol = httpUrl.startsWith('https://') ? 'wss://' : 'ws://';
