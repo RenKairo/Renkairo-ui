@@ -72,9 +72,9 @@ export const ConnectServerModal: React.FC = () => {
   const [httpPort, setHttpPort] = useState(() => {
     try {
       const u = new URL(currentSavedBackendUrl);
-      return u.port || '8080';
+      return u.port || (u.hostname === 'localhost' || u.hostname === '127.0.0.1' ? '8080' : '');
     } catch {
-      return '8080';
+      return '';
     }
   });
   const [httpTesting, setHttpTesting] = useState(false);
@@ -156,9 +156,11 @@ export const ConnectServerModal: React.FC = () => {
   if (!isConnectServerModalOpen) return null;
 
   // Clean and construct HTTP Target URL
-  const cleanHttpHost = httpHost.trim().replace(/^https?:\/\//i, '').replace(/:\d+$/, '');
-  const cleanHttpPort = httpPort.trim() || '8080';
-  const constructedHttpUrl = `${httpProtocol}://${cleanHttpHost || 'localhost'}:${cleanHttpPort}`;
+  const cleanHttpHost = httpHost.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/:\d+$/, '');
+  const cleanHttpPort = httpPort.trim();
+  const constructedHttpUrl = cleanHttpPort 
+    ? `${httpProtocol}://${cleanHttpHost || 'localhost'}:${cleanHttpPort}`
+    : `${httpProtocol}://${cleanHttpHost || 'localhost'}`;
 
   // Helper when user pastes full URL into host box
   const handleHttpHostChange = (val: string) => {
@@ -168,17 +170,21 @@ export const ConnectServerModal: React.FC = () => {
         const u = new URL(clean);
         setHttpProtocol(u.protocol.replace(':', '') as 'http' | 'https');
         setHttpHost(u.hostname);
-        if (u.port) setHttpPort(u.port);
+        setHttpPort(u.port || '');
         return;
       } catch (e) {}
     }
+    clean = clean.replace(/\/.*$/, '');
     if (clean.includes(':')) {
       const parts = clean.split(':');
       setHttpHost(parts[0]);
-      if (parts[1]) setHttpPort(parts[1]);
+      setHttpPort(parts[1] || '');
       return;
     }
-    setHttpHost(val);
+    if (clean.includes('.') && httpPort === '8080') {
+      setHttpPort('');
+    }
+    setHttpHost(clean);
   };
 
   // ---------------------------------------------------------------------------
@@ -399,7 +405,7 @@ export const ConnectServerModal: React.FC = () => {
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
-            <span>HTTP Backend (Port 8080)</span>
+            <span>HTTP Backend {cleanHttpPort ? `(Port ${cleanHttpPort})` : '(REST API)'}</span>
           </button>
           <button
             type="button"
@@ -501,7 +507,13 @@ export const ConnectServerModal: React.FC = () => {
                 </label>
                 <select
                   value={httpProtocol}
-                  onChange={(e) => setHttpProtocol(e.target.value as 'http' | 'https')}
+                  onChange={(e) => {
+                    const nextProto = e.target.value as 'http' | 'https';
+                    setHttpProtocol(nextProto);
+                    if (nextProto === 'https' && httpPort === '8080') {
+                      setHttpPort('');
+                    }
+                  }}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-2.5 py-2 text-xs font-mono text-[var(--text-primary)] focus:outline-none shadow-sm cursor-pointer"
                 >
                   <option value="http">http://</option>
@@ -530,13 +542,13 @@ export const ConnectServerModal: React.FC = () => {
               {/* Port */}
               <div className="space-y-1.5">
                 <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider font-mono">
-                  Port
+                  Port <span className="text-[10px] font-normal opacity-70">(optional)</span>
                 </label>
                 <input
                   type="text"
                   value={httpPort}
                   onChange={(e) => setHttpPort(e.target.value)}
-                  placeholder="8080"
+                  placeholder="optional"
                   className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-primary)] focus:outline-none shadow-sm transition-colors text-center font-bold"
                 />
               </div>
@@ -611,7 +623,7 @@ export const ConnectServerModal: React.FC = () => {
                   <div className="space-y-0.5 flex-1">
                     <p className="font-semibold">
                       {httpTestResult.serverReachable
-                        ? (httpTestResult.tokenValid ? 'Connection Verified & Authenticated!' : 'Server Online (8080) — Authentication Needed')
+                        ? (httpTestResult.tokenValid ? 'Connection Verified & Authenticated!' : `Server Online${cleanHttpPort ? ` (${cleanHttpPort})` : ''} — Authentication Needed`)
                         : 'Connection Failed'}
                     </p>
                     <p className="text-[11px] opacity-90 leading-relaxed">
@@ -664,7 +676,7 @@ export const ConnectServerModal: React.FC = () => {
               <div className="space-y-0.5">
                 <p className="text-[var(--text-secondary)] font-medium">Direct HTTP / REST Architecture</p>
                 <p className="text-[10px] text-[var(--text-muted)]">
-                  Sends HTTP web requests and JWT headers directly to port 8080 on the remote server. No SSH tunnel or command-line forwarding is required.
+                  Sends HTTP web requests and JWT headers directly to the remote server{cleanHttpPort ? ` on port ${cleanHttpPort}` : ''}. No SSH tunnel or command-line forwarding is required.
                 </p>
               </div>
             </div>
@@ -707,7 +719,7 @@ export const ConnectServerModal: React.FC = () => {
                   ) : (
                     <>
                       <Activity className="w-3.5 h-3.5" />
-                      <span>Save & Connect (Port 8080)</span>
+                      <span>Save & Connect {cleanHttpPort ? `(Port ${cleanHttpPort})` : ''}</span>
                       <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
                     </>
                   )}

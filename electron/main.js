@@ -1,3 +1,4 @@
+process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 import { app, BrowserWindow, ipcMain, dialog, shell, desktopCapturer, session, utilityProcess } from 'electron';
 import path from 'path';
 import fs from 'fs';
@@ -169,6 +170,18 @@ function createWindow() {
     win.focus();
   });
 
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    // -21 is net::ERR_NETWORK_CHANGED, -102 is net::ERR_CONNECTION_REFUSED
+    if (errorCode === -21 || errorDescription === 'ERR_NETWORK_CHANGED') {
+      console.warn('[Electron] Network change detected, auto-reloading page...');
+      setTimeout(() => {
+        if (!win.isDestroyed()) {
+          win.webContents.reloadIgnoringCache();
+        }
+      }, 500);
+    }
+  });
+
   const distPath = path.join(__dirname, '../dist/index.html');
   
   if (app.isPackaged) {
@@ -176,9 +189,9 @@ function createWindow() {
   } else {
     // Retry connecting to Vite dev server for instant HMR auto-updates; fallback to dist/index.html
     const loadDevServer = (attempts = 0) => {
-      fetch('http://localhost:5173')
+      fetch('http://127.0.0.1:5173')
         .then(() => {
-          win.loadURL('http://localhost:5173');
+          win.loadURL('http://127.0.0.1:5173');
           console.log('[Electron] Connected to Vite Dev Server (Live HMR auto-update enabled)');
         })
         .catch(() => {

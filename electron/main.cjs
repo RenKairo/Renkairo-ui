@@ -26,12 +26,22 @@ function createWindow() {
     win.focus();
   });
 
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    if (errorCode === -21 || errorDescription === 'ERR_NETWORK_CHANGED') {
+      setTimeout(() => {
+        if (!win.isDestroyed()) {
+          win.webContents.reloadIgnoringCache();
+        }
+      }, 500);
+    }
+  });
+
   const distPath = path.join(__dirname, '../dist/index.html');
 
   const loadDevServer = (attempts = 0) => {
-    fetch('http://localhost:5173')
+    fetch('http://127.0.0.1:5173')
       .then(() => {
-        win.loadURL('http://localhost:5173');
+        win.loadURL('http://127.0.0.1:5173');
       })
       .catch(() => {
         if (attempts < 4) {

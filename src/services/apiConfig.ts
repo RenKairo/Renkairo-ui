@@ -217,7 +217,7 @@ export async function testBackendHttpConnection(
       tokenValid: false,
       latencyMs,
       serverUrl: url,
-      error: `Could not connect to ${url}. ${message}. Check that shiro-backend is running on port 8080 and accessible over your network.`
+      error: `Could not connect to ${url}. ${message}. Check that the backend server is running and accessible.`
     };
   }
 }

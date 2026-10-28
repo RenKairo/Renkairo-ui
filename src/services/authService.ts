@@ -59,7 +59,7 @@ export const authService = {
           };
         }
 
-        throw new Error(`Unable to reach remote Shiro backend at ${currentUrl}. Check server status, IP, and port 8080 firewall.`);
+        throw new Error(`Unable to reach remote Shiro backend at ${currentUrl}. Check server status and network connection.`);
       }
       throw err;
     }
@@ -112,7 +112,7 @@ export const authService = {
           };
         }
 
-        throw new Error(`Unable to reach remote Shiro backend at ${currentUrl}. Check server status, IP, and port 8080 firewall.`);
+        throw new Error(`Unable to reach remote Shiro backend at ${currentUrl}. Check server status and network connection.`);
       }
       throw err;
     }
