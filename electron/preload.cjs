@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFileDialog: (defaultPath) => ipcRenderer.invoke('dialog:openFile', defaultPath),
   showItemInFolder: (fullPath) => ipcRenderer.invoke('shell:showItemInFolder', fullPath),
   openPath: (fullPath) => ipcRenderer.invoke('shell:openPath', fullPath),
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   getDesktopSources: () => ipcRenderer.invoke('desktopCapturer:getSources'),
   fs: {
     selectFolder: () => ipcRenderer.invoke('fs:selectFolder'),

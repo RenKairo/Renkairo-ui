@@ -18,7 +18,10 @@ import {
   Globe,
   Laptop,
   Play,
-  Loader2
+  Loader2,
+  ExternalLink,
+  RefreshCw,
+  Copy
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useAuthStore } from '../../store/authStore';
@@ -100,7 +103,14 @@ export const TerminalPanel: React.FC = () => {
     lastExecutionResult,
     executionLogs,
     clearExecutionLogs,
-    runActiveFileCode
+    runActiveFileCode,
+    forwardedPorts,
+    forwardPort,
+    stopForwardPort,
+    fetchForwardedPorts,
+    portCollisionToast,
+    dismissPortCollisionToast,
+    openExternalUrl
   } = useIDEStore();
 
   const authToken = useAuthStore((s) => s.token);
@@ -110,6 +120,60 @@ export const TerminalPanel: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [manualPortInput, setManualPortInput] = useState('');
+  const [isForwardingManual, setIsForwardingManual] = useState(false);
+  const [isScanningPorts, setIsScanningPorts] = useState(false);
+
+  useEffect(() => {
+    fetchForwardedPorts();
+  }, []);
+
+  useEffect(() => {
+    if (activeTerminalTab === 'PORTS') {
+      fetchForwardedPorts();
+    }
+  }, [activeTerminalTab]);
+
+  const handleScanRemotePorts = async () => {
+    setIsScanningPorts(true);
+    try {
+      await fetchForwardedPorts();
+      const backendUrl = remoteServerUrl || 'http://localhost:8080';
+      const token = localStorage.getItem('renkairo_jwt_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${backendUrl}/api/cloud/ports/active`, { headers });
+      if (res.ok) {
+        const ports = await res.json();
+        if (Array.isArray(ports)) {
+          for (const p of ports) {
+            const portNum = Number(p.port);
+            if (portNum && !forwardedPorts.some(fp => fp.remotePort === portNum)) {
+              await forwardPort(portNum);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to scan remote ports:', e);
+    } finally {
+      setIsScanningPorts(false);
+    }
+  };
+
+  const handleManualForward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const portNum = parseInt(manualPortInput.trim(), 10);
+    if (!portNum || portNum <= 0 || portNum > 65535) return;
+    setIsForwardingManual(true);
+    try {
+      await forwardPort(portNum);
+      setManualPortInput('');
+    } finally {
+      setIsForwardingManual(false);
+    }
+  };
 
   // Copy notification pill state
   const [copyToast, setCopyToast] = useState<string | null>(null);
@@ -506,6 +570,35 @@ export const TerminalPanel: React.FC = () => {
       };
 
       ws.onmessage = (event) => {
+        const raw = event.data;
+        if (typeof raw === 'string' && raw.startsWith('{') && raw.endsWith('}')) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed.type === 'OPEN_URL' && parsed.url) {
+              try {
+                const u = new URL(parsed.url);
+                const remotePort = Number(u.port);
+                if (remotePort) {
+                  forwardPort(remotePort).then((forward) => {
+                    const finalUrl = forward ? `http://localhost:${forward.localPort}${u.pathname}${u.search}` : parsed.url;
+                    openExternalUrl(finalUrl);
+                  });
+                  return;
+                }
+              } catch (e) {}
+              openExternalUrl(parsed.url);
+              return;
+            } else if (parsed.type === 'PORTS_UPDATE' && Array.isArray(parsed.ports)) {
+              parsed.ports.forEach((p: any) => {
+                const portNum = Number(p.port);
+                if (portNum && !useIDEStore.getState().forwardedPorts.some(fp => fp.remotePort === portNum)) {
+                  forwardPort(portNum);
+                }
+              });
+              return;
+            }
+          } catch (e) {}
+        }
         term.write(event.data);
       };
 
@@ -985,31 +1078,186 @@ export const TerminalPanel: React.FC = () => {
         )}
 
         {activeTerminalTab === 'PORTS' && (
-          <div className="h-full overflow-y-auto p-2 font-mono text-xs">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-[10px]">
-                  <th className="py-1 font-semibold">PORT</th>
-                  <th className="font-semibold">PROTOCOL</th>
-                  <th className="font-semibold">PROCESS</th>
-                  <th className="font-semibold">ADDRESS</th>
-                </tr>
-              </thead>
-              <tbody className="text-[var(--text-secondary)] divide-y divide-[var(--border-color)]/60">
-                <tr>
-                  <td className="py-1 text-[var(--accent-cyan)] font-bold">8000</td>
-                  <td>HTTP / WS</td>
-                  <td>uvicorn (FastAPI / Express)</td>
-                  <td>http://localhost:8000</td>
-                </tr>
-                <tr>
-                  <td className="py-1 text-emerald-500 font-bold">5173</td>
-                  <td>HTTP</td>
-                  <td>vite (Frontend)</td>
-                  <td>http://localhost:5173</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="h-full overflow-y-auto p-3 font-mono text-xs flex flex-col space-y-3">
+            {/* Port Collision Alert Banner */}
+            {portCollisionToast && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5 flex items-center justify-between text-amber-400 text-xs shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>{portCollisionToast.message}</span>
+                </div>
+                <button
+                  onClick={dismissPortCollisionToast}
+                  className="p-1 hover:text-white text-amber-300 transition-colors cursor-pointer"
+                  title="Dismiss"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Ports Toolbar */}
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2">
+              <div className="flex items-center space-x-2">
+                <Server className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
+                <span className="font-semibold text-[var(--text-primary)]">
+                  FORWARDED RUNNER PORTS ({forwardedPorts.length})
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)]">
+                  • Mapped to your laptop's localhost
+                </span>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <form onSubmit={handleManualForward} className="flex items-center space-x-1">
+                  <input
+                    type="number"
+                    value={manualPortInput}
+                    onChange={(e) => setManualPortInput(e.target.value)}
+                    placeholder="Port (e.g. 3000)"
+                    min={1}
+                    max={65535}
+                    className="w-28 px-2 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded text-[11px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isForwardingManual || !manualPortInput}
+                    className="flex items-center space-x-1 px-2.5 py-1 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--text-primary)] rounded text-[11px] transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {isForwardingManual ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3 text-[var(--accent-cyan)]" />}
+                    <span>Forward</span>
+                  </button>
+                </form>
+
+                <button
+                  onClick={handleScanRemotePorts}
+                  disabled={isScanningPorts}
+                  title="Scan remote host for listening ports"
+                  className="flex items-center space-x-1 px-2.5 py-1 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--text-primary)] rounded text-[11px] transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 text-[var(--accent-cyan)] ${isScanningPorts ? 'animate-spin' : ''}`} />
+                  <span>Scan</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Ports Table */}
+            <div className="flex-1 overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] text-[10px]">
+                    <th className="py-1.5 font-semibold">LOCAL PORT</th>
+                    <th className="font-semibold">REMOTE TARGET</th>
+                    <th className="font-semibold">PROTOCOL</th>
+                    <th className="font-semibold">STATUS</th>
+                    <th className="font-semibold">LOCAL ADDRESS</th>
+                    <th className="font-semibold text-right">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[var(--text-secondary)] divide-y divide-[var(--border-color)]/60">
+                  {forwardedPorts.map((p) => (
+                    <tr key={p.remotePort} className="hover:bg-[var(--bg-card)]/40 transition-colors">
+                      <td className="py-2 text-[var(--accent-cyan)] font-bold">
+                        <span>{p.localPort}</span>
+                        {p.hasCollision && (
+                          <span className="ml-1.5 text-[9px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1 py-0.2 rounded font-normal">
+                            from :{p.remotePort}
+                          </span>
+                        )}
+                      </td>
+                      <td className="text-[var(--text-muted)]">Shiro :{p.remotePort}</td>
+                      <td>HTTP / TCP</td>
+                      <td>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold">
+                          Forwarded
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => openExternalUrl(p.url)}
+                          title="Open in your laptop's default browser"
+                          className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 hover:underline cursor-pointer group"
+                        >
+                          <span>{p.url}</span>
+                          <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100" />
+                        </button>
+                      </td>
+                      <td className="text-right">
+                        <div className="flex items-center justify-end space-x-1.5">
+                          <button
+                            onClick={() => openExternalUrl(p.url)}
+                            title="Open in browser"
+                            className="p-1 hover:text-[var(--accent-cyan)] text-[var(--text-muted)] transition-colors cursor-pointer"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(p.url);
+                              showCopiedToast(`Copied ${p.url} to clipboard!`);
+                            }}
+                            title="Copy URL"
+                            className="p-1 hover:text-[var(--accent-cyan)] text-[var(--text-muted)] transition-colors cursor-pointer"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => stopForwardPort(p.remotePort)}
+                            title="Stop Forwarding"
+                            className="p-1 hover:text-rose-400 text-[var(--text-muted)] transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* Core Local Services */}
+                  <tr className="hover:bg-[var(--bg-card)]/40 transition-colors opacity-75">
+                    <td className="py-2 text-emerald-500 font-bold">8000</td>
+                    <td className="text-[var(--text-muted)]">Local Host</td>
+                    <td>HTTP / WS</td>
+                    <td>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-500/15 text-slate-300 border border-slate-500/30 font-semibold">
+                        Core Daemon
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => openExternalUrl('http://localhost:8000')}
+                        className="flex items-center space-x-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline cursor-pointer"
+                      >
+                        <span>http://localhost:8000</span>
+                        <ExternalLink className="w-2.5 h-2.5 ml-1" />
+                      </button>
+                    </td>
+                    <td className="text-right text-[10px] text-[var(--text-subtle)]">RenKairo Backend</td>
+                  </tr>
+
+                  <tr className="hover:bg-[var(--bg-card)]/40 transition-colors opacity-75">
+                    <td className="py-2 text-emerald-500 font-bold">5173</td>
+                    <td className="text-[var(--text-muted)]">Local Host</td>
+                    <td>HTTP</td>
+                    <td>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-500/15 text-slate-300 border border-slate-500/30 font-semibold">
+                        Vite Server
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => openExternalUrl('http://localhost:5173')}
+                        className="flex items-center space-x-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline cursor-pointer"
+                      >
+                        <span>http://localhost:5173</span>
+                        <ExternalLink className="w-2.5 h-2.5 ml-1" />
+                      </button>
+                    </td>
+                    <td className="text-right text-[10px] text-[var(--text-subtle)]">Frontend HMR</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

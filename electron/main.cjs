@@ -94,6 +94,14 @@ ipcMain.handle('shell:showItemInFolder', async (event, fullPath) => {
   return false;
 });
 
+ipcMain.handle('shell:openExternal', async (event, url) => {
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    await shell.openExternal(url);
+    return true;
+  }
+  return false;
+});
+
 ipcMain.handle('shell:openPath', async (event, fullPath) => {
   if (fullPath) {
     return await shell.openPath(fullPath);

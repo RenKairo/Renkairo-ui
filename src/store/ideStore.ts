@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ActivityView, FileNode, ProblemItem, RightSidebarTab, SystemMetrics, TabItem, TerminalExecutionMode, TerminalSessionRequest, TerminalTab, ThemeMode, WorkloadItem } from '../types/ide';
+import { ActivityView, FileNode, ForwardedPortInfo, ProblemItem, RightSidebarTab, SystemMetrics, TabItem, TerminalExecutionMode, TerminalSessionRequest, TerminalTab, ThemeMode, WorkloadItem } from '../types/ide';
 import { 
   createFile, 
   createFolder, 
@@ -125,6 +125,16 @@ interface IDEState {
   activeTerminalTab: TerminalTab;
   setActiveTerminalTab: (tab: TerminalTab) => void;
   problems: ProblemItem[];
+
+  // Forwarded Ports & Local Runner Tunnels
+  forwardedPorts: ForwardedPortInfo[];
+  setForwardedPorts: (ports: ForwardedPortInfo[]) => void;
+  portCollisionToast: { remotePort: number; localPort: number; message: string } | null;
+  dismissPortCollisionToast: () => void;
+  forwardPort: (remotePort: number, localPort?: number) => Promise<ForwardedPortInfo | null>;
+  stopForwardPort: (remotePort: number) => Promise<boolean>;
+  fetchForwardedPorts: () => Promise<void>;
+  openExternalUrl: (url: string) => Promise<void>;
 
   // Connect Server Modal & Terminal Session Requests
   isConnectServerModalOpen: boolean;
@@ -611,6 +621,102 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     } catch (e) {}
     set({ remoteExecutionMode: next });
   },
+  // Forwarded Ports & Local Runner Tunnels
+  forwardedPorts: [],
+  setForwardedPorts: (ports) => set({ forwardedPorts: ports }),
+  portCollisionToast: null,
+  dismissPortCollisionToast: () => set({ portCollisionToast: null }),
+
+  openExternalUrl: async (url: string) => {
+    if (!url) return;
+    try {
+      const electron = typeof window !== 'undefined' ? (window as any).electronAPI : null;
+      if (electron?.openExternal) {
+        await electron.openExternal(url);
+      } else if (electron?.openPath) {
+        await electron.openPath(url);
+      } else if (typeof window !== 'undefined') {
+        window.open(url, '_blank');
+      }
+    } catch (e) {
+      console.warn('Failed to open external url:', e);
+      if (typeof window !== 'undefined') {
+        window.open(url, '_blank');
+      }
+    }
+  },
+
+  fetchForwardedPorts: async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/tunnel/ports');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ports) {
+          set({ forwardedPorts: data.ports });
+        }
+      }
+    } catch (e) {}
+  },
+
+  forwardPort: async (remotePort: number, localPort?: number) => {
+    const { remoteServerUrl } = get();
+    const backendUrl = remoteServerUrl || 'http://localhost:8080';
+    const token = localStorage.getItem('renkairo_jwt_token');
+
+    try {
+      const res = await fetch('http://localhost:8000/api/tunnel/forward', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          remotePort,
+          localPort,
+          backendUrl,
+          token
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Failed to forward port ${remotePort}`);
+      }
+
+      const data = await res.json();
+      const forward: ForwardedPortInfo = data.forward;
+
+      set((state) => {
+        const filtered = state.forwardedPorts.filter((p) => p.remotePort !== remotePort);
+        return {
+          forwardedPorts: [...filtered, forward],
+          portCollisionToast: forward.hasCollision ? {
+            remotePort: forward.remotePort,
+            localPort: forward.localPort,
+            message: `Port ${forward.remotePort} is occupied locally. Forwarded to http://localhost:${forward.localPort}. Free port ${forward.remotePort} if you prefer the default.`
+          } : state.portCollisionToast
+        };
+      });
+
+      return forward;
+    } catch (e: any) {
+      console.error('[RenKairo IDE] Port forward error:', e);
+      return null;
+    }
+  },
+
+  stopForwardPort: async (remotePort: number) => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/tunnel/forward/${remotePort}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        set((state) => ({
+          forwardedPorts: state.forwardedPorts.filter((p) => p.remotePort !== remotePort)
+        }));
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  },
+
   disconnectRemoteServer: () => {
     try {
       localStorage.setItem('renkairo_remote_server_connected', 'false');

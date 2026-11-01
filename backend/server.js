@@ -36,6 +36,8 @@ import {
   cloneRepoGit
 } from './gitEngine.js';
 
+import { startForwarding, stopForwarding, getActiveTunnels } from './portForwarder.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -766,12 +768,44 @@ app.get('/api/system/metrics', (req, res) => {
   });
 });
 
+app.get('/api/tunnel/ports', (req, res) => {
+  res.json({ status: 'ok', ports: getActiveTunnels() });
+});
+
+app.post('/api/tunnel/forward', async (req, res) => {
+  try {
+    const { remotePort, localPort, backendUrl, token } = req.body;
+    if (!remotePort) {
+      return res.status(400).json({ error: 'remotePort is required' });
+    }
+    const forward = await startForwarding({ remotePort, localPort, backendUrl, token });
+    res.json({ status: 'ok', forward });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/tunnel/forward/:remotePort', (req, res) => {
+  const remotePort = Number(req.params.remotePort);
+  const stopped = stopForwarding(remotePort);
+  res.json({ status: 'ok', stopped, remotePort });
+});
+
 app.get('/api/system/servers', (req, res) => {
-  const servers = [
+  const baseServers = [
     { id: 'srv_8000', name: 'RenKairo Core Backend', port: 8000, url: 'http://localhost:8000', status: 'online', latencyMs: 1, type: 'Express & WebSockets' },
     { id: 'srv_5173', name: 'Vite Frontend Server', port: 5173, url: 'http://localhost:5173', status: 'online', latencyMs: 2, type: 'Vite HMR Dev Server' }
   ];
-  res.json({ status: 'ok', servers });
+  const tunnels = getActiveTunnels().map((t) => ({
+    id: 'tunnel_' + t.remotePort,
+    name: 'Remote Forwarded Port :' + t.remotePort + (t.hasCollision ? ' (mapped :' + t.localPort + ')' : ''),
+    port: t.localPort,
+    url: t.url,
+    status: 'online',
+    latencyMs: 3,
+    type: 'Remote TCP Tunnel'
+  }));
+  res.json({ status: 'ok', servers: [...baseServers, ...tunnels] });
 });
 
 app.get('/api/system/docker', (req, res) => {

@@ -98,6 +98,17 @@ export type ActivityView =
 
 export type TerminalTab = 'TERMINAL' | 'PROBLEMS' | 'OUTPUT' | 'DEBUG CONSOLE' | 'PORTS';
 
+export interface ForwardedPortInfo {
+  remotePort: number;
+  localPort: number;
+  reallocated?: boolean;
+  hasCollision?: boolean;
+  url: string;
+  status: 'forwarded' | 'listening' | 'error';
+  serviceName?: string;
+  createdAt?: string;
+}
+
 export type RightSidebarTab = 'OVERVIEW' | 'SERVERS' | 'DOCKER' | 'COMPUTE';
 
 export interface SystemMetrics {
