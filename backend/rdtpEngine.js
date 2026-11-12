@@ -245,7 +245,6 @@ class RDTPEngine {
   }
 
   scaffoldTemplate(templateName, targetDir) {
-    const templatesDir = path.resolve(__dirname, '../../rdtp/templates');
     const filenameMap = {
       vit: 'train_vit_rdtp.py',
       resnet: 'train_resnet_rdtp.py',
@@ -254,20 +253,155 @@ class RDTPEngine {
     };
 
     const sourceFile = filenameMap[templateName] || 'train_vit_rdtp.py';
+    // Internal bundled paths within RenKairo backend (portable across builds and Electron packages)
+    const templatesDir = path.join(__dirname, 'rdtp', 'templates');
+    const sdkDir = path.join(__dirname, 'rdtp', 'sdk', 'rdtp');
     const sourcePath = path.join(templatesDir, sourceFile);
     const destPath = path.join(targetDir, sourceFile);
 
+    // 1. Ensure target directory exists
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    // 2. Also copy the rdtp python package directly into workspace if not present
+    // so user can immediately run `python train_vit_rdtp.py` with zero pip installation
+    const destSdkDir = path.join(targetDir, 'rdtp');
+    if (!fs.existsSync(destSdkDir) && fs.existsSync(sdkDir)) {
+      try {
+        fs.cpSync(sdkDir, destSdkDir, { recursive: true });
+      } catch (e) {
+        console.warn('[RDTP Scaffolder] Could not copy bundled SDK into workspace:', e.message);
+      }
+    }
+
+    // 3. Write template file from disk or built-in fallback
     if (fs.existsSync(sourcePath)) {
       const content = fs.readFileSync(sourcePath, 'utf-8');
       fs.writeFileSync(destPath, content, 'utf-8');
       return { success: true, filename: sourceFile, fullPath: destPath };
     } else {
-      // Fallback template content
-      const fallback = `"""RenKairo RDTP Template: ${templateName}"""\nimport time\nprint("RDTP Streaming training active.")\n`;
-      fs.writeFileSync(destPath, fallback, 'utf-8');
+      // In-memory fallback
+      const fallbackContent = BUILTIN_TEMPLATES[templateName] || BUILTIN_TEMPLATES.vit;
+      fs.writeFileSync(destPath, fallbackContent, 'utf-8');
       return { success: true, filename: sourceFile, fullPath: destPath };
     }
   }
 }
+
+const BUILTIN_TEMPLATES = {
+  vit: `"""
+RenKairo RDTP Template: Vision Transformer (ViT-B/16) Edge-to-Cloud Streaming Training.
+"""
+import os, sys, time
+_parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+for _p in (os.path.dirname(os.path.abspath(__file__)), _parent_dir):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+from rdtp import RDTPStreamLoader, RDTPStreamDataset, CodecType, Theorem1Audit
+
+def main():
+    print("=== RENKAIRO IDE: Vision Transformer (ViT-B/16) RDTP Streaming ===")
+    audit = Theorem1Audit.evaluate(workload_name="vit", batch_size=32, uplink_mbps=40.0)
+    print(f"Theorem 1: {'COMPUTE-BOUND' if audit.is_compute_bound else 'I/O-BOUND'} | Duty Cycle: {audit.predicted_gpu_duty_cycle_pct}%")
+    samples = [f"sample_{i:04d}".encode('utf-8') for i in range(160)]
+    dataset = RDTPStreamDataset(data_samples=samples, batch_size=32, codec=CodecType.JPEG)
+    loader = RDTPStreamLoader(dataset=dataset, target_host="127.0.0.1", target_port=50051)
+    if not loader.start_streaming():
+        print("Tip: Start remote consumer first via: python rdtp_consumer_worker.py")
+        return
+    print("Streaming batches active...")
+    time.sleep(2.0)
+    loader.close()
+
+if __name__ == "__main__":
+    main()
+`,
+  resnet: `"""
+RenKairo RDTP Template: ResNet-50 ImageNet Edge-to-Cloud Streaming Training.
+"""
+import os, sys, time
+_parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+for _p in (os.path.dirname(os.path.abspath(__file__)), _parent_dir):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+from rdtp import RDTPStreamLoader, RDTPStreamDataset, CodecType, Theorem1Audit
+
+def main():
+    print("=== RENKAIRO IDE: ResNet-50 ImageNet RDTP Streaming ===")
+    audit = Theorem1Audit.evaluate(workload_name="resnet", batch_size=64, uplink_mbps=40.0)
+    print(f"Theorem 1: {'COMPUTE-BOUND' if audit.is_compute_bound else 'I/O-BOUND (Starvation Risk)'} | Duty Cycle: {audit.predicted_gpu_duty_cycle_pct}%")
+    samples = [f"imagenet_{i:04d}".encode('utf-8') for i in range(160)]
+    dataset = RDTPStreamDataset(data_samples=samples, batch_size=64, codec=CodecType.JPEG)
+    loader = RDTPStreamLoader(dataset=dataset, target_host="127.0.0.1", target_port=50051)
+    if not loader.start_streaming():
+        print("Tip: Start remote consumer first via: python rdtp_consumer_worker.py")
+        return
+    time.sleep(2.0)
+    loader.close()
+
+if __name__ == "__main__":
+    main()
+`,
+  webcam: `"""
+RenKairo RDTP Template: Local Peripheral (Webcam) Active Learning Streaming.
+"""
+import os, sys, time
+_parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+for _p in (os.path.dirname(os.path.abspath(__file__)), _parent_dir):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+from rdtp import RDTPProducer, PeripheralStreamCapture, CodecType
+
+def main():
+    print("=== RENKAIRO: Live Local Peripheral Active Learning Streaming ===")
+    capture = PeripheralStreamCapture(fps=30, batch_size=16)
+    producer = RDTPProducer(target_host="127.0.0.1", target_port=50051, codec=CodecType.JPEG)
+    if not producer.connect():
+        print("Tip: Start remote consumer first via: python rdtp_consumer_worker.py")
+        return
+    for batch in capture.stream_batches(num_batches=5):
+        producer.send_batch(batch["payload"], batch["sample_count"])
+    capture.stop()
+    producer.close()
+
+if __name__ == "__main__":
+    main()
+`,
+  consumer: `"""
+RenKairo RDTP Cloud Accelerator Consumer Daemon.
+"""
+import os, sys, time
+_parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+for _p in (os.path.dirname(os.path.abspath(__file__)), _parent_dir):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+from rdtp import RDTPConsumer
+
+def main():
+    consumer = RDTPConsumer(listen_port=50051, buffer_depth=3)
+    if not consumer.start():
+        print("Port 50051 busy or unavailable.")
+        return
+    print("Consumer active. Waiting for batches...")
+    try:
+        while True:
+            batch = consumer.fetch_next_batch(timeout=1.0)
+            if batch:
+                hdr, payload = batch
+                print(f"Ingested batch #{hdr.batch_id} ({len(payload)}B) -> Step Done")
+    except KeyboardInterrupt:
+        pass
+    finally:
+        consumer.stop()
+
+if __name__ == "__main__":
+    main()
+`
+};
 
 export const rdtpEngine = new RDTPEngine();

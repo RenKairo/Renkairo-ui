@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rdtp"
+version = "1.0.0"
+description = "RDTP: Real-Time Distributed Training Protocol for Edge-to-Cloud Machine Learning"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+    { name = "Mahammad Azhar" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.scripts]
+rdtp = "rdtp.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rdtp*"]
+
