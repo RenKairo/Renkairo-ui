@@ -212,6 +212,32 @@ export async function readFileDetails(
     }
   }
 
+  // 2. HTTP Backend Server Fallback (Web / Browser / Vite dev mode)
+  try {
+    const API_BASE = typeof window !== 'undefined' && window.location.protocol === 'file:'
+      ? 'http://127.0.0.1:8000/api'
+      : '/api';
+    const res = await fetch(`${API_BASE}/fs/file?path=${encodeURIComponent(fullPath)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data.content === 'string') {
+        if (!forceFresh && data.content.length < 5 * 1024 * 1024) {
+          inMemoryFileStore.set(relPath, data.content);
+        }
+        return {
+          content: data.content,
+          size: data.content.length,
+          isBinary: false,
+          tier: getTierFromSize(data.content.length),
+          truncated: false,
+          totalSize: data.content.length
+        };
+      }
+    }
+  } catch (err) {
+    // Backend offline, fallback to memory cache
+  }
+
   // Fallback cache
   if (!forceFresh && inMemoryFileStore.has(relPath)) {
     const cached = inMemoryFileStore.get(relPath)!;
@@ -254,6 +280,21 @@ export async function writeFile(relPath: string, content: string): Promise<boole
     } catch (err) {
       console.error(`[Native FS] Error writing ${fullPath}:`, err);
     }
+  }
+
+  // HTTP Backend Server Fallback (Web / Browser / Vite dev mode)
+  try {
+    const API_BASE = typeof window !== 'undefined' && window.location.protocol === 'file:'
+      ? 'http://127.0.0.1:8000/api'
+      : '/api';
+    const res = await fetch(`${API_BASE}/fs/file`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: fullPath, content })
+    });
+    if (res.ok) return true;
+  } catch (err) {
+    // Backend offline
   }
 
   return true;
