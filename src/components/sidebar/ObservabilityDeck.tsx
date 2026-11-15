@@ -13,11 +13,17 @@ import {
   Layers, 
   Box, 
   CheckCircle2,
-  X
+  X,
+  BarChart3,
+  Clock,
+  ArrowUpRight,
+  Activity,
+  Trash2,
+  PlayCircle
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useAuthStore } from '../../store/authStore';
-import { ComputeMetrics, DockerContainerInfo, RightSidebarTab, ServerEndpoint, RDTPSessionStatus } from '../../types/ide';
+import { ComputeMetrics, DockerContainerInfo, RightSidebarTab, ServerEndpoint, RDTPSessionStatus, RDTPStageLogEntry, RDTPBenchmarkResult } from '../../types/ide';
 import { fetchActiveServers, fetchComputeMetrics, fetchDockerContainers } from '../../services/systemService';
 
 const MiniSparkline: React.FC<{ data: number[]; color: string }> = ({ data, color }) => {
@@ -69,6 +75,44 @@ export const ObservabilityDeck: React.FC = () => {
   const [compute, setCompute] = useState<ComputeMetrics | null>(null);
   const [recentProjects, setRecentProjects] = useState<{ name: string; path: string; time: string }[]>([]);
   const [rdtpStatus, setRdtpStatus] = useState<RDTPSessionStatus | null>(null);
+  const [rdtpLogs, setRdtpLogs] = useState<RDTPStageLogEntry[]>([]);
+  const [benchmarkResult, setBenchmarkResult] = useState<RDTPBenchmarkResult | null>(null);
+  const [isBenchmarking, setIsBenchmarking] = useState(false);
+  const [logFilter, setLogFilter] = useState<string>('ALL');
+
+  const runBenchmark = async () => {
+    setIsBenchmarking(true);
+    const API_BASE = typeof window !== 'undefined' && window.location.protocol === 'file:' ? 'http://localhost:8000/api' : '/api';
+    try {
+      const res = await fetch(`${API_BASE}/rdtp/benchmark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workload: rdtpStatus?.session.workload || 'vit',
+          batchCount: 50,
+          uplinkMbps: rdtpStatus?.session.uplinkMbps || 40.0,
+          codec: rdtpStatus?.session.codec || 'jpeg',
+          bufferDepth: rdtpStatus?.session.bufferDepth || 3,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBenchmarkResult(data);
+      }
+    } catch (e) {
+      console.error('Benchmark failed:', e);
+    } finally {
+      setIsBenchmarking(false);
+    }
+  };
+
+  const clearRdtpLogs = async () => {
+    const API_BASE = typeof window !== 'undefined' && window.location.protocol === 'file:' ? 'http://localhost:8000/api' : '/api';
+    try {
+      await fetch(`${API_BASE}/rdtp/logs/clear`, { method: 'POST' });
+      setRdtpLogs([]);
+    } catch (e) {}
+  };
 
   useEffect(() => {
     loadMetrics();
@@ -96,8 +140,21 @@ export const ObservabilityDeck: React.FC = () => {
           }
         } catch (e) {}
       };
+      const fetchLogs = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/rdtp/logs?limit=40`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.logs) setRdtpLogs(data.logs);
+          }
+        } catch (e) {}
+      };
       fetchRdtp();
-      const interval = setInterval(fetchRdtp, 800);
+      fetchLogs();
+      const interval = setInterval(() => {
+        fetchRdtp();
+        fetchLogs();
+      }, 1000);
 
       // Also try live WebSocket connection
       let ws: WebSocket | null = null;
@@ -111,6 +168,7 @@ export const ObservabilityDeck: React.FC = () => {
           try {
             const msg = JSON.parse(evt.data);
             if (msg.data) setRdtpStatus(msg.data);
+            if (msg.logs) setRdtpLogs(msg.logs);
           } catch (e) {}
         };
       } catch (e) {}
@@ -576,6 +634,228 @@ export const ObservabilityDeck: React.FC = () => {
                   ~49.6% net cost reduction
                 </span>
               </div>
+            </div>
+
+            {/* Live Structured Execution Logs: WHERE, WHAT, and HOW MUCH TIME */}
+            <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-2 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1.5">
+                  <Activity className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
+                  <span className="text-[10px] text-[var(--text-primary)] font-bold uppercase tracking-wider">
+                    EXECUTION LOGS (WHERE, WHAT, TIME)
+                  </span>
+                </div>
+                <button
+                  onClick={clearRdtpLogs}
+                  title="Clear log console"
+                  className="p-1 hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* Filter Chips */}
+              <div className="flex items-center space-x-1 overflow-x-auto pb-1 text-[8px]">
+                {['ALL', 'EDGE_PREPROCESS', 'WAN_TRANSPORT', 'RING_BUFFER_STAGING', 'ACCELERATOR_KERNEL', 'CREDIT_ACK'].map((f) => {
+                  const labelMap: Record<string, string> = {
+                    ALL: 'ALL',
+                    EDGE_PREPROCESS: 'PREP',
+                    WAN_TRANSPORT: 'WAN',
+                    RING_BUFFER_STAGING: 'RING_BUF',
+                    ACCELERATOR_KERNEL: 'COMPUTE',
+                    CREDIT_ACK: 'ACK',
+                  };
+                  const isSel = logFilter === f;
+                  return (
+                    <button
+                      key={f}
+                      onClick={() => setLogFilter(f)}
+                      className={`px-1.5 py-0.5 rounded border transition-colors cursor-pointer font-bold ${
+                        isSel
+                          ? 'bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] border-[var(--accent-cyan)]/50'
+                          : 'bg-[var(--bg-base)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      {labelMap[f] || f}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Scrollable Log Stream Container */}
+              <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 font-mono text-[9px] divide-y divide-[var(--border-color)]/30">
+                {rdtpLogs.length === 0 ? (
+                  <div className="text-center py-4 text-[var(--text-subtle)]">
+                    {rdtpStatus?.session.isActive ? 'Awaiting pipeline step logs...' : 'Start session or run benchmark to inspect execution logs.'}
+                  </div>
+                ) : (
+                  rdtpLogs
+                    .filter((l) => logFilter === 'ALL' || l.stage === logFilter)
+                    .slice(-30)
+                    .reverse()
+                    .map((log) => {
+                      const badgeStyles: Record<string, string> = {
+                        EDGE_PREPROCESS: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+                        WAN_TRANSPORT: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+                        RING_BUFFER_STAGING: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+                        ACCELERATOR_KERNEL: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+                        CREDIT_ACK: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+                      };
+                      const stageShort: Record<string, string> = {
+                        EDGE_PREPROCESS: 'PREP',
+                        WAN_TRANSPORT: 'WAN',
+                        RING_BUFFER_STAGING: 'RING_BUF',
+                        ACCELERATOR_KERNEL: 'COMPUTE',
+                        CREDIT_ACK: 'ACK',
+                      };
+
+                      return (
+                        <div key={log.id} className="pt-1.5 first:pt-0 space-y-1">
+                          {/* Top Row: WHERE + HOW MUCH TIME */}
+                          <div className="flex items-center justify-between text-[8px]">
+                            <div className="flex items-center space-x-1.5 truncate pr-1">
+                              <span className={`px-1 py-0.2 rounded border text-[7px] font-bold ${badgeStyles[log.stage] || 'bg-zinc-500/10 text-zinc-400'}`}>
+                                {stageShort[log.stage] || log.stage}
+                              </span>
+                              <span className="text-[var(--text-subtle)] truncate" title={log.where}>
+                                {log.where}
+                              </span>
+                            </div>
+                            <span className="text-[var(--accent-coral)] font-bold shrink-0">
+                              {log.durationMs}ms
+                            </span>
+                          </div>
+
+                          {/* Bottom Row: WHAT */}
+                          <div className="text-[9px] text-[var(--text-secondary)] leading-tight break-words">
+                            {log.what}
+                          </div>
+
+                          {/* Extra structured tags if available */}
+                          {log.details && (
+                            <div className="flex flex-wrap gap-1 text-[7px] text-[var(--text-subtle)]">
+                              {log.details.bloatRatio && <span>Ratio: {log.details.bloatRatio}x</span>}
+                              {log.details.crc32 && <span>CRC: {log.details.crc32}</span>}
+                              {log.details.credits !== undefined && <span>Credits: {log.details.credits}</span>}
+                              {log.details.headroomMs !== undefined && (
+                                <span className={log.details.headroomMs >= 0 ? 'text-emerald-400' : 'text-amber-400'}>
+                                  Headroom: {log.details.headroomMs >= 0 ? '+' : ''}{log.details.headroomMs}ms
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+            </div>
+
+            {/* Comparative Benchmark & CPU Emulation Proof */}
+            <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-2.5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1.5">
+                  <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[10px] text-[var(--text-primary)] font-bold uppercase tracking-wider">
+                    HEAD-TO-HEAD SPEEDUP PROOF
+                  </span>
+                </div>
+                <button
+                  onClick={runBenchmark}
+                  disabled={isBenchmarking}
+                  className="px-2 py-0.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[9px] font-bold flex items-center space-x-1 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <PlayCircle className="w-3 h-3" />
+                  <span>{isBenchmarking ? 'Simulating...' : 'Run Benchmark'}</span>
+                </button>
+              </div>
+
+              <p className="text-[8px] text-[var(--text-subtle)] leading-normal">
+                Compares standard S3 upload-first training vs RDTP pipelining over 40 Mbps uplink (50 batches). Calibrated for CPU servers using mathematical GEMM FLOPs & nanosecond timers.
+              </p>
+
+              {benchmarkResult && (
+                <div className="space-y-2 pt-1 border-t border-[var(--border-color)]">
+                  {/* Big Speedup Summary Card */}
+                  <div className="grid grid-cols-3 gap-1 text-center bg-[var(--bg-base)] p-1.5 rounded border border-[var(--border-color)]">
+                    <div>
+                      <span className="text-[7px] text-[var(--text-muted)] block">WALL-CLOCK</span>
+                      <span className="text-xs font-bold text-emerald-400">
+                        {benchmarkResult.improvements.speedupVsRaw || benchmarkResult.improvements.speedupVsS3}
+                      </span>
+                      <span className="text-[7px] text-[var(--text-subtle)] block">Speedup</span>
+                    </div>
+                    <div>
+                      <span className="text-[7px] text-[var(--text-muted)] block">START LATENCY</span>
+                      <span className="text-xs font-bold text-[var(--accent-cyan)]">{benchmarkResult.improvements.ttfsImprovement}</span>
+                      <span className="text-[7px] text-[var(--text-subtle)] block">TTFS</span>
+                    </div>
+                    <div>
+                      <span className="text-[7px] text-[var(--text-muted)] block">IDLE WASTE</span>
+                      <span className="text-xs font-bold text-[var(--accent-coral)]">-{benchmarkResult.improvements.percentCostSaved}%</span>
+                      <span className="text-[7px] text-[var(--text-subtle)] block">Cost Saved</span>
+                    </div>
+                  </div>
+
+                  {/* Side-by-Side Timeline Comparison Bars */}
+                  <div className="space-y-1.5 text-[8px]">
+                    {/* S3 Upload-First */}
+                    {(() => {
+                      const base = benchmarkResult.baselines.rawUploadFirst || benchmarkResult.baselines.s3UploadFirst;
+                      const waitSec = base.uploadWaitSec || 0;
+                      return (
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between text-[var(--text-muted)]">
+                            <span>{base.name}</span>
+                            <span className="font-bold text-[var(--text-primary)]">{base.totalWallClockSec}s</span>
+                          </div>
+                          <div className="w-full bg-[var(--bg-base)] h-2 rounded overflow-hidden flex border border-[var(--border-color)]">
+                            <div
+                              className="bg-amber-500/80 h-full"
+                              style={{ width: `${(waitSec / base.totalWallClockSec) * 100}%` }}
+                              title={`Upload Wait: ${waitSec}s`}
+                            />
+                            <div
+                              className="bg-emerald-500/80 h-full"
+                              style={{ width: `${(base.computeSec / base.totalWallClockSec) * 100}%` }}
+                              title={`Compute: ${base.computeSec}s`}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[7px] text-[var(--text-subtle)]">
+                            <span>Upload Wait: {waitSec}s (Starvation)</span>
+                            <span>Duty Cycle: {base.gpuDutyCyclePct}%</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* RDTP Pipelined */}
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between text-[var(--text-muted)]">
+                        <span className="text-emerald-400 font-bold">RDTP: Pipelined Streaming</span>
+                        <span className="font-bold text-emerald-400">{benchmarkResult.baselines.rdtp.totalWallClockSec}s</span>
+                      </div>
+                      <div className="w-full bg-[var(--bg-base)] h-2 rounded overflow-hidden flex border border-emerald-500/40">
+                        <div
+                          className="bg-emerald-500 h-full transition-all"
+                          style={{ width: `${benchmarkResult.baselines.rdtp.gpuDutyCyclePct}%` }}
+                          title={`Compute Active: ${benchmarkResult.baselines.rdtp.computeSec}s`}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[7px] text-[var(--text-subtle)]">
+                        <span className="text-emerald-400 font-bold">Zero Idle Waiting (Overlapped)</span>
+                        <span className="text-emerald-400 font-bold">Duty Cycle: {benchmarkResult.baselines.rdtp.gpuDutyCyclePct}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CPU Verification Note */}
+                  <div className="p-1.5 rounded bg-[var(--bg-base)] border border-[var(--border-color)] text-[7px] text-[var(--text-subtle)] leading-normal">
+                    <span className="text-[var(--text-muted)] font-bold">No-GPU Verification Methodology: </span>
+                    {benchmarkResult.cpuSimulationProof.methodology}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Academic Grounding Notice */}

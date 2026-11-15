@@ -42,47 +42,114 @@ export const RDTPStudioPanel: React.FC = () => {
   const [telemetry, setTelemetry] = useState<RDTPTelemetryData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [scaffoldStatus, setScaffoldStatus] = useState<string | null>(null);
+  const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
+
+  // Local mathematical calculation of Theorem 1 (fallback when backend server is offline)
+  const computeLocalAudit = (cfg: RDTPSessionConfig): Theorem1AuditResult => {
+    const w = (cfg.workload || 'vit').toLowerCase();
+    let rawBytes = 0;
+    let wireBytes = 0;
+    let tPrepMs = 42.0;
+    let tGpuMs = 284.0;
+    if (w.includes('vit')) {
+      rawBytes = cfg.batchSize * 3 * 224 * 224 * 4;
+      wireBytes = cfg.codec === 'raw_fp32' ? rawBytes : cfg.batchSize * 28 * 1024;
+      tGpuMs = 284.0;
+      tPrepMs = 42.0;
+    } else if (w.includes('resnet')) {
+      rawBytes = cfg.batchSize * 3 * 224 * 224 * 4;
+      wireBytes = cfg.codec === 'raw_fp32' ? rawBytes : cfg.batchSize * 28 * 1024;
+      tGpuMs = 210.0;
+      tPrepMs = 38.0;
+    } else if (w.includes('diffusion')) {
+      rawBytes = cfg.batchSize * 3 * 512 * 512 * 4;
+      wireBytes = cfg.codec === 'raw_fp32' ? rawBytes : cfg.batchSize * 145 * 1024;
+      tGpuMs = 1420.0;
+      tPrepMs = 60.0;
+    } else {
+      rawBytes = cfg.batchSize * 512 * 4;
+      wireBytes = cfg.batchSize * 512 * 2;
+      tGpuMs = 340.0;
+      tPrepMs = 20.0;
+    }
+    const bloatRatio = Number((rawBytes / Math.max(wireBytes, 1)).toFixed(2));
+    const wireBits = wireBytes * 8;
+    const effectiveBps = Math.max(cfg.uplinkMbps, 1) * 1_000_000;
+    const tNetMs = Number(((wireBits / effectiveBps) * 1000 + 8.5).toFixed(1));
+    const tDmaMs = Number(((rawBytes / (16 * 1024 * 1024 * 1024)) * 1000).toFixed(1));
+    const maxUpstream = Math.max(tPrepMs, tNetMs, tDmaMs);
+    const isComputeBound = maxUpstream <= tGpuMs;
+    const bottleneckStage = isComputeBound ? 'GPU_COMPUTE' : (maxUpstream === tNetMs ? 'WAN_NETWORK' : 'CPU_PREPROCESS');
+    const throughput = Number((1000.0 / Math.max(maxUpstream, tGpuMs)).toFixed(2));
+    const predictedDutyCycle = isComputeBound ? 85.0 : Number(Math.min(75.0, (tGpuMs / tNetMs) * 95).toFixed(1));
+
+    return {
+      workload: cfg.workload,
+      batchSize: cfg.batchSize,
+      uplinkMbps: cfg.uplinkMbps,
+      rawTensorBytes: rawBytes,
+      wirePayloadBytes: wireBytes,
+      bloatRatio,
+      timings: { tPrepMs, tNetMs, tDmaMs, tGpuMs },
+      isComputeBound,
+      bottleneckStage,
+      sustainableThroughputBatchesPerSec: throughput,
+      predictedGpuDutyCyclePct: predictedDutyCycle,
+      recommendation: isComputeBound
+        ? `Theorem 1 Satisfied: Pipeline is compute-bound (T_gpu=${tGpuMs}ms >= T_net=${tNetMs}ms). Upstream ingestion latency is completely masked.`
+        : `Warning: Pipeline is network-bound (T_net=${tNetMs}ms > T_gpu=${tGpuMs}ms). GPU starvation bubbles will occur (~${predictedDutyCycle}% duty cycle). Remedy: Increase batch size, apply higher compression, or upgrade uplink.`,
+    };
+  };
 
   // Poll or fetch status
   const fetchStatus = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/rdtp/status`);
-      if (res.ok) {
-        const data = await res.json();
+    const res = await fetch(`${API_BASE}/rdtp/status`).catch(() => null);
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data) {
         if (data.session) setSession(data.session);
         if (data.theorem1) setAudit(data.theorem1);
         if (data.telemetry) setTelemetry(data.telemetry);
+        setIsBackendConnected(true);
       }
-    } catch (err) {
-      console.warn('[RDTP] Status fetch error:', err);
+    } else {
+      setIsBackendConnected(false);
+      setAudit((prev) => prev || computeLocalAudit(session));
     }
   };
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 1500);
+    const interval = setInterval(fetchStatus, 3000);
     return () => clearInterval(interval);
   }, []);
 
   const handleAudit = async (configOverride?: Partial<RDTPSessionConfig>) => {
     const updated = { ...session, ...configOverride };
-    try {
-      const res = await fetch(`${API_BASE}/rdtp/audit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workload: updated.workload,
-          batchSize: updated.batchSize,
-          uplinkMbps: updated.uplinkMbps,
-          codec: updated.codec,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
+    if (isBackendConnected === false) {
+      setAudit(computeLocalAudit(updated));
+      return;
+    }
+    const res = await fetch(`${API_BASE}/rdtp/audit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        workload: updated.workload,
+        batchSize: updated.batchSize,
+        uplinkMbps: updated.uplinkMbps,
+        codec: updated.codec,
+      }),
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data) {
         setAudit(data);
+      } else {
+        setAudit(computeLocalAudit(updated));
       }
-    } catch (err) {
-      console.error('[RDTP] Audit error:', err);
+    } else {
+      setAudit(computeLocalAudit(updated));
     }
   };
 
@@ -90,45 +157,41 @@ export const RDTPStudioPanel: React.FC = () => {
     const nextSession = { ...session, ...updates };
     setSession(nextSession);
     handleAudit(updates);
-    try {
+    if (isBackendConnected) {
       await fetch(`${API_BASE}/rdtp/configure`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
-      });
-    } catch (err) {
-      console.error('[RDTP] Configure error:', err);
+      }).catch(() => null);
     }
   };
 
   const handleToggleStream = async () => {
     setIsLoading(true);
-    try {
-      const endpoint = session.isActive ? '/rdtp/stop' : '/rdtp/start';
-      const res = await fetch(`${API_BASE}${endpoint}`, { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
+    const endpoint = session.isActive ? '/rdtp/stop' : '/rdtp/start';
+    const res = await fetch(`${API_BASE}${endpoint}`, { method: 'POST' }).catch(() => null);
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data) {
         if (data.session) setSession(data.session);
         if (data.telemetry) setTelemetry(data.telemetry);
         if (data.theorem1) setAudit(data.theorem1);
       }
-    } catch (err) {
-      console.error('[RDTP] Toggle stream error:', err);
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   const handleScaffold = async (templateKey: string) => {
     setScaffoldStatus(`Generating ${templateKey}...`);
-    try {
-      const res = await fetch(`${API_BASE}/rdtp/scaffold`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ template: templateKey }),
-      });
-      if (res.ok) {
-        const data = await res.json();
+    const res = await fetch(`${API_BASE}/rdtp/scaffold`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template: templateKey }),
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data && data.filename) {
         setScaffoldStatus(`Created: ${data.filename}`);
         setTimeout(() => setScaffoldStatus(null), 3000);
         // Open directly in Monaco editor
@@ -138,8 +201,8 @@ export const RDTPStudioPanel: React.FC = () => {
       } else {
         setScaffoldStatus('Failed to scaffold template');
       }
-    } catch (err) {
-      setScaffoldStatus('Error scaffolding template');
+    } else {
+      setScaffoldStatus('Failed to scaffold template');
     }
   };
 
@@ -188,6 +251,17 @@ export const RDTPStudioPanel: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* Backend Offline Indicator */}
+        {isBackendConnected === false && (
+          <div className="p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono flex items-center justify-between">
+            <div className="flex items-center space-x-1.5 truncate">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+              <span className="truncate">Backend offline (port 8000). Run: <code className="bg-black/40 px-1 py-0.5 rounded text-white font-bold">npm run server</code></span>
+            </div>
+            <span className="text-[8px] bg-amber-500/20 px-1 py-0.5 rounded font-bold shrink-0 ml-1">LOCAL SIM</span>
+          </div>
+        )}
 
         {/* Global Stream Control Bar */}
         <div className="flex items-center space-x-2 pt-1">

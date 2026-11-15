@@ -320,3 +320,53 @@ export interface RDTPSessionStatus {
   telemetry: RDTPTelemetryData;
   theorem1: Theorem1AuditResult;
 }
+
+export interface RDTPStageLogEntry {
+  id: string;
+  timestamp: string;
+  stage: 'EDGE_PREPROCESS' | 'WAN_TRANSPORT' | 'RING_BUFFER_STAGING' | 'ACCELERATOR_KERNEL' | 'CREDIT_ACK';
+  where: string;
+  what: string;
+  durationMs: number;
+  details?: Record<string, any>;
+}
+
+export interface RDTPBenchmarkBaseline {
+  name: string;
+  totalWallClockSec: number;
+  uploadWaitSec?: number;
+  computeSec: number;
+  gpuDutyCyclePct: number;
+  timeToFirstStepSec: number;
+  totalCostDollars: number;
+  idleCostWasted?: number;
+}
+
+export interface RDTPBenchmarkResult {
+  workload: string;
+  batchCount: number;
+  uplinkMbps: number;
+  codec: string;
+  bufferDepth: number;
+  baselines: {
+    rawUploadFirst?: RDTPBenchmarkBaseline;
+    s3UploadFirst: RDTPBenchmarkBaseline;
+    syncStreaming: RDTPBenchmarkBaseline;
+    rdtp: RDTPBenchmarkBaseline;
+  };
+  improvements: {
+    speedupVsRaw?: string;
+    speedupVsS3: string;
+    speedupVsSync: string;
+    wallClockReductionPct: number;
+    ttfsImprovement: string;
+    dollarsSaved: number;
+    percentCostSaved: number;
+  };
+  cpuSimulationProof: {
+    cpuGemmFeasible: boolean;
+    methodology: string;
+    dutyCycleFormula: string;
+    overlapEquation: string;
+  };
+}

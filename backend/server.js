@@ -1246,6 +1246,32 @@ app.post('/api/rdtp/scaffold', (req, res) => {
   }
 });
 
+app.get('/api/rdtp/logs', (req, res) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 100;
+    res.json({ logs: rdtpEngine.getLogs(limit) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/rdtp/logs/clear', (req, res) => {
+  try {
+    res.json(rdtpEngine.clearLogs());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/rdtp/benchmark', (req, res) => {
+  try {
+    const benchmarkResult = rdtpEngine.runComparativeBenchmark(req.body);
+    res.json(benchmarkResult);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // WebSockets (Terminal, Real-Time File System Watcher & RDTP Live Telemetry)
 const server = http.createServer(app);
 const wssTerminal = new WebSocketServer({ noServer: true });
@@ -1259,7 +1285,11 @@ wssRdtp.on('connection', (ws) => {
 
   const telemetryInterval = setInterval(() => {
     if (ws.readyState === 1) { // OPEN
-      ws.send(JSON.stringify({ type: 'rdtp_telemetry', data: rdtpEngine.getStatus() }));
+      ws.send(JSON.stringify({ 
+        type: 'rdtp_telemetry', 
+        data: rdtpEngine.getStatus(),
+        logs: rdtpEngine.getLogs(30)
+      }));
     }
   }, 400);
 
