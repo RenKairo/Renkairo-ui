@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Search, 
-  Bell, 
+  Search,  
   Moon, 
   Sun,
   Activity, 
@@ -10,7 +9,8 @@ import {
   FolderSync,
   User,
   Check,
-  LogOut
+  LogOut,
+  Server
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useAuthStore } from '../../store/authStore';
@@ -26,14 +26,15 @@ export const TopCommandBar: React.FC = () => {
     workspacePath,
     openFolder,
     changeScopeFolder,
-    isRightSidebarOpen,
-    toggleRightSidebar
+    setConnectServerModalOpen,
+    isRemoteServerConnected,
+    remoteServerUrl,
+    remoteServerName,
   } = useIDEStore();
 
   const { user, isAuthenticated, setAuthModalOpen, logout } = useAuthStore();
 
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   return (
     <header className="h-11 bg-[var(--bg-panel)] border-b border-[var(--border-color)] px-3 flex items-center justify-between text-xs select-none z-30 relative transition-colors duration-150">
@@ -121,39 +122,6 @@ export const TopCommandBar: React.FC = () => {
           <span className="text-[10px] font-mono text-[var(--accent-emerald)] font-medium">{metrics?.cpu.usage || 18}% CPU</span>
         </div>
 
-        {/* Notifications */}
-        <div className="relative">
-          <button 
-            onClick={() => setIsNotifOpen(!isNotifOpen)}
-            className="p-1.5 hover:bg-[var(--bg-hover)] rounded-md hover:text-[var(--text-primary)] transition-colors relative focus:outline-none"
-            title="System Status Notifications"
-          >
-            <Bell className="w-4 h-4" />
-          </button>
-
-          {isNotifOpen && (
-            <div 
-              className="absolute right-0 top-9 w-72 bg-[var(--bg-panel)] border border-[var(--border-color)] rounded-lg shadow-2xl p-3 z-50 text-[var(--text-secondary)]"
-              onMouseLeave={() => setIsNotifOpen(false)}
-            >
-              <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)] mb-2">
-                <span className="font-semibold text-[var(--text-primary)]">System Status</span>
-              </div>
-              <div className="space-y-2 text-xs">
-                <div className="bg-[var(--bg-card)] p-2 rounded border border-[var(--border-color)] flex items-center space-x-2.5">
-                  <div className="w-6 h-6 rounded bg-[var(--bg-panel)] border border-[var(--border-color)] flex items-center justify-center shrink-0 p-0.5">
-                    <ToriiIcon color="var(--accent-coral)" className="w-4 h-4 drop-shadow-[0_0_4px_var(--glow-coral)]" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-[var(--text-primary)]">RenKairo Core</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">{workspacePath ? `Active: ${rootName}` : 'Ready to open folder'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Theme Toggle (Swappable Dark / Light Mode) */}
         <button 
           onClick={toggleTheme}
@@ -169,6 +137,35 @@ export const TopCommandBar: React.FC = () => {
             <Moon className="w-4 h-4 transition-transform hover:-rotate-12" />
           ) : (
             <Sun className="w-4 h-4 transition-transform hover:rotate-45" />
+          )}
+        </button>
+
+        {/* Connect Server Button */}
+        <button
+          onClick={() => {
+            if (!isAuthenticated) {
+              setAuthModalOpen(true);
+              return;
+            }
+            setConnectServerModalOpen(true);
+          }}
+          title={
+            isRemoteServerConnected 
+              ? `Connected to ${remoteServerName || remoteServerUrl || 'Shiro Server'}. Click to manage connection.`
+              : 'Connect to Remote Server (SSH & Shiro Backend)'
+          }
+          className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md border transition-all text-xs font-mono font-semibold cursor-pointer shadow-sm group ${
+            isRemoteServerConnected
+              ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:border-emerald-500/60'
+              : 'bg-[var(--accent-coral)]/10 hover:bg-[var(--accent-coral)]/20 text-[var(--accent-coral)] border-[var(--accent-coral)]/30 hover:border-[var(--accent-coral)]/60'
+          }`}
+        >
+          <Server className="w-3.5 h-3.5 group-hover:scale-110 transition-transform shrink-0" />
+          <span className="hidden sm:inline truncate max-w-[140px]">
+            {isRemoteServerConnected ? (remoteServerName || 'Connected') : 'Connect Server'}
+          </span>
+          {isRemoteServerConnected && (
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           )}
         </button>
 
@@ -197,18 +194,7 @@ export const TopCommandBar: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={toggleRightSidebar}
-            title={isRightSidebarOpen ? "Hide System Overview Panel" : "Open System Overview Panel"}
-            className={`p-1.5 rounded-md transition-all cursor-pointer focus:outline-none ${
-              isRightSidebarOpen 
-                ? 'bg-[var(--accent-coral)]/15 text-[var(--accent-coral)] border border-[var(--accent-coral)]/40 shadow-sm' 
-                : 'hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-          </button>
-        </div>
+          </div>
       </div>
     </header>
   );

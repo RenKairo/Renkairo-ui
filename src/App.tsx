@@ -5,14 +5,11 @@ import { FileExplorer } from './components/explorer/FileExplorer';
 import { SearchPanel } from './components/activity/SearchPanel';
 import { SourceControlPanel } from './components/activity/SourceControlPanel';
 import { RemotePanel } from './components/activity/RemotePanel';
-import { DockerPanel } from './components/activity/DockerPanel';
-import { CloudResourcesPanel } from './components/activity/CloudResourcesPanel';
 import { TeamPanel } from './components/activity/TeamPanel';
 import { SettingsPanel } from './components/activity/SettingsPanel';
 import { RDTPStudioPanel } from './components/activity/RDTPStudioPanel';
 import { EditorCanvas } from './components/editor/EditorCanvas';
 import { TerminalPanel } from './components/terminal/TerminalPanel';
-import { ObservabilityDeck } from './components/sidebar/ObservabilityDeck';
 import { StatusBar } from './components/layout/StatusBar';
 import { CommandPaletteModal } from './components/layout/CommandPaletteModal';
 import { ConnectServerModal } from './components/common/ConnectServerModal';
@@ -25,16 +22,12 @@ export const App: React.FC = () => {
   const { 
     activeActivity, 
     leftSidebarWidth, 
-    setLeftSidebarWidth, 
-    rightSidebarWidth, 
-    setRightSidebarWidth,
-    isRightSidebarOpen
+    setLeftSidebarWidth
   } = useIDEStore();
 
   const { initAuth } = useAuthStore();
 
   const [isDraggingLeft, setIsDraggingLeft] = useState(false);
-  const [isDraggingRight, setIsDraggingRight] = useState(false);
 
   useEffect(() => {
     fileWatcher.init();
@@ -66,39 +59,12 @@ export const App: React.FC = () => {
     window.addEventListener('mouseup', handleMouseUp);
   };
 
-  // Right Sidebar Drag-to-Resize Handler
-  const handleRightResizeMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDraggingRight(true);
-    const startX = e.clientX;
-    const startWidth = rightSidebarWidth;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = startX - moveEvent.clientX;
-      const newWidth = startWidth + deltaX;
-      const minW = 180;
-      const maxW = Math.max(minW, Math.min(window.innerWidth * 0.45, 700));
-      setRightSidebarWidth(Math.min(Math.max(newWidth, minW), maxW));
-    };
-
-    const handleMouseUp = () => {
-      setIsDraggingRight(false);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  };
-
   const renderActivityPanel = () => {
     switch (activeActivity) {
       case 'explorer': return <FileExplorer />;
       case 'search': return <SearchPanel />;
       case 'git': return <SourceControlPanel />;
       case 'remote': return <RemotePanel />;
-      case 'docker': return <DockerPanel />;
-      case 'resources': return <CloudResourcesPanel />;
       case 'team': return <TeamPanel />;
       case 'rdtp': return <RDTPStudioPanel />;
       case 'settings': return <SettingsPanel />;
@@ -107,7 +73,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className={`h-screen w-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] overflow-hidden select-none font-sans ${isDraggingLeft || isDraggingRight ? 'cursor-col-resize select-none' : ''}`}>
+    <div className={`h-screen w-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] overflow-hidden select-none font-sans ${isDraggingLeft ? 'cursor-col-resize select-none' : ''}`}>
       {/* Top Command Bar */}
       <TopCommandBar />
 
@@ -136,32 +102,13 @@ export const App: React.FC = () => {
         )}
 
         {/* Center Main Stage (Editor Canvas + Bottom Terminal Panel) */}
-        <div className={`flex-1 min-w-0 flex flex-col overflow-hidden relative ${isDraggingLeft || isDraggingRight ? 'pointer-events-none' : ''}`}>
+        <div className={`flex-1 min-w-0 flex flex-col overflow-hidden relative ${isDraggingLeft ? 'pointer-events-none' : ''}`}>
           {/* Editor Stage */}
           <EditorCanvas />
 
           {/* Integrated Dockable Terminal & Diagnostics Panel */}
           <TerminalPanel />
         </div>
-
-        {/* Dynamic Resizable Right Observability & Compute Deck Sidebar */}
-        {isRightSidebarOpen && (
-          <div 
-            style={{ width: `${rightSidebarWidth}px` }} 
-            className="h-full relative shrink-0 flex flex-col bg-[var(--bg-base)] overflow-hidden transition-all"
-          >
-            {/* Center-to-Right Resize Handle */}
-            <div
-              onMouseDown={handleRightResizeMouseDown}
-              className="w-2 h-full absolute top-0 -left-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
-              title="Drag to resize right observability deck"
-            >
-              <div className="w-0.5 h-12 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-cyan)] group-active:bg-[var(--accent-coral)] transition-colors" />
-            </div>
-
-            <ObservabilityDeck />
-          </div>
-        )}
       </div>
 
       {/* Bottom Global Status Bar */}

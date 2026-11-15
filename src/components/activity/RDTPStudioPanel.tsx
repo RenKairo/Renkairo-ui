@@ -25,7 +25,7 @@ import { Theorem1AuditResult, RDTPSessionConfig, RDTPTelemetryData } from '../..
 const API_BASE = typeof window !== 'undefined' && window.location.protocol === 'file:' ? 'http://localhost:8000/api' : '/api';
 
 export const RDTPStudioPanel: React.FC = () => {
-  const { openFile, setIsRightSidebarOpen, setActiveRightTab } = useIDEStore();
+  const { openFile, setActiveTerminalTab, terminalHeight, setTerminalHeight } = useIDEStore();
 
   const [session, setSession] = useState<RDTPSessionConfig>({
     isActive: false,
@@ -207,8 +207,10 @@ export const RDTPStudioPanel: React.FC = () => {
   };
 
   const openTelemetryDeck = () => {
-    setIsRightSidebarOpen(true);
-    setActiveRightTab('RDTP_TELEMETRY');
+    setActiveTerminalTab('RDTP');
+    if (terminalHeight < 220) {
+      setTerminalHeight(340);
+    }
   };
 
   const workloads = [

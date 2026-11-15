@@ -17,11 +17,15 @@ export const RemotePanel: React.FC = () => {
     return subscribeBackendUrlChange((url) => setBackendUrl(url));
   }, []);
 
-  const [connections, setConnections] = useState([
-    { id: '1', name: 'gpu-cluster-01', host: '192.168.1.120', ping: '12ms', status: 'connected', region: 'us-east-1' },
-    { id: '2', name: 'prod-api-server', host: 'api.renkairo.io', ping: '45ms', status: 'disconnected', region: 'eu-central-1' },
-    { id: '3', name: 'staging-k8s-node', host: '10.0.4.15', ping: '8ms', status: 'connected', region: 'us-west-2' },
-  ]);
+  interface RemoteHostItem {
+    id: string;
+    name: string;
+    host: string;
+    ping: string;
+    status: string;
+    region?: string;
+  }
+  const [connections, setConnections] = useState<RemoteHostItem[]>([]);
 
   const toggleConnect = (id: string) => {
     setConnections(connections.map(c => 
@@ -82,64 +86,83 @@ export const RemotePanel: React.FC = () => {
         </div>
 
         <div className="space-y-2">
-          {connections.map((c) => (
-            <div key={c.id} className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-2 shadow-sm">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h4 className="text-xs font-semibold text-[var(--text-primary)] font-mono">{c.name}</h4>
-                  <span className="text-[10px] text-[var(--text-muted)] font-mono">{c.host}</span>
-                </div>
-                <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-semibold ${
-                  c.status === 'connected' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30' : 'bg-[var(--bg-panel)] text-[var(--text-muted)] border border-[var(--border-color)]'
-                }`}>
-                  {c.status}
-                </span>
+          {connections.length === 0 ? (
+            <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-4 text-center space-y-2.5 shadow-sm">
+              <HardDrive className="w-6 h-6 text-[var(--text-muted)] mx-auto opacity-50" />
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-semibold text-[var(--text-primary)] font-mono">No SSH Hosts Configured</h4>
+                <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+                  Add an SSH server to open remote terminal sessions and execution environments.
+                </p>
               </div>
-
-              <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] text-[10px] font-mono">
-                <div className="flex items-center space-x-1 text-[var(--text-muted)]">
-                  <Wifi className="w-3 h-3 text-emerald-500" />
-                  <span>{c.ping}</span>
-                </div>
-
-                <div className="flex items-center space-x-1">
-                  <button 
-                    onClick={() => {
-                      if (!isAuthenticated || !token || !user) {
-                        setAuthModalOpen(true);
-                        return;
-                      }
-                      requestTerminalSession({
-                        shellType: 'ssh',
-                        name: `SSH: ${user.username}@${c.host}`,
-                        sshConfig: { 
-                          host: c.host, 
-                          user: user.username, 
-                          port: 22,
-                          token,
-                          userId: user.userId,
-                          accountUsername: user.username,
-                          userRole: user.role,
-                          authHeader: `Bearer ${token}`
-                        }
-                      });
-                    }} 
-                    title="Open SSH Terminal"
-                    className="p-1 hover:text-[var(--text-primary)] text-[var(--text-muted)]"
-                  >
-                    <Terminal className="w-3 h-3 text-[var(--accent-cyan)]" />
-                  </button>
-                  <button 
-                    onClick={() => toggleConnect(c.id)} 
-                    title={c.status === 'connected' ? 'Disconnect' : 'Connect'}
-                    className={`p-1 ${c.status === 'connected' ? 'text-rose-500 hover:text-rose-600' : 'text-emerald-500 hover:text-emerald-600'}`}
-                  >
-                    <Power className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
+              <button
+                onClick={addConnection}
+                className="w-full py-1.5 px-3 bg-[var(--accent-cyan)]/15 hover:bg-[var(--accent-cyan)]/25 border border-[var(--accent-cyan)]/40 text-[var(--accent-cyan)] text-xs rounded font-mono font-semibold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add SSH Host</span>
+              </button>
             </div>
-          ))}
+          ) : (
+            connections.map((c) => (
+              <div key={c.id} className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-2 shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="text-xs font-semibold text-[var(--text-primary)] font-mono">{c.name}</h4>
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono">{c.host}</span>
+                  </div>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-semibold ${
+                    c.status === 'connected' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30' : 'bg-[var(--bg-panel)] text-[var(--text-muted)] border border-[var(--border-color)]'
+                  }`}>
+                    {c.status}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] text-[10px] font-mono">
+                  <div className="flex items-center space-x-1 text-[var(--text-muted)]">
+                    <Wifi className="w-3 h-3 text-emerald-500" />
+                    <span>{c.ping}</span>
+                  </div>
+
+                  <div className="flex items-center space-x-1">
+                    <button 
+                      onClick={() => {
+                        if (!isAuthenticated || !token || !user) {
+                          setAuthModalOpen(true);
+                          return;
+                        }
+                        requestTerminalSession({
+                          shellType: 'ssh',
+                          name: `SSH: ${user.username}@${c.host}`,
+                          sshConfig: { 
+                            host: c.host, 
+                            user: user.username, 
+                            port: 22,
+                            token,
+                            userId: user.userId,
+                            accountUsername: user.username,
+                            userRole: user.role,
+                            authHeader: `Bearer ${token}`
+                          }
+                        });
+                      }} 
+                      title="Open SSH Terminal"
+                      className="p-1 hover:text-[var(--text-primary)] text-[var(--text-muted)]"
+                    >
+                      <Terminal className="w-3 h-3 text-[var(--accent-cyan)]" />
+                    </button>
+                    <button 
+                      onClick={() => toggleConnect(c.id)} 
+                      title={c.status === 'connected' ? 'Disconnect' : 'Connect'}
+                      className={`p-1 ${c.status === 'connected' ? 'text-rose-500 hover:text-rose-600' : 'text-emerald-500 hover:text-emerald-600'}`}
+                    >
+                      <Power className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </aside>

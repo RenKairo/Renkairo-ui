@@ -4,8 +4,6 @@ import {
   Search, 
   GitBranch, 
   HardDrive, 
-  Box, 
-  Cpu, 
   Users, 
   Settings,
   Zap
@@ -26,8 +24,6 @@ export const ActivityBar: React.FC = () => {
     { id: 'git', label: 'Source Control', icon: GitBranch },
     { id: 'remote', label: 'Remote', icon: HardDrive },
     { id: 'rdtp', label: 'RDTP ML Studio', icon: Zap },
-    { id: 'docker', label: 'Docker', icon: Box },
-    { id: 'resources', label: 'Resources', icon: Cpu },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

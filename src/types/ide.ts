@@ -91,13 +91,11 @@ export type ActivityView =
   | 'search' 
   | 'git' 
   | 'remote' 
-  | 'docker' 
-  | 'resources' 
   | 'team' 
   | 'settings'
   | 'rdtp';
 
-export type TerminalTab = 'TERMINAL' | 'PROBLEMS' | 'OUTPUT' | 'DEBUG CONSOLE' | 'PORTS';
+export type TerminalTab = 'TERMINAL' | 'OUTPUT' | 'PORTS' | 'RDTP';
 
 export interface ForwardedPortInfo {
   remotePort: number;
