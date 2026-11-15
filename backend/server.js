@@ -35,6 +35,7 @@ import {
   getCommitLogGit,
   cloneRepoGit
 } from './gitEngine.js';
+import { rdtpEngine } from './rdtpEngine.js';
 
 import { startForwarding, stopForwarding, getActiveTunnels } from './portForwarder.js';
 
@@ -1186,10 +1187,104 @@ app.post('/api/git/clone', async (req, res) => {
   }
 });
 
-// WebSockets (Terminal & Real-Time File System Watcher)
+// ----------------------------------------------------
+// RDTP: Real-Time Edge-to-Cloud ML Ingestion Engine Routes
+// ----------------------------------------------------
+app.get('/api/rdtp/status', (req, res) => {
+  try {
+    res.json(rdtpEngine.getStatus());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/rdtp/configure', (req, res) => {
+  try {
+    const status = rdtpEngine.configure(req.body);
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/rdtp/start', (req, res) => {
+  try {
+    const status = rdtpEngine.startSession();
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/rdtp/stop', (req, res) => {
+  try {
+    const status = rdtpEngine.stopSession();
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/rdtp/audit', (req, res) => {
+  try {
+    const { workload, batchSize, uplinkMbps, codec } = req.body;
+    const audit = rdtpEngine.evaluateTheorem1(workload, batchSize, uplinkMbps, codec);
+    res.json(audit);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/rdtp/scaffold', (req, res) => {
+  try {
+    const { template, targetDir } = req.body;
+    const dest = targetDir ? resolveWorkspacePath(targetDir) : currentWorkspace;
+    const result = rdtpEngine.scaffoldTemplate(template, dest);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// WebSockets (Terminal, Real-Time File System Watcher & RDTP Live Telemetry)
 const server = http.createServer(app);
 const wssTerminal = new WebSocketServer({ noServer: true });
 const wssFs = new WebSocketServer({ noServer: true });
+const wssRdtp = new WebSocketServer({ noServer: true });
+
+wssRdtp.on('connection', (ws) => {
+  try {
+    ws.send(JSON.stringify({ type: 'rdtp_status', data: rdtpEngine.getStatus() }));
+  } catch (e) {}
+
+  const telemetryInterval = setInterval(() => {
+    if (ws.readyState === 1) { // OPEN
+      ws.send(JSON.stringify({ type: 'rdtp_telemetry', data: rdtpEngine.getStatus() }));
+    }
+  }, 400);
+
+  ws.on('message', (message) => {
+    try {
+      const parsed = JSON.parse(message.toString());
+      if (parsed.type === 'configure') {
+        const updated = rdtpEngine.configure(parsed.data);
+        ws.send(JSON.stringify({ type: 'rdtp_status', data: updated }));
+      } else if (parsed.type === 'start') {
+        const updated = rdtpEngine.startSession();
+        ws.send(JSON.stringify({ type: 'rdtp_status', data: updated }));
+      } else if (parsed.type === 'stop') {
+        const updated = rdtpEngine.stopSession();
+        ws.send(JSON.stringify({ type: 'rdtp_status', data: updated }));
+      }
+    } catch (err) {
+      console.error('[RDTP WS Message Error]:', err);
+    }
+  });
+
+  ws.on('close', () => {
+    clearInterval(telemetryInterval);
+  });
+});
 
 // Live File Watcher (VS Code style debounced notification)
 let fsWatcher = null;
@@ -1246,6 +1341,10 @@ server.on('upgrade', (request, socket, head) => {
   } else if (pathname === '/api/ws/fs') {
     wssFs.handleUpgrade(request, socket, head, (ws) => {
       wssFs.emit('connection', ws, request);
+    });
+  } else if (pathname === '/api/ws/rdtp') {
+    wssRdtp.handleUpgrade(request, socket, head, (ws) => {
+      wssRdtp.emit('connection', ws, request);
     });
   } else {
     socket.destroy();

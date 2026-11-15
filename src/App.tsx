@@ -9,6 +9,7 @@ import { DockerPanel } from './components/activity/DockerPanel';
 import { CloudResourcesPanel } from './components/activity/CloudResourcesPanel';
 import { TeamPanel } from './components/activity/TeamPanel';
 import { SettingsPanel } from './components/activity/SettingsPanel';
+import { RDTPStudioPanel } from './components/activity/RDTPStudioPanel';
 import { EditorCanvas } from './components/editor/EditorCanvas';
 import { TerminalPanel } from './components/terminal/TerminalPanel';
 import { ObservabilityDeck } from './components/sidebar/ObservabilityDeck';
@@ -99,6 +100,7 @@ export const App: React.FC = () => {
       case 'docker': return <DockerPanel />;
       case 'resources': return <CloudResourcesPanel />;
       case 'team': return <TeamPanel />;
+      case 'rdtp': return <RDTPStudioPanel />;
       case 'settings': return <SettingsPanel />;
       default: return null;
     }

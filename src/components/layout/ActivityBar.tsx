@@ -7,7 +7,8 @@ import {
   Box, 
   Cpu, 
   Users, 
-  Settings
+  Settings,
+  Zap
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useGitStore } from '../../store/gitStore';
@@ -24,6 +25,7 @@ export const ActivityBar: React.FC = () => {
     { id: 'search', label: 'Search', icon: Search },
     { id: 'git', label: 'Source Control', icon: GitBranch },
     { id: 'remote', label: 'Remote', icon: HardDrive },
+    { id: 'rdtp', label: 'RDTP ML Studio', icon: Zap },
     { id: 'docker', label: 'Docker', icon: Box },
     { id: 'resources', label: 'Resources', icon: Cpu },
     { id: 'team', label: 'Team', icon: Users },
@@ -59,6 +61,9 @@ export const ActivityBar: React.FC = () => {
               )}
               {item.id === 'remote' && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-sky-400 border border-[var(--bg-panel)]"></span>
+              )}
+              {item.id === 'rdtp' && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 border border-[var(--bg-panel)] animate-pulse"></span>
               )}
               {item.id === 'team' && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-400 border border-[var(--bg-panel)]"></span>

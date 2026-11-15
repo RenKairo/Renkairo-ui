@@ -94,7 +94,8 @@ export type ActivityView =
   | 'docker' 
   | 'resources' 
   | 'team' 
-  | 'settings';
+  | 'settings'
+  | 'rdtp';
 
 export type TerminalTab = 'TERMINAL' | 'PROBLEMS' | 'OUTPUT' | 'DEBUG CONSOLE' | 'PORTS';
 
@@ -109,7 +110,7 @@ export interface ForwardedPortInfo {
   createdAt?: string;
 }
 
-export type RightSidebarTab = 'OVERVIEW' | 'SERVERS' | 'DOCKER' | 'COMPUTE';
+export type RightSidebarTab = 'OVERVIEW' | 'SERVERS' | 'DOCKER' | 'COMPUTE' | 'RDTP_TELEMETRY';
 
 export interface SystemMetrics {
   timestamp: number;
@@ -258,4 +259,64 @@ export interface TerminalSessionRequest {
   name?: string;
   sshConfig?: SSHConnectionConfig;
   executionMode?: TerminalExecutionMode;
+}
+
+// ----------------------------------------------------
+// RDTP (Real-Time Distributed Training Protocol) Types
+// ----------------------------------------------------
+export interface RDTPTiming {
+  tPrepMs: number;
+  tNetMs: number;
+  tDmaMs: number;
+  tGpuMs: number;
+}
+
+export interface Theorem1AuditResult {
+  workload: string;
+  batchSize: number;
+  uplinkMbps: number;
+  rawTensorBytes: number;
+  wirePayloadBytes: number;
+  bloatRatio: number;
+  timings: RDTPTiming;
+  isComputeBound: boolean;
+  bottleneckStage: 'CPU_PREPROCESS' | 'WAN_NETWORK' | 'PCIE_DMA' | 'GPU_COMPUTE' | string;
+  sustainableThroughputBatchesPerSec: number;
+  predictedGpuDutyCyclePct: number;
+  recommendation: string;
+}
+
+export interface RDTPSessionConfig {
+  isActive: boolean;
+  workload: string;
+  targetEndpoint: string;
+  batchSize: number;
+  bufferDepth: number;
+  codec: 'jpeg' | 'webp' | 'uint16' | 'raw_fp32' | string;
+  uplinkMbps: number;
+  dataSource: string;
+  startedAt?: number | null;
+}
+
+export interface RDTPTelemetryData {
+  totalBatchesSent: number;
+  totalBytesSent: number;
+  currentCredits: number;
+  maxBufferDepth: number;
+  currentBufferOccupancy: number;
+  measuredUplinkMbps: number;
+  measuredGpuDutyCyclePct: number;
+  measuredThroughputFps: number;
+  accumulatedIdleDollarsSaved: number;
+  currentEpoch: number;
+  currentLoss: number;
+  pipelineState: 'IDLE' | 'COMPUTE_BOUND' | 'IO_BOUND';
+  limitingStage: string;
+  timings: RDTPTiming;
+}
+
+export interface RDTPSessionStatus {
+  session: RDTPSessionConfig;
+  telemetry: RDTPTelemetryData;
+  theorem1: Theorem1AuditResult;
 }
