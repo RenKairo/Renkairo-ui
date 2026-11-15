@@ -147,7 +147,10 @@ function startBackendServer() {
 }
 
 function createWindow() {
-  const iconPath = path.join(ROOT_DIR, 'public/torii-gate.svg');
+  const iconIco = path.join(ROOT_DIR, 'public/icon.ico');
+  const iconPng = path.join(ROOT_DIR, 'public/icon.png');
+  const iconSvg = path.join(ROOT_DIR, 'public/torii-gate.svg');
+  const iconPath = fs.existsSync(iconIco) ? iconIco : (fs.existsSync(iconPng) ? iconPng : (fs.existsSync(iconSvg) ? iconSvg : undefined));
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -155,7 +158,7 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: '#0B0D11',
     title: 'RenKairo IDE - Next-Gen Cloud & AI Engineering Canvas',
-    icon: fs.existsSync(iconPath) ? iconPath : undefined,
+    icon: iconPath,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -773,6 +776,9 @@ ipcMain.handle('git:clone', async (event, { url, targetPath, directoryName }) =>
 
 // App Lifecycle
 app.whenReady().then(() => {
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.renkairo.ide');
+  }
   if (session.defaultSession && typeof session.defaultSession.setDisplayMediaHandler === 'function') {
     try {
       session.defaultSession.setDisplayMediaHandler((request, callback) => {
