@@ -38,7 +38,7 @@
         "nsis",
         "portable"
       ],
-      "icon": "public/torii-gate.svg"
+      "icon": "public/icon.ico"
     },
     "nsis": {
       "oneClick": false,

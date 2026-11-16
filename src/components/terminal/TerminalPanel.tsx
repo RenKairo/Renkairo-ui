@@ -26,6 +26,7 @@ import {
 import { useIDEStore } from '../../store/ideStore';
 import { useAuthStore } from '../../store/authStore';
 import { SSHConnectionConfig, TerminalExecutionMode, TerminalTab } from '../../types/ide';
+import { RDTPTelemetryView } from '../activity/RDTPTelemetryView';
 
 interface SessionItem {
   id: string;
@@ -690,10 +691,9 @@ export const TerminalPanel: React.FC = () => {
 
   const tabs: { id: TerminalTab; label: string; badge?: number }[] = [
     { id: 'TERMINAL', label: 'TERMINAL' },
-    { id: 'PROBLEMS', label: 'PROBLEMS', badge: problems.length },
     { id: 'OUTPUT', label: 'OUTPUT' },
-    { id: 'DEBUG CONSOLE', label: 'DEBUG CONSOLE' },
     { id: 'PORTS', label: 'PORTS' },
+    { id: 'RDTP', label: 'RDTP TELEMETRY' },
   ];
 
   const clearActiveTerminal = () => {
@@ -958,35 +958,6 @@ export const TerminalPanel: React.FC = () => {
           </div>
         )}
 
-        {activeTerminalTab === 'PROBLEMS' && (
-          <div className="h-full overflow-y-auto p-2 space-y-1 font-mono text-xs">
-            {problems.length === 0 ? (
-              <div className="p-4 text-center text-xs text-[var(--text-muted)] font-mono">
-                No problems detected in the workspace.
-              </div>
-            ) : (
-              problems.map((p) => (
-                <div 
-                  key={p.id} 
-                  onClick={() => openFile(p.file, p.file.split('/').pop() || p.file)}
-                  className="flex items-center space-x-3 p-2 rounded hover:bg-[var(--bg-hover)] cursor-pointer border border-transparent hover:border-[var(--border-color)] transition-colors"
-                >
-                  {p.severity === 'error' ? (
-                    <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                  ) : (
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                  )}
-                  <span className="text-[var(--text-primary)]">{p.message}</span>
-                  <span className="text-[var(--text-muted)] text-[10px]">{p.file}:{p.line}:{p.col}</span>
-                  <span className="ml-auto text-[10px] text-[var(--text-muted)] bg-[var(--bg-card)] px-1.5 py-0.5 rounded border border-[var(--border-color)]">
-                    {p.code}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
         {activeTerminalTab === 'OUTPUT' && (
           <div className="h-full flex flex-col font-mono text-xs overflow-hidden">
             {/* Output Toolbar */}
@@ -1068,12 +1039,6 @@ export const TerminalPanel: React.FC = () => {
                 })
               )}
             </div>
-          </div>
-        )}
-
-        {activeTerminalTab === 'DEBUG CONSOLE' && (
-          <div className="h-full overflow-y-auto p-2 font-mono text-xs text-[var(--text-muted)]">
-            <span>Debugger attached on port 9229. Ready for breakpoints...</span>
           </div>
         )}
 
@@ -1260,6 +1225,8 @@ export const TerminalPanel: React.FC = () => {
             </div>
           </div>
         )}
+
+        {activeTerminalTab === 'RDTP' && <RDTPTelemetryView />}
       </div>
     </div>
   );
