@@ -41,20 +41,10 @@ function getGitFileStatus(filePath: string, gitStatus: GitStatusResult | null): 
 
 const getFileIcon = (filename: string) => {
   const lower = filename.toLowerCase();
-  if (lower.endsWith('.py')) return <span className="text-[var(--accent-cyan)] font-bold text-[10px]">PY</span>;
-  if (lower.endsWith('.ts') || lower.endsWith('.tsx')) return <span className="text-blue-500 font-bold text-[10px]">TS</span>;
-  if (lower.endsWith('.js') || lower.endsWith('.jsx') || lower.endsWith('.mjs') || lower.endsWith('.cjs')) return <span className="text-amber-500 font-bold text-[10px]">JS</span>;
-  if (lower.endsWith('.json')) return <span className="text-yellow-500 font-bold text-[10px]">{'{ }'}</span>;
-  if (lower.endsWith('.yml') || lower.endsWith('.yaml')) return <span className="text-[var(--accent-coral)] font-bold text-[10px]">YML</span>;
-  if (lower.endsWith('.md')) return <span className="text-sky-500 font-bold text-[10px]">M↓</span>;
-  if (lower.endsWith('.css') || lower.endsWith('.scss')) return <span className="text-pink-500 font-bold text-[10px]">#</span>;
-  if (lower.endsWith('.html')) return <span className="text-orange-500 font-bold text-[10px]">&lt;&gt;</span>;
-  if (lower.endsWith('.rs')) return <span className="text-orange-600 font-bold text-[10px]">RS</span>;
-  if (lower.endsWith('.go')) return <span className="text-cyan-500 font-bold text-[10px]">GO</span>;
-  if (lower.endsWith('.sql')) return <span className="text-indigo-500 font-bold text-[10px]">SQL</span>;
-  if (lower.endsWith('.java')) return <span className="text-red-500 font-bold text-[10px]">JAVA</span>;
-  if (lower === 'dockerfile' || lower.endsWith('.dockerfile')) return <span className="text-cyan-500 font-bold text-[10px]">DOC</span>;
-  if (lower.startsWith('.env')) return <span className="text-emerald-500 font-bold text-[10px]">ENV</span>;
+  const ext = lower.split('.').pop() || '';
+  if (['py', 'ts', 'tsx', 'js', 'jsx', 'json', 'yml', 'yaml', 'md', 'css', 'scss', 'html', 'rs', 'go', 'sql', 'java'].includes(ext)) {
+    return <span className="text-[var(--text-muted)] font-bold text-[10px] uppercase">{ext.length > 3 ? ext.slice(0, 3) : ext}</span>;
+  }
   return <FileCode className="w-3.5 h-3.5 text-[var(--text-muted)]" />;
 };
 
@@ -226,7 +216,7 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
           isSelected 
             ? 'bg-[var(--bg-active)] text-[var(--text-primary)] border-l-2 border-[var(--accent-coral)] font-medium shadow-sm' 
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-        } ${isDragOver ? 'bg-[var(--accent-cyan)]/20 border border-[var(--accent-cyan)]' : ''}`}
+        } ${isDragOver ? 'bg-[var(--accent-coral)]/15 border border-[var(--accent-coral)]' : ''}`}
       >
         {node.is_dir ? (
           <>
@@ -235,7 +225,7 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
               className="p-0.5 hover:text-[var(--text-primary)] text-[var(--text-muted)]"
             >
               {isLoadingChildren ? (
-                <Loader2 className="w-3.5 h-3.5 text-[var(--accent-cyan)] animate-spin shrink-0" />
+                <Loader2 className="w-3.5 h-3.5 text-[var(--accent-coral)] animate-spin shrink-0" />
               ) : isOpen ? (
                 <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
               ) : (
@@ -243,9 +233,9 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
               )}
             </span>
             {isOpen ? (
-              <FolderOpen className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0" />
+              <FolderOpen className="w-3.5 h-3.5 text-[var(--accent-coral)] shrink-0" />
             ) : (
-              <Folder className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0 opacity-80" />
+              <Folder className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-80" />
             )}
           </>
         ) : (
@@ -265,7 +255,7 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Escape') setRenamingPath(null);
               }}
-              className="w-full bg-[var(--bg-input)] border border-[var(--accent-cyan)] text-[var(--text-primary)] px-1 py-0.5 rounded text-xs font-mono focus:outline-none shadow-sm"
+              className="w-full bg-[var(--bg-input)] border border-[var(--accent-coral)] text-[var(--text-primary)] px-1 py-0.5 rounded text-xs font-mono focus:outline-none shadow-sm"
             />
           </form>
         ) : (
@@ -283,7 +273,7 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
               <span className={`text-[9px] font-bold font-mono shrink-0 ml-1.5 ${
                 nodeGitStatus === 'M' ? 'text-amber-500' :
                 nodeGitStatus === 'A' ? 'text-emerald-500' :
-                nodeGitStatus === 'U' ? 'text-[var(--accent-cyan)]' :
+                nodeGitStatus === 'U' ? 'text-emerald-500' :
                 nodeGitStatus === 'D' ? 'text-rose-500' : 'text-[var(--text-muted)]'
               }`}>
                 {nodeGitStatus}
@@ -304,9 +294,9 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
               onClick={(e) => e.stopPropagation()}
             >
               {creatingIn.isDir ? (
-                <Folder className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <Folder className="w-3.5 h-3.5 text-[var(--accent-coral)] shrink-0" />
               ) : (
-                <FileCode className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0" />
+                <FileCode className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
               )}
               <form onSubmit={handleCreateChildSubmit} className="flex-1 mr-2">
                 <input
@@ -319,7 +309,7 @@ const DirectoryTreeItem: React.FC<DirectoryTreeItemProps> = ({
                     if (e.key === 'Escape') setCreatingIn(null);
                   }}
                   placeholder={creatingIn.isDir ? 'Folder name...' : 'File name...'}
-                  className="w-full bg-[var(--bg-input)] border border-emerald-500 text-[var(--text-primary)] px-1 py-0.5 rounded text-xs font-mono focus:outline-none shadow-sm"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--accent-coral)] text-[var(--text-primary)] px-1 py-0.5 rounded text-xs font-mono focus:outline-none shadow-sm"
                 />
               </form>
             </div>
@@ -438,40 +428,32 @@ export const FileExplorer: React.FC = () => {
       {/* 1. Loading Animation when Folder is Opening */}
       {isFolderOpening ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
-          <div className="relative mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-[var(--bg-card)] border border-[var(--accent-cyan)]/40 flex items-center justify-center shadow-lg animate-pulse">
-              <FolderOpen className="w-7 h-7 text-[var(--accent-cyan)] animate-bounce" />
-            </div>
-            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[var(--accent-cyan)] via-[var(--accent-coral)] to-[var(--accent-cyan)] opacity-30 blur-md animate-spin"></div>
+          <div className="w-12 h-12 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center mb-3 shadow-sm">
+            <FolderOpen className="w-6 h-6 text-[var(--accent-coral)]" />
           </div>
           
-          <h3 className="text-xs font-bold text-[var(--text-primary)] mb-1.5 font-mono tracking-wider flex items-center space-x-1.5">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent-cyan)]" />
-            <span>OPENING FOLDER...</span>
+          <h3 className="text-xs font-bold text-[var(--text-primary)] mb-3 font-mono tracking-wider flex items-center space-x-1.5">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent-coral)]" />
+            <span>OPENING...</span>
           </h3>
-          <p className="text-[10px] text-[var(--text-muted)] font-mono max-w-[180px] leading-relaxed">
-            Reading directory structure and mapping files...
-          </p>
 
-          <div className="w-36 h-1 bg-[var(--bg-card)] rounded-full overflow-hidden mt-4 border border-[var(--border-color)]">
-            <div className="h-full bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-coral)] animate-pulse w-full"></div>
+          <div className="w-32 h-1 bg-[var(--bg-card)] rounded-full overflow-hidden border border-[var(--border-color)]">
+            <div className="h-full bg-[var(--accent-coral)] animate-pulse w-full"></div>
           </div>
         </div>
       ) : !workspacePath ? (
         /* 2. No Folder Opened State */
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-          <div className="w-12 h-12 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center mb-3 shadow-lg p-2 relative group">
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--accent-coral)]/20 to-transparent opacity-50 rounded-xl"></div>
-            <ToriiIcon color="var(--accent-coral)" className="w-7 h-7 drop-shadow-[0_0_8px_var(--glow-coral)] group-hover:scale-105 transition-transform" />
+          <div className="w-12 h-12 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center mb-3 shadow-sm p-2">
+            <ToriiIcon color="var(--accent-coral)" className="w-7 h-7" />
           </div>
-          <h3 className="text-xs font-semibold text-[var(--text-primary)] mb-1 font-mono uppercase tracking-wider">No Folder Opened</h3>
-          <p className="text-[11px] text-[var(--text-muted)] mb-4 leading-relaxed">Open a folder from your computer to start editing and creating files.</p>
+          <h3 className="text-xs font-semibold text-[var(--text-primary)] mb-3 font-mono uppercase tracking-wider">No Folder Opened</h3>
           
           <button
             onClick={openFolder}
-            className="w-full py-2 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral-hover)] text-white font-semibold text-xs rounded-lg transition-all shadow-md flex items-center justify-center space-x-2 font-mono group cursor-pointer"
+            className="w-full py-2 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral-hover)] text-white font-semibold text-xs rounded-lg transition-all shadow-sm flex items-center justify-center space-x-2 font-mono cursor-pointer"
           >
-            <FolderOpen className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <FolderOpen className="w-4 h-4" />
             <span>Open Folder</span>
           </button>
         </div>
@@ -487,7 +469,7 @@ export const FileExplorer: React.FC = () => {
               <button 
                 onClick={changeScopeFolder} 
                 title="Change Folder Scope / Open Another Folder" 
-                className="p-1 text-[var(--accent-cyan)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded transition-colors flex items-center space-x-1"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded transition-colors flex items-center space-x-1"
               >
                 <FolderSync className="w-3.5 h-3.5" />
               </button>
@@ -527,9 +509,9 @@ export const FileExplorer: React.FC = () => {
             {creatingIn && creatingIn.parentPath === '' && (
               <div className="flex items-center space-x-1.5 py-1 px-2 text-xs">
                 {creatingIn.isDir ? (
-                  <Folder className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <Folder className="w-3.5 h-3.5 text-[var(--accent-coral)] shrink-0" />
                 ) : (
-                  <FileCode className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0" />
+                  <FileCode className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
                 )}
                 <form onSubmit={handleRootNewSubmit} className="flex-1">
                   <input
@@ -542,7 +524,7 @@ export const FileExplorer: React.FC = () => {
                       if (e.key === 'Escape') setCreatingIn(null);
                     }}
                     placeholder={creatingIn.isDir ? 'Folder name...' : 'File name...'}
-                    className="w-full bg-[var(--bg-input)] border border-emerald-500 text-[var(--text-primary)] px-1 py-0.5 rounded text-xs font-mono focus:outline-none shadow-sm"
+                    className="w-full bg-[var(--bg-input)] border border-[var(--accent-coral)] text-[var(--text-primary)] px-1 py-0.5 rounded text-xs font-mono focus:outline-none shadow-sm"
                   />
                 </form>
               </div>
@@ -598,7 +580,7 @@ export const FileExplorer: React.FC = () => {
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] flex items-center space-x-2"
           >
-            <Plus className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
+            <Plus className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
             <span>New File</span>
           </button>
 
@@ -609,7 +591,7 @@ export const FileExplorer: React.FC = () => {
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] flex items-center space-x-2"
           >
-            <FolderPlus className="w-3.5 h-3.5 text-emerald-500" />
+            <FolderPlus className="w-3.5 h-3.5 text-[var(--text-muted)]" />
             <span>New Folder</span>
           </button>
 

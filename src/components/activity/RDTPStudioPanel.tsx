@@ -227,18 +227,12 @@ export const RDTPStudioPanel: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-7 h-7 rounded-lg bg-[var(--accent-coral)]/10 border border-[var(--accent-coral)]/30 flex items-center justify-center">
-              <ToriiIcon color="var(--accent-coral)" className="w-4 h-4 drop-shadow-[0_0_6px_var(--glow-coral)]" />
+              <ToriiIcon color="var(--accent-coral)" className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xs font-bold font-mono tracking-wider text-[var(--text-primary)] flex items-center space-x-1.5">
-                <span>RDTP ML STUDIO</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--accent-coral)]/20 text-[var(--accent-coral)] font-bold">
-                  v1.0
-                </span>
+              <h2 className="text-xs font-bold font-mono tracking-wider text-[var(--text-primary)]">
+                RDTP STUDIO
               </h2>
-              <span className="text-[10px] text-[var(--text-muted)] font-mono block">
-                リアルタイム分散学習プロトコル
-              </span>
             </div>
           </div>
 
@@ -259,9 +253,9 @@ export const RDTPStudioPanel: React.FC = () => {
           <div className="p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono flex items-center justify-between">
             <div className="flex items-center space-x-1.5 truncate">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-              <span className="truncate">Backend offline (port 8000). Run: <code className="bg-black/40 px-1 py-0.5 rounded text-white font-bold">npm run server</code></span>
+              <span className="truncate">Backend offline (port 8000)</span>
             </div>
-            <span className="text-[8px] bg-amber-500/20 px-1 py-0.5 rounded font-bold shrink-0 ml-1">LOCAL SIM</span>
+            <span className="text-[8px] bg-amber-500/20 px-1 py-0.5 rounded font-bold shrink-0 ml-1">SIM</span>
           </div>
         )}
 
@@ -279,19 +273,19 @@ export const RDTPStudioPanel: React.FC = () => {
             {session.isActive ? (
               <>
                 <Square className="w-3.5 h-3.5 fill-current" />
-                <span>STOP STREAMING</span>
+                <span>STOP STREAM</span>
               </>
             ) : (
               <>
                 <Play className="w-3.5 h-3.5 fill-current" />
-                <span>START RDTP STREAM</span>
+                <span>START STREAM</span>
               </>
             )}
           </button>
 
           <button
             onClick={openTelemetryDeck}
-            className="p-1.5 bg-[var(--bg-base)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)] text-[var(--text-secondary)] hover:text-[var(--accent-cyan)] rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 bg-[var(--bg-base)] border border-[var(--border-color)] hover:border-[var(--accent-coral)] text-[var(--text-secondary)] hover:text-[var(--accent-coral)] rounded-lg transition-colors cursor-pointer"
             title="Open Live Pipeline Telemetry in Right Deck"
           >
             <Activity className="w-4 h-4" />
@@ -335,10 +329,10 @@ export const RDTPStudioPanel: React.FC = () => {
         <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-2.5 shadow-sm font-mono text-xs">
           <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-1.5">
             <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center space-x-1">
-              <Sliders className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
+              <Sliders className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
               <span>Transport & Ring Buffer</span>
             </span>
-            <span className="text-[9px] text-[var(--accent-cyan)]">gRPC TLS 1.3</span>
+            <span className="text-[9px] text-[var(--text-muted)]">gRPC TLS 1.3</span>
           </div>
 
           {/* Cloud Accelerator Endpoint */}
@@ -382,7 +376,7 @@ export const RDTPStudioPanel: React.FC = () => {
           <div className="space-y-1">
             <div className="flex justify-between text-[10px] text-[var(--text-muted)]">
               <span>Pinned Ring Buffer Depth (N)</span>
-              <span className="text-[var(--accent-cyan)] font-bold">{session.bufferDepth} Batches</span>
+              <span className="text-[var(--accent-coral)] font-bold">{session.bufferDepth} Batches</span>
             </div>
             <input
               type="range"
@@ -391,7 +385,7 @@ export const RDTPStudioPanel: React.FC = () => {
               step="1"
               value={session.bufferDepth}
               onChange={(e) => handleConfigChange({ bufferDepth: Number(e.target.value) })}
-              className="w-full accent-[var(--accent-cyan)] cursor-pointer"
+              className="w-full accent-[var(--accent-coral)] cursor-pointer"
             />
             <div className="text-[9px] text-[var(--text-subtle)]">
               Slots allocated in CUDA pinned memory (Credit limit C = {session.bufferDepth})
@@ -428,13 +422,13 @@ export const RDTPStudioPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Theorem 1 Mathematical Formulation & Live Audit Card */}
+        {/* Pipeline Latency & Audit Card */}
         {audit && (
           <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-2 shadow-sm font-mono text-xs">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center space-x-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Theorem 1 Pipeline Audit</span>
+                <span>Pipeline Latency</span>
               </span>
               <span
                 className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
@@ -445,11 +439,6 @@ export const RDTPStudioPanel: React.FC = () => {
               >
                 {audit.isComputeBound ? 'COMPUTE-BOUND' : 'I/O-BOUND'}
               </span>
-            </div>
-
-            {/* Formula display */}
-            <div className="bg-[var(--bg-base)] p-2 rounded border border-[var(--border-color)] text-center text-[11px] font-bold text-[var(--text-primary)]">
-              max(T_p, T_n, T_d) ≤ T_g
             </div>
 
             {/* Latency Breakdown Bar */}
@@ -466,29 +455,26 @@ export const RDTPStudioPanel: React.FC = () => {
                 <span className="text-[var(--text-subtle)] block text-[8px]">T_dma</span>
                 <span className="font-bold text-[var(--text-primary)]">{audit.timings.tDmaMs}ms</span>
               </div>
-              <div className="bg-[var(--bg-base)] p-1 rounded border border-[var(--accent-cyan)]/40">
-                <span className="text-[var(--accent-cyan)] block text-[8px]">T_gpu</span>
-                <span className="font-bold text-[var(--accent-cyan)]">{audit.timings.tGpuMs}ms</span>
+              <div className="bg-[var(--bg-base)] p-1 rounded border border-[var(--border-color)]">
+                <span className="text-[var(--text-subtle)] block text-[8px]">T_gpu</span>
+                <span className="font-bold text-[var(--text-primary)]">{audit.timings.tGpuMs}ms</span>
               </div>
             </div>
 
-            {/* Audit Status & Recommendation */}
+            {/* Metrics */}
             <div className="text-[10px] text-[var(--text-muted)] space-y-1 pt-1 border-t border-[var(--border-color)]">
               <div className="flex justify-between">
-                <span>Wire Compression:</span>
-                <span className="font-bold text-emerald-400">{audit.bloatRatio}× Bloat Eliminated</span>
+                <span>Compression:</span>
+                <span className="font-bold text-emerald-400">{audit.bloatRatio}×</span>
               </div>
               <div className="flex justify-between">
-                <span>Predicted GPU Duty Cycle:</span>
+                <span>GPU Duty Cycle:</span>
                 <span className="font-bold text-[var(--accent-coral)]">{audit.predictedGpuDutyCyclePct}%</span>
               </div>
               <div className="flex justify-between">
-                <span>Ingestion Throughput:</span>
-                <span className="font-bold text-[var(--text-primary)]">{audit.sustainableThroughputBatchesPerSec} batches/sec</span>
+                <span>Throughput:</span>
+                <span className="font-bold text-[var(--text-primary)]">{audit.sustainableThroughputBatchesPerSec} batches/s</span>
               </div>
-              <p className="text-[9px] text-[var(--text-subtle)] italic pt-1 leading-normal">
-                {audit.recommendation}
-              </p>
             </div>
           </div>
         )}
@@ -501,32 +487,32 @@ export const RDTPStudioPanel: React.FC = () => {
           </label>
 
           {scaffoldStatus && (
-            <div className="p-1.5 text-[10px] rounded bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/30 text-center animate-pulse">
+            <div className="p-1.5 text-[10px] rounded bg-[var(--accent-coral)]/10 text-[var(--accent-coral)] border border-[var(--accent-coral)]/30 text-center animate-pulse">
               {scaffoldStatus}
             </div>
           )}
 
           <div className="space-y-1">
             {[
-              { id: 'vit', title: 'Vision Transformer (train_vit_rdtp.py)', desc: 'ViT-B/16 streaming trainer' },
-              { id: 'resnet', title: 'ResNet-50 (train_resnet_rdtp.py)', desc: 'ImageNet CNN streaming trainer' },
-              { id: 'webcam', title: 'Active Learning (train_webcam_active_learning.py)', desc: '60 FPS DirectShow/V4L2 peripheral' },
-              { id: 'consumer', title: 'Cloud Consumer (rdtp_consumer_worker.py)', desc: 'Remote ring-buffer GPU worker' },
+              { id: 'vit', title: 'Vision Transformer', desc: 'train_vit_rdtp.py' },
+              { id: 'resnet', title: 'ResNet-50', desc: 'train_resnet_rdtp.py' },
+              { id: 'webcam', title: 'Active Learning', desc: 'train_webcam_active_learning.py' },
+              { id: 'consumer', title: 'Cloud Consumer', desc: 'rdtp_consumer_worker.py' },
             ].map((t) => (
               <button
                 key={t.id}
                 onClick={() => handleScaffold(t.id)}
-                className="w-full text-left p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50 text-[var(--text-primary)] transition-all cursor-pointer flex items-center justify-between group shadow-sm"
+                className="w-full text-left p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-coral)]/50 text-[var(--text-primary)] transition-all cursor-pointer flex items-center justify-between group shadow-sm"
               >
                 <div className="truncate pr-2">
-                  <div className="text-[11px] font-semibold text-[var(--text-primary)] truncate group-hover:text-[var(--accent-cyan)]">
+                  <div className="text-[11px] font-semibold text-[var(--text-primary)] truncate group-hover:text-[var(--accent-coral)]">
                     {t.title}
                   </div>
                   <div className="text-[9px] text-[var(--text-muted)] truncate">
                     {t.desc}
                   </div>
                 </div>
-                <ArrowRight className="w-3.5 h-3.5 text-[var(--text-subtle)] group-hover:text-[var(--accent-cyan)] group-hover:translate-x-0.5 transition-all shrink-0" />
+                <ArrowRight className="w-3.5 h-3.5 text-[var(--text-subtle)] group-hover:text-[var(--accent-coral)] group-hover:translate-x-0.5 transition-all shrink-0" />
               </button>
             ))}
           </div>
@@ -536,11 +522,11 @@ export const RDTPStudioPanel: React.FC = () => {
         <div className="pt-2">
           <button
             onClick={openTelemetryDeck}
-            className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-[var(--bg-card)] to-[var(--bg-base)] border border-[var(--border-color)] hover:border-[var(--accent-coral)]/60 text-xs font-mono text-[var(--text-primary)] flex items-center justify-between transition-all cursor-pointer shadow-sm group"
+            className="w-full py-2 px-3 rounded-lg bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] hover:border-[var(--accent-coral)]/60 text-xs font-mono text-[var(--text-primary)] flex items-center justify-between transition-all cursor-pointer shadow-sm group"
           >
             <div className="flex items-center space-x-2">
               <Activity className="w-4 h-4 text-[var(--accent-coral)]" />
-              <span className="font-semibold">Open Live Pipeline Telemetry</span>
+              <span className="font-semibold">Open Telemetry</span>
             </div>
             <ArrowRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--accent-coral)] group-hover:translate-x-1 transition-all" />
           </button>

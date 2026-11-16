@@ -31,12 +31,12 @@ export const StatusBar: React.FC = () => {
       <div className="flex items-center space-x-3">
         {/* Brand Icon Tag */}
         <div className="flex items-center space-x-1.5 pr-2.5 border-r border-[var(--border-color)] group cursor-default">
-          <ToriiIcon color="var(--accent-coral)" className="w-3.5 h-3.5 group-hover:drop-shadow-[0_0_4px_var(--glow-coral)] transition-all" />
+          <ToriiIcon color="var(--accent-coral)" className="w-3.5 h-3.5" />
           <span className="font-mono text-[10px] text-[var(--text-primary)] font-bold tracking-tight">RENKAIRO</span>
         </div>
 
         {isFolderOpening ? (
-          <div className="flex items-center space-x-1.5 text-[var(--accent-cyan)] font-mono animate-pulse">
+          <div className="flex items-center space-x-1.5 text-[var(--accent-coral)] font-mono">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             <span>Opening workspace...</span>
           </div>
@@ -65,11 +65,11 @@ export const StatusBar: React.FC = () => {
                   onClick={sync}
                   disabled={isSyncing}
                   title={`Synchronize Changes (↓ ${behind}, ↑ ${ahead}). Click to sync.`}
-                  className="flex items-center space-x-1 hover:text-[var(--accent-cyan)] transition-colors font-mono text-[10px] text-[var(--text-muted)] cursor-pointer"
+                  className="flex items-center space-x-1 hover:text-[var(--text-primary)] transition-colors font-mono text-[10px] text-[var(--text-muted)] cursor-pointer"
                 >
-                  <RotateCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-[var(--accent-cyan)]' : ''}`} />
+                  <RotateCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-[var(--accent-coral)]' : ''}`} />
                   {(ahead > 0 || behind > 0) && (
-                    <span className="text-[var(--accent-cyan)] font-semibold">
+                    <span className="text-[var(--text-primary)] font-semibold">
                       {behind > 0 && `↓${behind}`} {ahead > 0 && `↑${ahead}`}
                     </span>
                   )}

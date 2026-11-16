@@ -141,27 +141,6 @@
   background: var(--scrollbar-thumb-hover);
 }
 
-/* Glass & Cyber Glow Effects */
-.cyber-glow-coral {
-  box-shadow: 0 0 12px var(--glow-coral);
-}
-
-.cyber-glow-cyan {
-  box-shadow: 0 0 12px var(--glow-cyan);
-}
-
-.cyber-border-coral {
-  border-color: var(--accent-coral);
-}
-
-.cyber-border-cyan {
-  border-color: var(--accent-cyan);
-}
-
-.cyber-gradient-bg {
-  background: linear-gradient(135deg, var(--accent-coral-subtle) 0%, var(--accent-cyan-subtle) 100%);
-}
-
 /* Monaco Editor & Diff Editor Solid High-Visibility Styling */
 .monaco-editor,
 .monaco-editor .monaco-editor-background,

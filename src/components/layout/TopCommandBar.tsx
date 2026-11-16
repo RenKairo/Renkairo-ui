@@ -56,12 +56,12 @@ export const TopCommandBar: React.FC = () => {
 
               {workspacePath ? (
                 <div className="px-3 py-2 text-xs bg-[var(--bg-card)] flex items-center space-x-2 border-y border-[var(--border-color)]">
-                  <FolderOpen className="w-4 h-4 text-[var(--accent-cyan)] shrink-0" />
+                  <FolderOpen className="w-4 h-4 text-[var(--accent-coral)] shrink-0" />
                   <div className="overflow-hidden flex-1">
                     <p className="font-mono text-[var(--text-primary)] truncate font-medium">{rootName}</p>
                     <p className="text-[10px] text-[var(--text-muted)] truncate">{workspacePath}</p>
                   </div>
-                  <Check className="w-3.5 h-3.5 text-[var(--accent-emerald)] shrink-0" />
+                  <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                 </div>
               ) : (
                 <div className="px-3 py-2 text-xs text-[var(--text-muted)] font-mono">
@@ -76,7 +76,7 @@ export const TopCommandBar: React.FC = () => {
                     setIsProjectDropdownOpen(false);
                     workspacePath ? changeScopeFolder() : openFolder();
                   }}
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-hover)] text-[var(--accent-cyan)] rounded flex items-center space-x-2 transition-colors font-medium"
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-hover)] text-[var(--text-primary)] hover:text-[var(--accent-coral)] rounded flex items-center space-x-2 transition-colors font-medium"
                 >
                   <FolderSync className="w-4 h-4" />
                   <span>{workspacePath ? 'Change Folder Scope...' : 'Open Folder From Machine...'}</span>
@@ -91,7 +91,7 @@ export const TopCommandBar: React.FC = () => {
       <div className="flex-1 max-w-xl mx-4">
         <button
           onClick={() => setCommandPaletteOpen(true)}
-          className="w-full h-7 bg-[var(--bg-input)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)]/60 rounded-md px-3 flex items-center justify-between text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all text-xs focus:outline-none shadow-sm"
+          className="w-full h-7 bg-[var(--bg-input)] border border-[var(--border-color)] hover:border-[var(--accent-coral)]/60 rounded-md px-3 flex items-center justify-between text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all text-xs focus:outline-none shadow-sm"
         >
           <div className="flex items-center space-x-2">
             <Search className="w-3.5 h-3.5 text-[var(--text-muted)]" />
@@ -130,7 +130,7 @@ export const TopCommandBar: React.FC = () => {
             {isRemoteServerConnected ? (remoteServerName || 'Connected') : 'Connect Server'}
           </span>
           {isRemoteServerConnected && (
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
           )}
         </button>
 
@@ -141,7 +141,7 @@ export const TopCommandBar: React.FC = () => {
             title={isAuthenticated && user ? `Logged in as ${user.username}` : "Sign In / Register"}
             className="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-color)] transition-all cursor-pointer focus:outline-none"
           >
-            <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-rose-500 to-red-600 flex items-center justify-center text-white text-[10px] font-bold font-mono shadow-sm">
+            <div className="w-5 h-5 rounded-full bg-[var(--accent-coral)] flex items-center justify-center text-white text-[10px] font-bold font-mono">
               {isAuthenticated && user ? user.username.charAt(0).toUpperCase() : <User className="w-3 h-3 text-white" />}
             </div>
             <span className="hidden md:inline font-mono text-[10px] font-semibold truncate max-w-[100px]">
@@ -153,7 +153,7 @@ export const TopCommandBar: React.FC = () => {
             <button
               onClick={() => logout()}
               title="Sign Out"
-              className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer focus:outline-none"
+              className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--accent-coral)] transition-colors cursor-pointer focus:outline-none"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>

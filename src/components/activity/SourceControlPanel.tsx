@@ -128,10 +128,10 @@ export const SourceControlPanel: React.FC = () => {
       return <span className="text-[10px] font-bold text-rose-500 font-mono w-3.5 text-center shrink-0">D</span>;
     }
     if (s.includes('R')) {
-      return <span className="text-[10px] font-bold text-purple-500 font-mono w-3.5 text-center shrink-0">R</span>;
+      return <span className="text-[10px] font-bold text-amber-500 font-mono w-3.5 text-center shrink-0">R</span>;
     }
     if (s.includes('U')) {
-      return <span className="text-[10px] font-bold text-[var(--accent-cyan)] font-mono w-3.5 text-center shrink-0">U</span>;
+      return <span className="text-[10px] font-bold text-emerald-500 font-mono w-3.5 text-center shrink-0">U</span>;
     }
     return <span className="text-[10px] font-bold text-[var(--text-muted)] font-mono w-3.5 text-center shrink-0">{status}</span>;
   };
@@ -184,7 +184,7 @@ export const SourceControlPanel: React.FC = () => {
               openDiffTab(item.path, staged, item.status);
             }}
             title="Open Changes (Diff)"
-            className="p-1 text-[var(--accent-cyan)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)] rounded transition-colors"
+            className="p-1 text-[var(--accent-coral)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)] rounded transition-colors"
           >
             <SplitSquareHorizontal className="w-3 h-3" />
           </button>
@@ -242,9 +242,8 @@ export const SourceControlPanel: React.FC = () => {
           <span>SOURCE CONTROL</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-[var(--text-muted)]">
-          <FolderGit2 className="w-10 h-10 text-[var(--text-subtle)] mb-3" />
-          <p className="text-xs font-mono mb-2">No Folder Opened</p>
-          <p className="text-[11px] text-[var(--text-subtle)]">Open a folder to initialize or view Git source control.</p>
+          <FolderGit2 className="w-8 h-8 text-[var(--text-subtle)] mb-2" />
+          <p className="text-xs font-mono">No Folder Opened</p>
         </div>
       </aside>
     );
@@ -266,18 +265,13 @@ export const SourceControlPanel: React.FC = () => {
         </div>
 
         <div className="flex-1 flex flex-col p-4 text-center justify-center items-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center shadow-lg">
+          <div className="w-12 h-12 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center shadow-sm">
             <FolderGit2 className="w-6 h-6 text-[var(--accent-coral)]" />
           </div>
 
-          <div>
-            <h3 className="text-xs font-bold text-[var(--text-primary)] font-mono uppercase tracking-wide mb-1">
-              Initialize Repository
-            </h3>
-            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed max-w-[220px]">
-              This workspace is not yet a Git repository. Initialize it to start tracking changes.
-            </p>
-          </div>
+          <h3 className="text-xs font-semibold text-[var(--text-primary)] font-mono uppercase tracking-wide">
+            Not A Git Repository
+          </h3>
 
           <div className="w-full space-y-2 pt-2">
             <button
@@ -290,7 +284,7 @@ export const SourceControlPanel: React.FC = () => {
 
             <button
               onClick={() => setShowCloneModal(true)}
-              className="w-full py-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--accent-cyan)] text-xs font-medium rounded-lg flex items-center justify-center space-x-1.5 transition-all font-mono cursor-pointer shadow-sm"
+              className="w-full py-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--text-primary)] hover:text-[var(--accent-coral)] text-xs font-medium rounded-lg flex items-center justify-center space-x-1.5 transition-all font-mono cursor-pointer shadow-sm"
             >
               <DownloadCloud className="w-3.5 h-3.5" />
               <span>Clone from GitHub</span>
@@ -312,7 +306,7 @@ export const SourceControlPanel: React.FC = () => {
               placeholder="https://github.com/user/repo.git"
               value={cloneUrl}
               onChange={(e) => setCloneUrl(e.target.value)}
-              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 py-1 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] shadow-sm"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 py-1 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-coral)] shadow-sm"
             />
             <button
               onClick={() => {
@@ -321,7 +315,7 @@ export const SourceControlPanel: React.FC = () => {
                   setShowCloneModal(false);
                 }
               }}
-              className="w-full py-1.5 bg-[var(--accent-cyan)] hover:bg-[var(--accent-cyan-hover)] text-white font-semibold rounded text-xs transition-colors shadow-sm"
+              className="w-full py-1.5 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral-hover)] text-white font-semibold rounded text-xs transition-colors shadow-sm cursor-pointer"
             >
               Clone
             </button>
@@ -359,7 +353,7 @@ export const SourceControlPanel: React.FC = () => {
             }}
             title="View Commit History"
             className={`p-1 rounded transition-colors ${
-              isLogOpen ? 'text-[var(--accent-cyan)] bg-[var(--bg-card)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              isLogOpen ? 'text-[var(--accent-coral)] bg-[var(--bg-card)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
             <History className="w-3.5 h-3.5" />
@@ -370,9 +364,9 @@ export const SourceControlPanel: React.FC = () => {
             onClick={sync}
             disabled={isSyncing}
             title={`Sync with Remote (Ahead: ${gitStatus?.ahead || 0}, Behind: ${gitStatus?.behind || 0})`}
-            className="p-1 text-[var(--text-muted)] hover:text-[var(--accent-cyan)] transition-colors disabled:opacity-50"
+            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-[var(--accent-cyan)]' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-[var(--accent-coral)]' : ''}`} />
           </button>
 
           {/* Pull */}
@@ -380,9 +374,9 @@ export const SourceControlPanel: React.FC = () => {
             onClick={pull}
             disabled={isSyncing}
             title="Pull Changes"
-            className="p-1 text-[var(--text-muted)] hover:text-[var(--accent-cyan)] transition-colors disabled:opacity-50"
+            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50"
           >
-            <DownloadCloud className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
+            <DownloadCloud className="w-3.5 h-3.5" />
           </button>
 
           {/* Push */}
@@ -390,9 +384,9 @@ export const SourceControlPanel: React.FC = () => {
             onClick={() => push(false)}
             disabled={isSyncing}
             title="Push Changes"
-            className="p-1 text-[var(--text-muted)] hover:text-emerald-500 transition-colors disabled:opacity-50"
+            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50"
           >
-            <UploadCloud className="w-3.5 h-3.5 text-emerald-500" />
+            <UploadCloud className="w-3.5 h-3.5" />
           </button>
 
           {/* More Menu */}
@@ -463,7 +457,7 @@ export const SourceControlPanel: React.FC = () => {
                   }}
                   className="w-full text-left px-3 py-1.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] flex items-center space-x-2"
                 >
-                  <Globe className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
+                  <Globe className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
                   <span>Add Remote Origin...</span>
                 </button>
 
@@ -475,7 +469,7 @@ export const SourceControlPanel: React.FC = () => {
                     onClick={() => setShowMoreMenu(false)}
                     className="w-full text-left px-3 py-1.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] flex items-center space-x-2"
                   >
-                    <ExternalLink className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
+                    <ExternalLink className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
                     <span>Open in GitHub</span>
                   </a>
                 )}
@@ -538,7 +532,7 @@ export const SourceControlPanel: React.FC = () => {
               <button
                 onClick={sync}
                 title="Sync commits"
-                className="flex items-center space-x-1 bg-[var(--bg-panel)] px-1.5 py-0.5 rounded text-[var(--accent-cyan)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] shadow-sm"
+                className="flex items-center space-x-1 bg-[var(--bg-panel)] px-1.5 py-0.5 rounded text-[var(--accent-coral)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] shadow-sm"
               >
                 {(gitStatus?.behind || 0) > 0 && <span>↓{gitStatus?.behind}</span>}
                 {(gitStatus?.ahead || 0) > 0 && <span>↑{gitStatus?.ahead}</span>}
@@ -620,7 +614,7 @@ export const SourceControlPanel: React.FC = () => {
                 className="p-2 rounded-lg bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] space-y-1 transition-colors group shadow-sm"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] bg-[var(--bg-panel)] text-[var(--accent-cyan)] px-1.5 py-0.5 rounded font-bold border border-[var(--border-color)]">
+                  <span className="text-[10px] bg-[var(--bg-panel)] text-[var(--accent-coral)] px-1.5 py-0.5 rounded font-bold border border-[var(--border-color)]">
                     {log.shortHash}
                   </span>
                   <span className="text-[10px] text-[var(--text-muted)]">{log.date}</span>
@@ -845,7 +839,7 @@ export const SourceControlPanel: React.FC = () => {
               placeholder="Search branches..."
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 py-1 text-xs text-[var(--text-primary)] mb-2 focus:outline-none focus:border-[var(--accent-cyan)] shadow-sm"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 py-1 text-xs text-[var(--text-primary)] mb-2 focus:outline-none focus:border-[var(--accent-coral)] shadow-sm"
             />
 
             {/* Branch List */}
@@ -894,7 +888,7 @@ export const SourceControlPanel: React.FC = () => {
           >
             <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)] text-[var(--text-primary)] font-bold">
               <div className="flex items-center space-x-1.5">
-                <Globe className="w-4 h-4 text-[var(--accent-cyan)]" />
+                <Globe className="w-4 h-4 text-[var(--accent-coral)]" />
                 <span>Add Git Remote</span>
               </div>
               <button onClick={() => setShowAddRemoteModal(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
@@ -909,7 +903,7 @@ export const SourceControlPanel: React.FC = () => {
                 value={remoteName}
                 onChange={(e) => setRemoteName(e.target.value)}
                 placeholder="origin"
-                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 py-1 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] shadow-sm"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 py-1 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-coral)] shadow-sm"
               />
             </div>
 
@@ -920,7 +914,7 @@ export const SourceControlPanel: React.FC = () => {
                 value={remoteUrl}
                 onChange={(e) => setRemoteUrl(e.target.value)}
                 placeholder="https://github.com/username/repo.git"
-                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 py-1 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] shadow-sm"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 py-1 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-coral)] shadow-sm"
               />
             </div>
 
@@ -932,7 +926,7 @@ export const SourceControlPanel: React.FC = () => {
                 }
               }}
               disabled={!remoteUrl.trim()}
-              className="w-full py-1.5 bg-[var(--accent-cyan)] hover:bg-[var(--accent-cyan-hover)] text-white font-semibold rounded transition-colors disabled:opacity-40 shadow-sm cursor-pointer"
+              className="w-full py-1.5 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral-hover)] text-white font-semibold rounded transition-colors disabled:opacity-40 shadow-sm cursor-pointer"
             >
               Add Remote
             </button>

@@ -89,9 +89,9 @@ export const CommandPaletteModal: React.FC = () => {
         {/* Search Header */}
         <div className="p-3 border-b border-[var(--border-color)] flex items-center space-x-3 bg-[var(--bg-card)]">
           <div className="w-5 h-5 rounded bg-[var(--bg-panel)] border border-[var(--border-color)] flex items-center justify-center shrink-0 p-0.5">
-            <ToriiIcon color="var(--accent-coral)" className="w-3.5 h-3.5 drop-shadow-[0_0_4px_var(--glow-coral)]" />
+            <ToriiIcon color="var(--accent-coral)" className="w-3.5 h-3.5" />
           </div>
-          <Search className="w-4 h-4 text-[var(--accent-cyan)] shrink-0" />
+          <Search className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
           <input
             type="text"
             autoFocus
@@ -124,7 +124,7 @@ export const CommandPaletteModal: React.FC = () => {
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`w-full px-3 py-2.5 rounded-lg flex items-center justify-between text-xs transition-colors ${
-                    isSelected ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--accent-cyan)]/40 font-medium' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                    isSelected ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--accent-coral)]/40 font-medium' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                   }`}
                 >
                   <div className="flex items-center space-x-3">

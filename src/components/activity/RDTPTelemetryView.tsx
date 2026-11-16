@@ -133,7 +133,7 @@ export const RDTPTelemetryView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] text-[var(--text-muted)] pt-2 border-t border-[var(--border-color)]">
           <div>Endpoint: <span className="text-[var(--text-primary)] font-semibold">{rdtpStatus?.session.targetEndpoint || '127.0.0.1:50051'}</span></div>
           <div>Workload: <span className="text-[var(--accent-coral)] font-bold uppercase">{rdtpStatus?.session.workload || 'ViT-B/16'}</span></div>
-          <div>Batch Size: <span className="text-[var(--accent-cyan)] font-bold">{rdtpStatus?.session.batchSize || 32}</span></div>
+          <div>Batch Size: <span className="text-[var(--text-primary)] font-bold">{rdtpStatus?.session.batchSize || 32}</span></div>
           <div>Codec: <span className="text-emerald-400 font-bold uppercase">{rdtpStatus?.session.codec || 'JPEG'}</span></div>
         </div>
       </div>
@@ -182,9 +182,9 @@ export const RDTPTelemetryView: React.FC = () => {
           </div>
 
           {/* Stage 4: GPU Step */}
-          <div className="bg-[var(--bg-card)] border border-[var(--accent-cyan)]/40 rounded-lg p-2 space-y-1 shadow-sm">
-            <span className="text-[9px] text-[var(--accent-cyan)] block font-sans">T_g (GPU Kernel)</span>
-            <div className="font-bold text-sm text-[var(--accent-cyan)]">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2 space-y-1 shadow-sm">
+            <span className="text-[9px] text-[var(--text-muted)] block font-sans">T_g (GPU Kernel)</span>
+            <div className="font-bold text-sm text-[var(--text-primary)]">
               {rdtpStatus?.telemetry?.timings?.tGpuMs || 284} ms
             </div>
             <span className="text-[9px] text-[var(--text-subtle)] block">CUDA Stream Forward/Backward</span>
@@ -200,7 +200,7 @@ export const RDTPTelemetryView: React.FC = () => {
             <span className="text-[var(--text-muted)] font-semibold uppercase tracking-wider">
               CIRCULAR RING BUFFER (Q_RING)
             </span>
-            <span className="text-[var(--accent-cyan)] font-bold font-mono">
+            <span className="text-[var(--accent-coral)] font-bold font-mono">
               Credits: {rdtpStatus?.telemetry?.currentCredits ?? 2} / {rdtpStatus?.session?.bufferDepth ?? 3}
             </span>
           </div>
@@ -213,7 +213,7 @@ export const RDTPTelemetryView: React.FC = () => {
                   key={idx}
                   className={`h-8 rounded-md border flex items-center justify-center text-[10px] font-bold transition-all ${
                     isOccupied
-                      ? 'bg-[var(--accent-cyan)]/20 border-[var(--accent-cyan)] text-[var(--accent-cyan)] shadow-[0_0_8px_rgba(6,182,212,0.2)]'
+                      ? 'bg-[var(--accent-coral)]/15 border-[var(--accent-coral)] text-[var(--accent-coral)]'
                       : 'bg-[var(--bg-base)] border-[var(--border-color)] text-[var(--text-subtle)]'
                   }`}
                 >
@@ -249,7 +249,7 @@ export const RDTPTelemetryView: React.FC = () => {
           {/* Ingestion Speed */}
           <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-1 shadow-sm">
             <span className="text-[9px] text-[var(--text-muted)] uppercase block">Ingestion Speed</span>
-            <div className="text-base font-bold text-[var(--accent-cyan)]">
+            <div className="text-base font-bold text-[var(--text-primary)]">
               {rdtpStatus?.telemetry?.measuredThroughputFps ?? 114.2} <span className="text-[10px] text-[var(--text-muted)]">FPS</span>
             </div>
             <span className="text-[9px] text-[var(--text-muted)] block">
@@ -318,7 +318,7 @@ export const RDTPTelemetryView: React.FC = () => {
                 onClick={() => setLogFilter(f)}
                 className={`px-2 py-0.5 rounded border transition-colors cursor-pointer font-bold ${
                   isSel
-                    ? 'bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] border-[var(--accent-cyan)]/50'
+                    ? 'bg-[var(--accent-coral)]/15 text-[var(--accent-coral)] border-[var(--accent-coral)]'
                     : 'bg-[var(--bg-base)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-primary)]'
                 }`}
               >
@@ -341,11 +341,11 @@ export const RDTPTelemetryView: React.FC = () => {
               .reverse()
               .map((log) => {
                 const badgeStyles: Record<string, string> = {
-                  EDGE_PREPROCESS: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-                  WAN_TRANSPORT: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-                  RING_BUFFER_STAGING: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+                  EDGE_PREPROCESS: 'bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border-color)]',
+                  WAN_TRANSPORT: 'bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border-color)]',
+                  RING_BUFFER_STAGING: 'bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border-color)]',
                   ACCELERATOR_KERNEL: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-                  CREDIT_ACK: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+                  CREDIT_ACK: 'bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-color)]',
                 };
                 const stageShort: Record<string, string> = {
                   EDGE_PREPROCESS: 'PREP',
@@ -400,7 +400,7 @@ export const RDTPTelemetryView: React.FC = () => {
           <div className="flex items-center space-x-1.5">
             <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-[10px] text-[var(--text-primary)] font-bold uppercase tracking-wider">
-              HEAD-TO-HEAD SPEEDUP PROOF (S3 UPLOAD-FIRST VS RDTP)
+              BENCHMARK COMPARISON
             </span>
           </div>
           <button
@@ -409,13 +409,9 @@ export const RDTPTelemetryView: React.FC = () => {
             className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold flex items-center space-x-1.5 transition-colors cursor-pointer disabled:opacity-50"
           >
             <PlayCircle className="w-3 h-3" />
-            <span>{isBenchmarking ? 'Simulating 50 Batches...' : 'Run Benchmark'}</span>
+            <span>{isBenchmarking ? 'Running...' : 'Run Benchmark'}</span>
           </button>
         </div>
-
-        <p className="text-[9px] text-[var(--text-subtle)] leading-normal">
-          Compares traditional cloud object storage upload-first training vs RDTP pipelining over 40 Mbps uplink (50 batches).
-        </p>
 
         {benchmarkResult && (
           <div className="space-y-2 pt-1 border-t border-[var(--border-color)]">
@@ -429,7 +425,7 @@ export const RDTPTelemetryView: React.FC = () => {
               </div>
               <div>
                 <span className="text-[8px] text-[var(--text-muted)] block">START LATENCY</span>
-                <span className="text-sm font-bold text-[var(--accent-cyan)]">{benchmarkResult.improvements.ttfsImprovement}</span>
+                <span className="text-sm font-bold text-[var(--text-primary)]">{benchmarkResult.improvements.ttfsImprovement}</span>
                 <span className="text-[8px] text-[var(--text-subtle)] block">Time-To-First-Step</span>
               </div>
               <div>
