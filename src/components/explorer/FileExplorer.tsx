@@ -521,25 +521,6 @@ export const FileExplorer: React.FC = () => {
             </div>
           </div>
 
-          {/* Root Folder Bar */}
-          <div 
-            onClick={() => setSelectedPath(null)}
-            className="px-3 py-2 flex items-center justify-between text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide border-b border-[var(--border-color)]/60 bg-[var(--bg-card)] group cursor-pointer"
-          >
-            <div className="flex items-center space-x-1.5 overflow-hidden">
-              <FolderOpen className="w-3.5 h-3.5 text-[var(--accent-coral)] shrink-0" />
-              <span className="font-mono truncate">{rootName}</span>
-            </div>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); changeScopeFolder(); }}
-              title="Switch to another folder"
-              className="text-[10px] text-[var(--text-muted)] hover:text-[var(--accent-cyan)] lowercase font-mono opacity-80 group-hover:opacity-100 transition-opacity"
-            >
-              change
-            </button>
-          </div>
-
           {/* Tree Listing */}
           <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
             {/* Root Inline Creation Form */}

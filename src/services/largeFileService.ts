@@ -185,7 +185,7 @@ export async function readTextStreamWithProgress(
 export function getMonacoOptionsForTier(tier: 'small' | 'medium' | 'large' | 'huge' = 'small') {
   const baseOptions = {
     fontSize: 13,
-    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+    fontFamily: "'Space Mono', monospace",
     automaticLayout: true,
     tabSize: 4,
     lineNumbers: 'on' as const,

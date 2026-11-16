@@ -370,6 +370,7 @@ export const EditorCanvas: React.FC = () => {
             modified={activeTab.diffModified ?? ''}
             theme={theme === 'dark' ? 'vs-dark' : 'vs'}
             options={{
+              fontFamily: "'Space Mono', monospace",
               readOnly: true,
               renderSideBySide: diffSideBySide,
               fontSize: fontSize,

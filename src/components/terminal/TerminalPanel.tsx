@@ -463,7 +463,7 @@ export const TerminalPanel: React.FC = () => {
       container.innerHTML = '';
 
       const term = new XTerm({
-        fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+        fontFamily: "'Space Mono', monospace",
         fontSize: 12,
         cursorBlink: true,
         cursorStyle: 'block',
