@@ -1335,6 +1335,10 @@ wssRdtp.on('connection', (ws) => {
     }
   });
 
+  ws.on('error', (err) => {
+    // Gracefully handle aborted/reset client connections
+  });
+
   ws.on('close', () => {
     clearInterval(telemetryInterval);
   });
@@ -1406,6 +1410,7 @@ server.on('upgrade', (request, socket, head) => {
 });
 
 wssFs.on('connection', (ws) => {
+  ws.on('error', () => {});
   ws.send(JSON.stringify({ type: 'connected', workspace: currentWorkspace }));
 });
 
@@ -1460,6 +1465,7 @@ function verifyShiroToken(token) {
 
 // REAL Interactive Shell Terminal Process per WebSocket Session (using node-pty)
 wssTerminal.on('connection', (ws, req) => {
+  ws.on('error', () => {});
   const isWin = process.platform === 'win32';
   const urlParams = new URLSearchParams((req.url || '').split('?')[1] || '');
   const shellType = urlParams.get('shell') || 'powershell';
