@@ -7,7 +7,7 @@ import {
   User, 
   Check, 
   LogOut, 
-  Server 
+  Server
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useAuthStore } from '../../store/authStore';

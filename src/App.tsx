@@ -16,8 +16,11 @@ import { AuthModal } from './components/common/AuthModal';
 import { useIDEStore } from './store/ideStore';
 import { useAuthStore } from './store/authStore';
 import { fileWatcher } from './services/fileWatcher';
+import { useFullScreen } from './hooks/useFullScreen';
 
 export const App: React.FC = () => {
+  useFullScreen();
+
   const { 
     activeActivity, 
     leftSidebarWidth, 

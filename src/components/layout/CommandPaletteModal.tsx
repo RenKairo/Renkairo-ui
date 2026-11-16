@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileCode, Terminal, Save, FolderOpen, Image, FolderSync, Moon, Sun } from 'lucide-react';
+import { Search, FileCode, Terminal, Save, FolderOpen, Image, FolderSync, Moon, Sun, Maximize } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { ToriiIcon } from '../common/ToriiIcon';
+import { toggleFullScreen } from '../../hooks/useFullScreen';
 
 export const CommandPaletteModal: React.FC = () => {
   const { 
@@ -53,6 +54,7 @@ export const CommandPaletteModal: React.FC = () => {
     { id: 'open_folder', title: 'File: Open Folder From Local Machine...', category: 'Workspace', icon: FolderOpen, action: () => openFolder() },
     { id: 'change_scope', title: 'File: Change Folder Scope...', category: 'Workspace', icon: FolderSync, action: () => changeScopeFolder() },
     { id: 'save', title: 'File: Save Current File', category: 'Action', icon: Save, action: () => saveCurrentFile() },
+    { id: 'toggle_fullscreen', title: 'View: Toggle Full Screen (F11)', category: 'View', icon: Maximize, action: () => toggleFullScreen() },
     { id: 'new_terminal', title: 'Terminal: Open Terminal Session', category: 'Action', icon: Terminal, action: () => setActiveTerminalTab('TERMINAL') },
     { id: 'wallpaper_opacity', title: `Toggle Wallpaper Opacity (${wallpaperOpacity}%)`, category: 'Aesthetics', icon: Image, action: () => setWallpaperOpacity(wallpaperOpacity >= 40 ? 15 : wallpaperOpacity + 10) }
   ];
