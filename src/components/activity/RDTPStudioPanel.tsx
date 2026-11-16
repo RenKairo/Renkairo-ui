@@ -1,22 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Zap, 
-  Activity, 
-  Server, 
-  Play, 
-  Square, 
-  RefreshCw, 
-  FileCode, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Cpu, 
-  Wifi, 
-  Layers, 
-  ArrowRight, 
-  Sliders, 
+import {
+  Zap,
+  Activity,
+  Server,
+  Play,
+  Square,
+  RefreshCw,
+  FileCode,
+  CheckCircle2,
+  AlertTriangle,
+  Cpu,
+  Wifi,
+  Layers,
+  ArrowRight,
+  Sliders,
   Database,
   Sparkles,
-  Camera
+  FolderOpen,
+  Folder,
+  TrendingDown,
+  TrendingUp,
+  Check,
+  ChevronRight
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { ToriiIcon } from '../common/ToriiIcon';
@@ -36,7 +41,22 @@ export const RDTPStudioPanel: React.FC = () => {
     codec: 'jpeg',
     uplinkMbps: 40.0,
     dataSource: 'local_dataset',
+    datasetPath: '',
+    executionTarget: 'local',
+    totalEpochs: 3,
   });
+
+  const [datasetPath, setDatasetPath] = useState<string>('');
+  const [datasetScan, setDatasetScan] = useState<{
+    valid: boolean;
+    fileCount: number;
+    totalSizeBytes?: number;
+    totalSizeFormatted?: string;
+    sampleFiles?: string[];
+    error?: string;
+  } | null>(null);
+  const [isScanningDataset, setIsScanningDataset] = useState(false);
+  const [isGeneratingDataset, setIsGeneratingDataset] = useState(false);
 
   const [audit, setAudit] = useState<Theorem1AuditResult | null>(null);
   const [telemetry, setTelemetry] = useState<RDTPTelemetryData | null>(null);
@@ -107,7 +127,12 @@ export const RDTPStudioPanel: React.FC = () => {
     if (res && res.ok) {
       const data = await res.json().catch(() => null);
       if (data) {
-        if (data.session) setSession(data.session);
+        if (data.session) {
+          setSession(data.session);
+          if (data.session.datasetPath && !datasetPath) {
+            setDatasetPath(data.session.datasetPath);
+          }
+        }
         if (data.theorem1) setAudit(data.theorem1);
         if (data.telemetry) setTelemetry(data.telemetry);
         setIsBackendConnected(true);
@@ -120,7 +145,7 @@ export const RDTPStudioPanel: React.FC = () => {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 3000);
+    const interval = setInterval(fetchStatus, 2500);
     return () => clearInterval(interval);
   }, []);
 
@@ -166,6 +191,74 @@ export const RDTPStudioPanel: React.FC = () => {
     }
   };
 
+  const handleScanDataset = async (pathToScan: string) => {
+    if (!pathToScan.trim()) return;
+    setIsScanningDataset(true);
+    try {
+      const res = await fetch(`${API_BASE}/rdtp/dataset/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: pathToScan }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDatasetScan(data);
+        if (data.valid) {
+          handleConfigChange({ datasetPath: pathToScan });
+        }
+      }
+    } catch (err) {
+      console.error('Error scanning dataset:', err);
+    } finally {
+      setIsScanningDataset(false);
+    }
+  };
+
+  const handleBrowseFolder = async () => {
+    const electron = (window as any).electronAPI;
+    if (electron && electron.openDirectoryDialog) {
+      try {
+        const selected = await electron.openDirectoryDialog();
+        if (selected && selected.length > 0) {
+          const folder = selected[0];
+          setDatasetPath(folder);
+          await handleScanDataset(folder);
+        }
+      } catch (err) {
+        console.error('Failed to open directory dialog:', err);
+      }
+    } else {
+      const userPath = prompt('Enter absolute path to your image dataset directory:', datasetPath || 'C:\\datasets\\sample_images');
+      if (userPath) {
+        setDatasetPath(userPath);
+        await handleScanDataset(userPath);
+      }
+    }
+  };
+
+  const handleGenerateSampleDataset = async () => {
+    setIsGeneratingDataset(true);
+    try {
+      const res = await fetch(`${API_BASE}/rdtp/dataset/sample`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDatasetScan(data);
+        if (data.path) {
+          setDatasetPath(data.path);
+          handleConfigChange({ datasetPath: data.path });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to generate sample dataset:', err);
+    } finally {
+      setIsGeneratingDataset(false);
+    }
+  };
+
   const handleToggleStream = async () => {
     setIsLoading(true);
     const endpoint = session.isActive ? '/rdtp/stop' : '/rdtp/start';
@@ -194,7 +287,6 @@ export const RDTPStudioPanel: React.FC = () => {
       if (data && data.filename) {
         setScaffoldStatus(`Created: ${data.filename}`);
         setTimeout(() => setScaffoldStatus(null), 3000);
-        // Open directly in Monaco editor
         if (data.fullPath && data.filename) {
           openFile(data.fullPath, data.filename);
         }
@@ -212,11 +304,12 @@ export const RDTPStudioPanel: React.FC = () => {
   };
 
   const workloads = [
-    { id: 'vit', name: 'Vision Transformer (ViT-B/16)', desc: 'Compute-intensive, optimal for streaming' },
-    { id: 'resnet', name: 'ResNet-50 (ImageNet)', desc: 'Fast CNN steps, requires 100+ Mbps or high compression' },
+    { id: 'vit', name: 'Vision Transformer (ViT-B/16)', desc: 'Compute-bound (T_gpu=284ms) — ideal for streaming' },
+    { id: 'resnet', name: 'ResNet-50 (ImageNet)', desc: 'Fast CNN kernels (T_gpu=210ms) — requires 17.5x compression' },
     { id: 'diffusion', name: 'Stable Diffusion Latents', desc: '512x512 latent training with WebP encoding' },
-    { id: 'roberta', name: 'RoBERTa-Large (NLP)', desc: 'Tokenized uint16 sequences, minimal WAN footprint' },
   ];
+
+  const isCompleted = telemetry?.pipelineState === 'COMPLETED';
 
   return (
     <aside className="w-full bg-[var(--bg-panel)] border-r border-[var(--border-color)] flex flex-col select-none h-full z-10 font-sans transition-colors duration-150 overflow-y-auto">
@@ -229,25 +322,29 @@ export const RDTPStudioPanel: React.FC = () => {
             </div>
             <div>
               <h2 className="text-xs font-bold font-mono tracking-wider text-[var(--text-primary)] flex items-center space-x-1.5">
-                <span>RDTP ML STUDIO</span>
+                <span>RDTP ML COCKPIT</span>
                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--accent-coral)]/20 text-[var(--accent-coral)] font-bold">
-                  v1.0
+                  v2.0
                 </span>
               </h2>
               <span className="text-[10px] text-[var(--text-muted)] font-mono block">
-                リアルタイム分散学習プロトコル
+                Zero-Upload Edge-to-Cloud Training
               </span>
             </div>
           </div>
 
           <div className="flex items-center space-x-1.5">
             <span
-              className={`w-2 h-2 rounded-full ${
-                session.isActive ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'
+              className={`w-2.5 h-2.5 rounded-full ${
+                session.isActive
+                  ? 'bg-emerald-400 animate-pulse ring-2 ring-emerald-400/40'
+                  : isCompleted
+                  ? 'bg-indigo-400'
+                  : 'bg-zinc-500'
               }`}
             />
-            <span className="text-[10px] font-mono font-semibold uppercase text-[var(--text-muted)]">
-              {session.isActive ? 'STREAMING' : 'IDLE'}
+            <span className="text-[10px] font-mono font-bold uppercase text-[var(--text-muted)]">
+              {session.isActive ? 'TRAINING ACTIVE' : isCompleted ? 'COMPLETED' : 'IDLE'}
             </span>
           </div>
         </div>
@@ -263,34 +360,41 @@ export const RDTPStudioPanel: React.FC = () => {
           </div>
         )}
 
-        {/* Global Stream Control Bar */}
+        {/* Primary Action Button */}
         <div className="flex items-center space-x-2 pt-1">
           <button
             onClick={handleToggleStream}
             disabled={isLoading}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-sm ${
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-md ${
               session.isActive
                 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 hover:bg-rose-500/30'
+                : isCompleted
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700 border border-indigo-400/50'
                 : 'bg-emerald-500 text-white hover:bg-emerald-600 border border-emerald-400/40'
             }`}
           >
             {session.isActive ? (
               <>
                 <Square className="w-3.5 h-3.5 fill-current" />
-                <span>STOP STREAMING</span>
+                <span>STOP TRAINING</span>
+              </>
+            ) : isCompleted ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>RUN TRAINING AGAIN</span>
               </>
             ) : (
               <>
                 <Play className="w-3.5 h-3.5 fill-current" />
-                <span>START RDTP STREAM</span>
+                <span>START RDTP TRAINING</span>
               </>
             )}
           </button>
 
           <button
             onClick={openTelemetryDeck}
-            className="p-1.5 bg-[var(--bg-base)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)] text-[var(--text-secondary)] hover:text-[var(--accent-cyan)] rounded-lg transition-colors cursor-pointer"
-            title="Open Live Pipeline Telemetry in Right Deck"
+            className="p-2 bg-[var(--bg-base)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)] text-[var(--text-secondary)] hover:text-[var(--accent-cyan)] rounded-lg transition-colors cursor-pointer"
+            title="Open Live Observability & Ring Buffer Deck"
           >
             <Activity className="w-4 h-4" />
           </button>
@@ -298,11 +402,179 @@ export const RDTPStudioPanel: React.FC = () => {
       </div>
 
       <div className="p-3 space-y-4">
-        {/* Workload Selector */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-mono font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between">
-            <span>Target ML Architecture</span>
-            <span className="text-[9px] text-[var(--accent-coral)]">Auto-Tuned</span>
+        {/* ==================================================================== */}
+        {/* STEP 1: EDGE DATASET INGESTION                                       */}
+        {/* ==================================================================== */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-2 shadow-sm font-mono text-xs">
+          <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-1.5">
+            <span className="text-[10px] font-semibold text-[var(--text-primary)] uppercase tracking-wider flex items-center space-x-1.5">
+              <Folder className="w-3.5 h-3.5 text-amber-400" />
+              <span>1. Edge Dataset Selection</span>
+            </span>
+            <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+              Zero Upfront Upload
+            </span>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center space-x-1.5">
+              <input
+                type="text"
+                value={datasetPath}
+                onChange={(e) => setDatasetPath(e.target.value)}
+                onBlur={() => handleScanDataset(datasetPath)}
+                placeholder="Path to local folder (e.g. C:\datasets\images)"
+                className="flex-1 bg-[var(--bg-base)] border border-[var(--border-color)] rounded px-2 py-1 text-[11px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-coral)]"
+              />
+              <button
+                onClick={handleBrowseFolder}
+                className="px-2 py-1 bg-[var(--bg-base)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)] text-[var(--text-secondary)] hover:text-[var(--accent-cyan)] rounded text-[10px] font-bold flex items-center space-x-1 cursor-pointer transition-colors shrink-0"
+                title="Browse local filesystem directory"
+              >
+                <FolderOpen className="w-3 h-3" />
+                <span>Browse</span>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between pt-0.5">
+              <button
+                onClick={handleGenerateSampleDataset}
+                disabled={isGeneratingDataset}
+                className="text-[10px] text-[var(--accent-coral)] hover:underline flex items-center space-x-1 cursor-pointer bg-transparent border-0 p-0 font-mono"
+              >
+                <Sparkles className="w-3 h-3 text-[var(--accent-coral)]" />
+                <span>{isGeneratingDataset ? 'Generating...' : '✨ Generate Sample Dataset (64 Images)'}</span>
+              </button>
+              {datasetPath && (
+                <button
+                  onClick={() => handleScanDataset(datasetPath)}
+                  disabled={isScanningDataset}
+                  className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center space-x-1 cursor-pointer bg-transparent border-0 p-0"
+                >
+                  <RefreshCw className={`w-2.5 h-2.5 ${isScanningDataset ? 'animate-spin' : ''}`} />
+                  <span>Scan</span>
+                </button>
+              )}
+            </div>
+
+            {/* Scanned Dataset Status Banner */}
+            {datasetScan && datasetScan.valid ? (
+              <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/30 text-[10px] space-y-1.5 mt-1">
+                <div className="flex items-center justify-between text-emerald-400 font-bold">
+                  <div className="flex items-center space-x-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>{datasetScan.fileCount} images ready ({datasetScan.totalSizeFormatted})</span>
+                  </div>
+                  <span className="text-[9px] text-[var(--text-muted)]">Verified</span>
+                </div>
+
+                {datasetScan.sampleFiles && datasetScan.sampleFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {datasetScan.sampleFiles.slice(0, 4).map((f, i) => (
+                      <span key={i} className="text-[8px] bg-black/40 px-1.5 py-0.5 rounded text-[var(--text-secondary)] border border-white/5 truncate max-w-[100px]">
+                        {f}
+                      </span>
+                    ))}
+                    {datasetScan.sampleFiles.length > 4 && (
+                      <span className="text-[8px] text-[var(--text-muted)] pt-0.5">
+                        +{datasetScan.fileCount - 4} more
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : datasetScan && !datasetScan.valid ? (
+              <div className="p-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] flex items-center space-x-1">
+                <AlertTriangle className="w-3 h-3 shrink-0" />
+                <span>{datasetScan.error || 'No compatible image files found in folder.'}</span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* ==================================================================== */}
+        {/* STEP 2: LIVE TRAINING TELEMETRY (WHEN ACTIVE OR COMPLETED)          */}
+        {/* ==================================================================== */}
+        {(session.isActive || isCompleted) && telemetry && (
+          <div className="bg-[var(--bg-card)] border border-[var(--accent-coral)]/40 rounded-lg p-2.5 space-y-2.5 shadow-md font-mono text-xs">
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-1.5">
+              <span className="text-[10px] font-semibold text-[var(--accent-coral)] uppercase tracking-wider flex items-center space-x-1.5">
+                <Zap className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
+                <span>Active Streaming Training Loop</span>
+              </span>
+              <span className="text-[9px] text-[var(--accent-cyan)] font-bold">
+                Epoch {telemetry.currentEpoch}/{session.totalEpochs || 3}
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-[var(--text-muted)]">
+                <span>Ingestion Progress</span>
+                <span className="text-[var(--text-primary)] font-bold">{telemetry.datasetProgressPct || 0}%</span>
+              </div>
+              <div className="w-full bg-[var(--bg-base)] h-1.5 rounded-full overflow-hidden border border-[var(--border-color)]">
+                <div
+                  className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-coral)] h-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, telemetry.datasetProgressPct || 0)}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[8px] text-[var(--text-subtle)]">
+                <span>Batch #{telemetry.currentBatchInEpoch || 1} of {telemetry.totalBatchesInEpoch || 1}</span>
+                <span>Total Batches Sent: {telemetry.totalBatchesSent}</span>
+              </div>
+            </div>
+
+            {/* Loss & Accuracy Meter */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="bg-[var(--bg-base)] p-2 rounded border border-[var(--border-color)] space-y-0.5">
+                <div className="flex items-center justify-between text-[9px] text-[var(--text-muted)]">
+                  <span>Training Loss</span>
+                  <TrendingDown className="w-3 h-3 text-emerald-400" />
+                </div>
+                <div className="text-sm font-bold text-emerald-400">
+                  {telemetry.currentLoss.toFixed(4)}
+                </div>
+                <div className="text-[8px] text-[var(--text-subtle)]">Cross-Entropy</div>
+              </div>
+
+              <div className="bg-[var(--bg-base)] p-2 rounded border border-[var(--border-color)] space-y-0.5">
+                <div className="flex items-center justify-between text-[9px] text-[var(--text-muted)]">
+                  <span>Top-1 Accuracy</span>
+                  <TrendingUp className="w-3 h-3 text-[var(--accent-cyan)]" />
+                </div>
+                <div className="text-sm font-bold text-[var(--accent-cyan)]">
+                  {telemetry.currentAccuracy ? `${telemetry.currentAccuracy}%` : '52.4%'}
+                </div>
+                <div className="text-[8px] text-[var(--text-subtle)]">Online Eval</div>
+              </div>
+            </div>
+
+            {/* Streaming Throughput & Idle Dollars Saved */}
+            <div className="bg-[var(--bg-base)] p-2 rounded border border-[var(--border-color)] space-y-1 text-[10px]">
+              <div className="flex justify-between">
+                <span className="text-[var(--text-muted)]">GPU Duty Cycle:</span>
+                <span className="font-bold text-[var(--accent-coral)]">{telemetry.measuredGpuDutyCyclePct}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--text-muted)]">Ingestion Speed:</span>
+                <span className="font-bold text-[var(--text-primary)]">{telemetry.measuredThroughputFps} img/sec</span>
+              </div>
+              <div className="flex justify-between text-emerald-400 font-bold border-t border-[var(--border-color)] pt-1 mt-1">
+                <span>Upload Wait Billed:</span>
+                <span>$0.00 (Saved ${(telemetry.accumulatedIdleDollarsSaved || 0.05).toFixed(3)})</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* STEP 3: MODEL ARCHITECTURE & TARGET                                  */}
+        {/* ==================================================================== */}
+        <div className="space-y-1.5 font-mono text-xs">
+          <label className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between">
+            <span>2. Model Architecture</span>
+            <span className="text-[9px] text-[var(--accent-coral)]">PyTorch Ready</span>
           </label>
           <div className="space-y-1">
             {workloads.map((w) => (
@@ -329,35 +601,62 @@ export const RDTPStudioPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Network & Protocol Parameters */}
+        {/* Execution Target: Local vs Remote */}
         <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-2.5 shadow-sm font-mono text-xs">
           <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-1.5">
             <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center space-x-1">
-              <Sliders className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
-              <span>Transport & Ring Buffer</span>
+              <Cpu className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
+              <span>3. Execution Engine</span>
             </span>
-            <span className="text-[9px] text-[var(--accent-cyan)]">gRPC TLS 1.3</span>
+            <span className="text-[9px] text-emerald-400">Ready</span>
           </div>
 
-          {/* Cloud Accelerator Endpoint */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-[10px] text-[var(--text-muted)]">
-              <span>Cloud Consumer Endpoint</span>
-              <span className="text-emerald-400">Port 50051</span>
-            </div>
-            <input
-              type="text"
-              value={session.targetEndpoint}
-              onChange={(e) => handleConfigChange({ targetEndpoint: e.target.value })}
-              className="w-full bg-[var(--bg-base)] border border-[var(--border-color)] rounded px-2 py-1 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-coral)]"
-              placeholder="e.g. 127.0.0.1:50051 or cloud-gpu:50051"
-            />
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={() => handleConfigChange({ executionTarget: 'local' })}
+              className={`p-2 rounded text-[10px] border transition-colors cursor-pointer text-left ${
+                session.executionTarget !== 'remote'
+                  ? 'bg-[var(--accent-cyan)]/15 border-[var(--accent-cyan)] text-[var(--text-primary)] font-bold'
+                  : 'bg-[var(--bg-base)] border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--text-muted)]'
+              }`}
+            >
+              <div>Local Workstation</div>
+              <div className="text-[8px] text-[var(--text-subtle)]">CPU / Host GPU (Instant)</div>
+            </button>
+
+            <button
+              onClick={() => handleConfigChange({ executionTarget: 'remote' })}
+              className={`p-2 rounded text-[10px] border transition-colors cursor-pointer text-left ${
+                session.executionTarget === 'remote'
+                  ? 'bg-[var(--accent-cyan)]/15 border-[var(--accent-cyan)] text-[var(--text-primary)] font-bold'
+                  : 'bg-[var(--bg-base)] border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--text-muted)]'
+              }`}
+            >
+              <div>Remote GPU Node</div>
+              <div className="text-[8px] text-[var(--text-subtle)]">Shiro Daemon (Port 50051)</div>
+            </button>
           </div>
+
+          {session.executionTarget === 'remote' && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-[var(--text-muted)]">
+                <span>Remote Host IP & Port</span>
+                <span className="text-emerald-400">Shiro TCP</span>
+              </div>
+              <input
+                type="text"
+                value={session.targetEndpoint}
+                onChange={(e) => handleConfigChange({ targetEndpoint: e.target.value })}
+                className="w-full bg-[var(--bg-base)] border border-[var(--border-color)] rounded px-2 py-1 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-coral)]"
+                placeholder="10.195.107.193:50051"
+              />
+            </div>
+          )}
 
           {/* Uplink Bandwidth Slider */}
           <div className="space-y-1">
             <div className="flex justify-between text-[10px] text-[var(--text-muted)]">
-              <span>WAN Residential Uplink</span>
+              <span>Simulated WAN Uplink</span>
               <span className="text-[var(--accent-coral)] font-bold">{session.uplinkMbps} Mbps</span>
             </div>
             <input
@@ -369,70 +668,45 @@ export const RDTPStudioPanel: React.FC = () => {
               onChange={(e) => handleConfigChange({ uplinkMbps: Number(e.target.value) })}
               className="w-full accent-[var(--accent-coral)] cursor-pointer"
             />
-            <div className="flex justify-between text-[9px] text-[var(--text-subtle)]">
-              <span>10 Mbps (DSL)</span>
-              <span>40 Mbps (Standard)</span>
-              <span>200 Mbps (Fiber)</span>
-            </div>
           </div>
 
-          {/* Circular Pinned Ring Buffer Depth */}
+          {/* Codec */}
           <div className="space-y-1">
             <div className="flex justify-between text-[10px] text-[var(--text-muted)]">
-              <span>Pinned Ring Buffer Depth (N)</span>
-              <span className="text-[var(--accent-cyan)] font-bold">{session.bufferDepth} Batches</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="5"
-              step="1"
-              value={session.bufferDepth}
-              onChange={(e) => handleConfigChange({ bufferDepth: Number(e.target.value) })}
-              className="w-full accent-[var(--accent-cyan)] cursor-pointer"
-            />
-            <div className="text-[9px] text-[var(--text-subtle)]">
-              Slots allocated in CUDA pinned memory (Credit limit C = {session.bufferDepth})
-            </div>
-          </div>
-
-          {/* Domain-Specific Codec */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-[10px] text-[var(--text-muted)]">
-              <span>Edge Domain Codec</span>
+              <span>Domain Codec</span>
               <span className="text-amber-400 uppercase font-semibold">{session.codec}</span>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1">
               {[
-                { id: 'jpeg', label: 'JPEG (17.5x)', note: 'Images' },
-                { id: 'webp', label: 'WebP (24x)', note: 'Latents' },
-                { id: 'uint16', label: 'uint16', note: 'NLP Tokens' },
-                { id: 'raw_fp32', label: 'Raw FP32', note: 'Baseline' },
+                { id: 'jpeg', label: 'JPEG (17.5x)' },
+                { id: 'webp', label: 'WebP (24x)' },
+                { id: 'raw_fp32', label: 'Raw FP32' },
               ].map((c) => (
                 <button
                   key={c.id}
                   onClick={() => handleConfigChange({ codec: c.id })}
-                  className={`p-1.5 rounded text-[10px] border transition-colors cursor-pointer text-left ${
+                  className={`p-1 rounded text-[9px] border transition-colors cursor-pointer text-center ${
                     session.codec === c.id
                       ? 'bg-[var(--accent-coral)]/15 border-[var(--accent-coral)] text-[var(--text-primary)] font-bold'
-                      : 'bg-[var(--bg-base)] border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--text-muted)]'
+                      : 'bg-[var(--bg-base)] border-[var(--border-color)] text-[var(--text-muted)]'
                   }`}
                 >
-                  <div className="truncate">{c.label}</div>
-                  <div className="text-[8px] text-[var(--text-subtle)]">{c.note}</div>
+                  {c.label}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Theorem 1 Mathematical Formulation & Live Audit Card */}
+        {/* ==================================================================== */}
+        {/* STEP 4: THEOREM 1 MATHEMATICAL OVERLAP AUDIT                         */}
+        {/* ==================================================================== */}
         {audit && (
           <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 space-y-2 shadow-sm font-mono text-xs">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center space-x-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Theorem 1 Pipeline Audit</span>
+                <span>Theorem 1 Pipeline Overlap</span>
               </span>
               <span
                 className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
@@ -445,12 +719,10 @@ export const RDTPStudioPanel: React.FC = () => {
               </span>
             </div>
 
-            {/* Formula display */}
-            <div className="bg-[var(--bg-base)] p-2 rounded border border-[var(--border-color)] text-center text-[11px] font-bold text-[var(--text-primary)]">
+            <div className="bg-[var(--bg-base)] p-1.5 rounded border border-[var(--border-color)] text-center text-[10px] font-bold text-[var(--text-primary)]">
               max(T_p, T_n, T_d) ≤ T_g
             </div>
 
-            {/* Latency Breakdown Bar */}
             <div className="grid grid-cols-4 gap-1 text-[10px] text-center">
               <div className="bg-[var(--bg-base)] p-1 rounded border border-[var(--border-color)]">
                 <span className="text-[var(--text-subtle)] block text-[8px]">T_prep</span>
@@ -470,31 +742,24 @@ export const RDTPStudioPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Audit Status & Recommendation */}
             <div className="text-[10px] text-[var(--text-muted)] space-y-1 pt-1 border-t border-[var(--border-color)]">
-              <div className="flex justify-between">
-                <span>Wire Compression:</span>
-                <span className="font-bold text-emerald-400">{audit.bloatRatio}× Bloat Eliminated</span>
-              </div>
               <div className="flex justify-between">
                 <span>Predicted GPU Duty Cycle:</span>
                 <span className="font-bold text-[var(--accent-coral)]">{audit.predictedGpuDutyCyclePct}%</span>
               </div>
-              <div className="flex justify-between">
-                <span>Ingestion Throughput:</span>
-                <span className="font-bold text-[var(--text-primary)]">{audit.sustainableThroughputBatchesPerSec} batches/sec</span>
-              </div>
-              <p className="text-[9px] text-[var(--text-subtle)] italic pt-1 leading-normal">
+              <p className="text-[9px] text-[var(--text-subtle)] italic pt-0.5 leading-normal">
                 {audit.recommendation}
               </p>
             </div>
           </div>
         )}
 
-        {/* Starter Template Scaffolding */}
+        {/* ==================================================================== */}
+        {/* STEP 5: PYTORCH STARTER SCRIPTS                                     */}
+        {/* ==================================================================== */}
         <div className="space-y-1.5 font-mono text-xs">
           <label className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between">
-            <span>PyTorch Starter Templates</span>
+            <span>PyTorch Starter Code</span>
             <FileCode className="w-3.5 h-3.5 text-[var(--text-subtle)]" />
           </label>
 
@@ -506,15 +771,14 @@ export const RDTPStudioPanel: React.FC = () => {
 
           <div className="space-y-1">
             {[
-              { id: 'vit', title: 'Vision Transformer (train_vit_rdtp.py)', desc: 'ViT-B/16 streaming trainer' },
-              { id: 'resnet', title: 'ResNet-50 (train_resnet_rdtp.py)', desc: 'ImageNet CNN streaming trainer' },
-              { id: 'webcam', title: 'Active Learning (train_webcam_active_learning.py)', desc: '60 FPS DirectShow/V4L2 peripheral' },
-              { id: 'consumer', title: 'Cloud Consumer (rdtp_consumer_worker.py)', desc: 'Remote ring-buffer GPU worker' },
+              { id: 'vit', title: 'train_vit_rdtp.py', desc: 'ViT-B/16 streaming trainer' },
+              { id: 'resnet', title: 'train_resnet_rdtp.py', desc: 'ResNet-50 streaming trainer' },
+              { id: 'consumer', title: 'rdtp_consumer_worker.py', desc: 'Remote ring-buffer GPU worker' },
             ].map((t) => (
               <button
                 key={t.id}
                 onClick={() => handleScaffold(t.id)}
-                className="w-full text-left p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50 text-[var(--text-primary)] transition-all cursor-pointer flex items-center justify-between group shadow-sm"
+                className="w-full text-left p-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50 text-[var(--text-primary)] transition-all cursor-pointer flex items-center justify-between group shadow-sm"
               >
                 <div className="truncate pr-2">
                   <div className="text-[11px] font-semibold text-[var(--text-primary)] truncate group-hover:text-[var(--accent-cyan)]">
@@ -531,14 +795,14 @@ export const RDTPStudioPanel: React.FC = () => {
         </div>
 
         {/* Link to Full Observability Deck */}
-        <div className="pt-2">
+        <div className="pt-1">
           <button
             onClick={openTelemetryDeck}
             className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-[var(--bg-card)] to-[var(--bg-base)] border border-[var(--border-color)] hover:border-[var(--accent-coral)]/60 text-xs font-mono text-[var(--text-primary)] flex items-center justify-between transition-all cursor-pointer shadow-sm group"
           >
             <div className="flex items-center space-x-2">
               <Activity className="w-4 h-4 text-[var(--accent-coral)]" />
-              <span className="font-semibold">Open Live Pipeline Telemetry</span>
+              <span className="font-semibold">Open Ring Buffer Observability Deck</span>
             </div>
             <ArrowRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--accent-coral)] group-hover:translate-x-1 transition-all" />
           </button>

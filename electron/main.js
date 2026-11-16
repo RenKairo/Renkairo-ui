@@ -1,8 +1,23 @@
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
-import { app, BrowserWindow, ipcMain, dialog, shell, desktopCapturer, session, utilityProcess } from 'electron';
+import { createRequire } from 'node:module';
+import { spawn } from 'child_process';
+const require = createRequire(import.meta.url);
+
+if (process.env.ELECTRON_RUN_AS_NODE) {
+  const cleanEnv = { ...process.env };
+  delete cleanEnv.ELECTRON_RUN_AS_NODE;
+  const electronBin = require('electron');
+  const child = spawn(electronBin, [process.argv[1], ...process.argv.slice(2)], {
+    stdio: 'inherit',
+    env: cleanEnv,
+  });
+  child.on('close', (code) => process.exit(code || 0));
+  await new Promise(() => {});
+}
+
+const { app, BrowserWindow, ipcMain, dialog, shell, desktopCapturer, session, utilityProcess } = require('electron');
 import path from 'path';
 import fs from 'fs';
-import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import {
   getGitStatus,

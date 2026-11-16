@@ -295,6 +295,11 @@ export interface RDTPSessionConfig {
   codec: 'jpeg' | 'webp' | 'uint16' | 'raw_fp32' | string;
   uplinkMbps: number;
   dataSource: string;
+  datasetPath?: string;
+  datasetFileCount?: number;
+  totalDatasetBytes?: number;
+  executionTarget?: 'local' | 'remote';
+  totalEpochs?: number;
   startedAt?: number | null;
 }
 
@@ -310,7 +315,12 @@ export interface RDTPTelemetryData {
   accumulatedIdleDollarsSaved: number;
   currentEpoch: number;
   currentLoss: number;
-  pipelineState: 'IDLE' | 'COMPUTE_BOUND' | 'IO_BOUND';
+  currentAccuracy?: number;
+  currentBatchInEpoch?: number;
+  totalBatchesInEpoch?: number;
+  datasetProgressPct?: number;
+  currentBatchFiles?: string[];
+  pipelineState: 'IDLE' | 'COMPUTE_BOUND' | 'IO_BOUND' | 'COMPLETED';
   limitingStage: string;
   timings: RDTPTiming;
 }

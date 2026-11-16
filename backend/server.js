@@ -1235,6 +1235,30 @@ app.post('/api/rdtp/audit', (req, res) => {
   }
 });
 
+app.post('/api/rdtp/dataset/scan', (req, res) => {
+  try {
+    const rawPath = req.body.path;
+    const resolved = rawPath ? (path.isAbsolute(rawPath) ? rawPath : resolveWorkspacePath(rawPath)) : currentWorkspace;
+    const scan = rdtpEngine.scanDataset(resolved);
+    res.json(scan);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/rdtp/dataset/sample', (req, res) => {
+  try {
+    const rawTarget = req.body.path;
+    const dest = rawTarget
+      ? (path.isAbsolute(rawTarget) ? rawTarget : resolveWorkspacePath(rawTarget))
+      : path.join(currentWorkspace, 'datasets', 'sample_cifar_stream');
+    const result = rdtpEngine.generateSampleDataset(dest);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/rdtp/scaffold', (req, res) => {
   try {
     const { template, targetDir } = req.body;
