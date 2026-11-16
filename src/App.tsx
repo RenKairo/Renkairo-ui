@@ -4,7 +4,6 @@ import { ActivityBar } from './components/layout/ActivityBar';
 import { FileExplorer } from './components/explorer/FileExplorer';
 import { SearchPanel } from './components/activity/SearchPanel';
 import { SourceControlPanel } from './components/activity/SourceControlPanel';
-import { RemotePanel } from './components/activity/RemotePanel';
 import { TeamPanel } from './components/activity/TeamPanel';
 import { SettingsPanel } from './components/activity/SettingsPanel';
 import { RDTPStudioPanel } from './components/activity/RDTPStudioPanel';
@@ -64,7 +63,6 @@ export const App: React.FC = () => {
       case 'explorer': return <FileExplorer />;
       case 'search': return <SearchPanel />;
       case 'git': return <SourceControlPanel />;
-      case 'remote': return <RemotePanel />;
       case 'team': return <TeamPanel />;
       case 'rdtp': return <RDTPStudioPanel />;
       case 'settings': return <SettingsPanel />;

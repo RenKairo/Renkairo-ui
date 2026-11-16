@@ -41,19 +41,19 @@ function getGitFileStatus(filePath: string, gitStatus: GitStatusResult | null): 
 
 const getFileIcon = (filename: string) => {
   const lower = filename.toLowerCase();
-  if (lower.endsWith('.py')) return <span className="text-[var(--accent-cyan)] font-bold text-[10px]">🐍</span>;
+  if (lower.endsWith('.py')) return <span className="text-[var(--accent-cyan)] font-bold text-[10px]">PY</span>;
   if (lower.endsWith('.ts') || lower.endsWith('.tsx')) return <span className="text-blue-500 font-bold text-[10px]">TS</span>;
   if (lower.endsWith('.js') || lower.endsWith('.jsx') || lower.endsWith('.mjs') || lower.endsWith('.cjs')) return <span className="text-amber-500 font-bold text-[10px]">JS</span>;
   if (lower.endsWith('.json')) return <span className="text-yellow-500 font-bold text-[10px]">{'{ }'}</span>;
-  if (lower.endsWith('.yml') || lower.endsWith('.yaml')) return <span className="text-[var(--accent-coral)] font-bold text-[10px]">⚙</span>;
+  if (lower.endsWith('.yml') || lower.endsWith('.yaml')) return <span className="text-[var(--accent-coral)] font-bold text-[10px]">YML</span>;
   if (lower.endsWith('.md')) return <span className="text-sky-500 font-bold text-[10px]">M↓</span>;
   if (lower.endsWith('.css') || lower.endsWith('.scss')) return <span className="text-pink-500 font-bold text-[10px]">#</span>;
   if (lower.endsWith('.html')) return <span className="text-orange-500 font-bold text-[10px]">&lt;&gt;</span>;
-  if (lower.endsWith('.rs')) return <span className="text-orange-600 font-bold text-[10px]">🦀</span>;
+  if (lower.endsWith('.rs')) return <span className="text-orange-600 font-bold text-[10px]">RS</span>;
   if (lower.endsWith('.go')) return <span className="text-cyan-500 font-bold text-[10px]">GO</span>;
   if (lower.endsWith('.sql')) return <span className="text-indigo-500 font-bold text-[10px]">SQL</span>;
-  if (lower.endsWith('.java')) return <span className="text-red-500 font-bold text-[10px]">☕</span>;
-  if (lower === 'dockerfile' || lower.endsWith('.dockerfile')) return <span className="text-cyan-500 font-bold text-[10px]">🐳</span>;
+  if (lower.endsWith('.java')) return <span className="text-red-500 font-bold text-[10px]">JAVA</span>;
+  if (lower === 'dockerfile' || lower.endsWith('.dockerfile')) return <span className="text-cyan-500 font-bold text-[10px]">DOC</span>;
   if (lower.startsWith('.env')) return <span className="text-emerald-500 font-bold text-[10px]">ENV</span>;
   return <FileCode className="w-3.5 h-3.5 text-[var(--text-muted)]" />;
 };

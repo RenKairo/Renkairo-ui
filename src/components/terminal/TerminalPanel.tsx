@@ -718,7 +718,7 @@ export const TerminalPanel: React.FC = () => {
       }}
       className={`bg-[var(--bg-panel)] border-t border-[var(--border-color)] flex flex-col select-none z-20 relative transition-colors duration-150`}
     >
-      {/* ⚡ Top Drag Resize Handle */}
+      {/* Top Drag Resize Handle */}
       <div
         onMouseDown={handleMouseDownResize}
         className="h-2 w-full -top-1 absolute left-0 right-0 z-30 cursor-row-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
@@ -764,7 +764,7 @@ export const TerminalPanel: React.FC = () => {
 
         {/* Terminal Controls */}
         <div className="flex items-center space-x-2 text-[var(--text-muted)]">
-          {/* ⚡ Compact Root vs Full Path Toggle Button */}
+          {/* Compact Root vs Full Path Toggle Button */}
           <button
             onClick={toggleCompactPath}
             title={terminalCompactPath ? "Showing Root Only (Linux/macOS style) - Click for Full Path" : "Showing Full Path - Click for Root Only (Linux/macOS style)"}
@@ -796,13 +796,13 @@ export const TerminalPanel: React.FC = () => {
               }}
               className="bg-transparent text-[var(--text-primary)] focus:outline-none font-mono cursor-pointer"
             >
-              <option value="powershell" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">⚙️ PowerShell</option>
-              <option value="cmd" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">💻 Command Prompt (CMD)</option>
-              <option value="python" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🐍 Python REPL</option>
-              <option value="node" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🟢 Node.js REPL</option>
-              <option value="jshell" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">☕ Java REPL (jshell)</option>
-              <option value="bash" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🐧 Git Bash / WSL</option>
-              <option value="ssh" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🌐 Remote SSH Server (LAN)...</option>
+              <option value="powershell" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">PowerShell</option>
+              <option value="cmd" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Command Prompt (CMD)</option>
+              <option value="python" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Python REPL</option>
+              <option value="node" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Node.js REPL</option>
+              <option value="jshell" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Java REPL (jshell)</option>
+              <option value="bash" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Git Bash / WSL</option>
+              <option value="ssh" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Remote SSH Server...</option>
             </select>
           </div>
 
@@ -883,7 +883,7 @@ export const TerminalPanel: React.FC = () => {
                       {activeSession?.executionMode === 'remote' ? '[Remote Linux] ~' : getFormattedCwd(activeSessionCwd)}
                     </span>
 
-                    {/* ⚡ Execution Target Toggle (Local Terminal vs Shiro Linux Backend) */}
+                    {/* Execution Target Toggle (Local Terminal vs Shiro Linux Backend) */}
                     <button
                       type="button"
                       disabled={!isRemoteServerConnected}
@@ -1015,7 +1015,7 @@ export const TerminalPanel: React.FC = () => {
                   </div>
                   <span>No execution output yet.</span>
                   <span className="text-[10px] text-[var(--text-subtle)]">
-                    Click <strong className="text-emerald-400">▶ Run Code</strong> on the editor toolbar to execute your Java, Python, Node, or C++ file via Shiro.
+                    Execute code files via the Shiro backend engine or run commands directly in the terminal.
                   </span>
                 </div>
               ) : (

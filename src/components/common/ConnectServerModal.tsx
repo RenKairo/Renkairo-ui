@@ -885,7 +885,7 @@ export const ConnectServerModal: React.FC = () => {
           {/* Provisioning Error Banner */}
           {provisionError && (
             <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-2.5 text-[11px] text-rose-400 font-mono flex items-start space-x-2">
-              <span className="shrink-0 text-rose-400 font-bold">⚠️</span>
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
               <div className="flex-1 break-words">{provisionError}</div>
             </div>
           )}

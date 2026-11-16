@@ -6,7 +6,6 @@ import {
   MoreHorizontal, 
   ChevronRight, 
   FolderOpen, 
-  FolderSync, 
   Loader2, 
   HardDrive, 
   Binary, 
@@ -24,7 +23,6 @@ import { useIDEStore } from '../../store/ideStore';
 import { useGitStore } from '../../store/gitStore';
 import { openExternalTerminal } from '../../services/api';
 import { getMonacoOptionsForTier, formatFileSize } from '../../services/largeFileService';
-import { ToriiIcon } from '../common/ToriiIcon';
 
 export const EditorCanvas: React.FC = () => {
   const { 
@@ -42,8 +40,6 @@ export const EditorCanvas: React.FC = () => {
     fontSize, 
     tabSize, 
     minimapEnabled, 
-    openFolder, 
-    changeScopeFolder, 
     workspacePath, 
     rootName, 
     isFolderOpening, 
@@ -102,7 +98,7 @@ export const EditorCanvas: React.FC = () => {
       <div 
         className="absolute inset-0 pointer-events-none z-0 transition-all duration-300 bg-center bg-no-repeat bg-fixed"
         style={{ 
-          opacity: theme === 'light' ? 0.7 : (wallpaperOpacity ?? 50) / 100,
+          opacity: !activeTab ? Math.max((wallpaperOpacity ?? 50) / 100, 0.75) : (theme === 'light' ? 0.7 : (wallpaperOpacity ?? 50) / 100),
           backgroundImage: theme === 'light' ? `url('./wallpaper-pagoda.jpg')` : `url('./wallpaper-dark-pagoda.jpg')`,
           backgroundSize: 'cover'
         }}
@@ -158,31 +154,6 @@ export const EditorCanvas: React.FC = () => {
 
           {/* Tab Bar Actions */}
           <div className="flex items-center space-x-1 text-[var(--text-muted)] pr-2">
-            {/* Run Code Button */}
-            <button 
-              onClick={() => runActiveFileCode()} 
-              disabled={isExecutingCode}
-              title="Run Code via Shiro HTTP Execution Engine (Java, Python, Node, C++)" 
-              className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/20 rounded flex items-center space-x-1.5 font-mono text-[11px] font-semibold transition-all focus:outline-none disabled:opacity-50 cursor-pointer"
-            >
-              {isExecutingCode ? (
-                <Loader2 className="w-3 h-3 text-emerald-500 animate-spin" />
-              ) : (
-                <span className="text-emerald-500">▶</span>
-              )}
-              <span>{isExecutingCode ? 'Running...' : 'Run Code'}</span>
-            </button>
-
-            {/* Open Windows Terminal Button */}
-            <button 
-              onClick={() => openExternalTerminal()} 
-              title="Open Windows Terminal App on Desktop" 
-              className="px-2 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50 text-[var(--accent-cyan)] hover:text-[var(--text-primary)] rounded flex items-center space-x-1 font-mono text-[11px] transition-all focus:outline-none"
-            >
-              <span>🖥️</span>
-              <span className="hidden sm:inline">Windows Terminal</span>
-            </button>
-
             <button title="Split Editor" className="p-1 hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded transition-colors">
               <SplitSquareHorizontal className="w-3.5 h-3.5" />
             </button>
@@ -458,40 +429,8 @@ export const EditorCanvas: React.FC = () => {
             }}
           />
         ) : (
-          /* 6. Empty Start State */
-          <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] select-none p-6">
-            {/* Japanese Torii Emblem */}
-            <div className="w-16 h-16 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center mb-4 shadow-2xl relative overflow-hidden group p-3">
-              <div className="absolute inset-0 bg-gradient-to-t from-[var(--accent-coral)]/20 to-transparent"></div>
-              <ToriiIcon color="var(--accent-coral)" className="w-10 h-10 z-10 drop-shadow-[0_0_12px_var(--glow-coral)] group-hover:scale-105 transition-transform" />
-            </div>
-
-            <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-wide mb-1 font-mono">RenKairo IDE</h2>
-            <p className="text-xs text-[var(--text-muted)] mb-6 font-mono text-center">
-              {workspacePath ? `Active Scope: ${rootName}` : 'No folder opened yet'}
-            </p>
-
-            {/* Simple Clean Open Folder Button */}
-            {!workspacePath ? (
-              <button
-                onClick={openFolder}
-                className="px-6 py-2.5 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral-hover)] text-white font-semibold text-xs rounded-xl transition-all shadow-lg shadow-[var(--accent-coral)]/20 flex items-center space-x-2 font-mono group cursor-pointer"
-              >
-                <FolderOpen className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span>Open Folder From Local Machine</span>
-              </button>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={changeScopeFolder}
-                  className="px-4 py-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--accent-cyan)] hover:text-[var(--text-primary)] font-semibold text-xs rounded-xl transition-all flex items-center space-x-2 font-mono shadow-sm"
-                >
-                  <FolderSync className="w-4 h-4" />
-                  <span>Change Folder Scope</span>
-                </button>
-              </div>
-            )}
-          </div>
+          /* Empty Editor Stage - Transparent to show wallpaper image */
+          <div className="h-full w-full flex items-center justify-center select-none" />
         )}
       </div>
     </div>

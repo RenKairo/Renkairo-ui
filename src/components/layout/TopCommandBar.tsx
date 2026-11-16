@@ -1,27 +1,20 @@
 import React, { useState } from 'react';
 import { 
   Search,  
-  Moon, 
-  Sun,
-  Activity, 
   ChevronDown, 
-  FolderOpen,
-  FolderSync,
-  User,
-  Check,
-  LogOut,
-  Server
+  FolderOpen, 
+  FolderSync, 
+  User, 
+  Check, 
+  LogOut, 
+  Server 
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useAuthStore } from '../../store/authStore';
-import { ToriiIcon } from '../common/ToriiIcon';
 
 export const TopCommandBar: React.FC = () => {
   const { 
-    theme,
-    toggleTheme,
     setCommandPaletteOpen, 
-    metrics, 
     rootName, 
     workspacePath,
     openFolder,
@@ -38,18 +31,13 @@ export const TopCommandBar: React.FC = () => {
 
   return (
     <header className="h-11 bg-[var(--bg-panel)] border-b border-[var(--border-color)] px-3 flex items-center justify-between text-xs select-none z-30 relative transition-colors duration-150">
-      {/* Left: Brand Logo & Workspace Switcher */}
+      {/* Left: Project / Workspace Switcher */}
       <div className="flex items-center space-x-3">
         <div className="relative">
           <button 
             onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
             className="flex items-center space-x-2 px-2 py-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors focus:outline-none"
           >
-            {/* Japanese Torii Emblem */}
-            <div className="w-5 h-5 rounded bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center relative overflow-hidden group p-0.5">
-              <div className="absolute inset-0 bg-gradient-to-t from-[var(--accent-coral)]/20 to-transparent opacity-60"></div>
-              <ToriiIcon color="var(--accent-coral)" className="w-3.5 h-3.5 z-10 drop-shadow-[0_0_6px_var(--glow-coral)] group-hover:scale-110 transition-transform" />
-            </div>
             <span className="font-semibold tracking-wide font-mono">
               {rootName ? rootName : 'RenKairo IDE'}
             </span>
@@ -115,31 +103,8 @@ export const TopCommandBar: React.FC = () => {
         </button>
       </div>
 
-      {/* Right: Telemetry & Actions */}
+      {/* Right: Actions */}
       <div className="flex items-center space-x-3 text-[var(--text-muted)]">
-        <div className="flex items-center space-x-1.5 bg-[var(--bg-card)] border border-[var(--border-color)] px-2 py-0.5 rounded-full shadow-sm">
-          <Activity className="w-3.5 h-3.5 text-[var(--accent-emerald)] animate-pulse-subtle" />
-          <span className="text-[10px] font-mono text-[var(--accent-emerald)] font-medium">{metrics?.cpu.usage || 18}% CPU</span>
-        </div>
-
-        {/* Theme Toggle (Swappable Dark / Light Mode) */}
-        <button 
-          onClick={toggleTheme}
-          title={theme === 'dark' ? "Switch to Light Theme" : "Switch to Dark Theme"} 
-          className={`p-1.5 rounded-md transition-all focus:outline-none ${
-            theme === 'dark' 
-              ? 'hover:bg-[var(--bg-hover)] text-amber-400 hover:text-amber-300' 
-              : 'hover:bg-[var(--bg-hover)] text-amber-500 hover:text-amber-600'
-          }`}
-          aria-label="Toggle Color Theme"
-        >
-          {theme === 'dark' ? (
-            <Moon className="w-4 h-4 transition-transform hover:-rotate-12" />
-          ) : (
-            <Sun className="w-4 h-4 transition-transform hover:rotate-45" />
-          )}
-        </button>
-
         {/* Connect Server Button */}
         <button
           onClick={() => {
@@ -193,8 +158,7 @@ export const TopCommandBar: React.FC = () => {
               <LogOut className="w-3.5 h-3.5" />
             </button>
           )}
-
-          </div>
+        </div>
       </div>
     </header>
   );

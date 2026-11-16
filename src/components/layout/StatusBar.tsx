@@ -16,7 +16,7 @@ import { ToriiIcon } from '../common/ToriiIcon';
 import { getBackendBaseUrl, subscribeBackendUrlChange } from '../../services/apiConfig';
 
 export const StatusBar: React.FC = () => {
-  const { cursorPos, problems, rootName, isFolderOpening, setActiveActivity, setConnectServerModalOpen } = useIDEStore();
+  const { cursorPos, problems, rootName, isFolderOpening, setActiveActivity } = useIDEStore();
   const { gitStatus, isSyncing, sync, refreshGitStatus } = useGitStore();
   const [backendUrl, setBackendUrl] = React.useState(getBackendBaseUrl);
 
@@ -106,15 +106,14 @@ export const StatusBar: React.FC = () => {
         <span className="hidden sm:inline">UTF-8</span>
         <span className="hidden sm:inline">LF</span>
         
-        {/* Remote Shiro Backend Indicator */}
-        <button
-          onClick={() => setConnectServerModalOpen(true)}
-          title={`Active Shiro Backend: ${backendUrl}. Click to change remote server.`}
-          className="flex items-center space-x-1 text-[var(--accent-coral)] hover:text-white transition-colors cursor-pointer group px-1 py-0.5 rounded hover:bg-[var(--bg-card)]"
+        {/* Remote Shiro Backend Indicator (Read-Only) */}
+        <div
+          title={`Active Shiro Backend: ${backendUrl}`}
+          className="flex items-center space-x-1 text-[var(--accent-coral)] px-1 py-0.5 select-none"
         >
-          <Server className="w-3 h-3 group-hover:scale-110 transition-transform" />
+          <Server className="w-3 h-3 text-[var(--accent-coral)] shrink-0" />
           <span className="truncate max-w-[140px] font-mono">{backendUrl.replace(/^https?:\/\//i, '')}</span>
-        </button>
+        </div>
 
         {/* Environment Indicator */}
         <div className="flex items-center space-x-1 text-[var(--accent-cyan)]">
