@@ -402,12 +402,14 @@ export const TerminalPanel: React.FC = () => {
     });
   };
 
-  // Auto-create initial session if none exists
+  // Auto-create initial session if none exists (guarded against React StrictMode double-mount)
+  const initialSessionCreatedRef = useRef(false);
   useEffect(() => {
-    if (sessions.length === 0 && activeTerminalTab === 'TERMINAL') {
+    if (!initialSessionCreatedRef.current && sessions.length === 0 && activeTerminalTab === 'TERMINAL') {
+      initialSessionCreatedRef.current = true;
       createNewSession(shellType, workspacePath, terminalCompactPath);
     }
-  }, [activeTerminalTab]);
+  }, [activeTerminalTab, sessions.length]);
 
   // Auto-create fresh terminal when workspace changes
   const prevWorkspaceRef = useRef<string | null>(workspacePath);
@@ -498,9 +500,9 @@ export const TerminalPanel: React.FC = () => {
       if (session.executionMode === 'remote' && remoteServerUrl) {
         const wsProto = remoteServerUrl.startsWith('https') ? 'wss:' : 'ws:';
         const host = remoteServerUrl.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
-        const userId = useAuthStore.getState().user?.userId || 'developer';
+        const userId = useAuthStore.getState().user?.userId || 'usr_b1860126';
         const cleanSessionId = session.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-        wsUrl = `${wsProto}//${host}/ws/terminal?shell=bash&user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(cleanSessionId)}`;
+        wsUrl = `${wsProto}//${host}/ws/terminal?shell=bash&user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(cleanSessionId)}&ide_port=50051`;
         if (authToken) {
           wsUrl += `&token=${encodeURIComponent(authToken)}`;
         }
