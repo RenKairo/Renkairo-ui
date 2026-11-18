@@ -318,7 +318,7 @@ export interface RDTPTelemetryData {
   totalBatchesInEpoch?: number;
   datasetProgressPct?: number;
   currentBatchFiles?: string[];
-  pipelineState: 'IDLE' | 'COMPUTE_BOUND' | 'IO_BOUND' | 'COMPLETED';
+  pipelineState: 'IDLE' | 'COMPUTE_BOUND' | 'IO_BOUND' | 'STREAMING_WAN' | 'BACKPRESSURE_STALL' | 'COMPLETED' | string;
   limitingStage: string;
   timings: RDTPTiming;
 }

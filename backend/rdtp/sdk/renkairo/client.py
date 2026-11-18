@@ -214,6 +214,26 @@ def stream(
         except Exception:
             pass
 
+def load_batches(
+    batch_size: int = 32,
+    codec: str = "jpeg",
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    timeout: float = 15.0,
+) -> Iterator[List[bytes]]:
+    """
+    On-demand generator that yields batches of images directly from the RenKairo IDE dataset.
+    
+    Usage:
+        import renkairo
+
+        for batch in renkairo.load_batches(batch_size=32):
+            # batch is a list of image bytes [img1, img2, ...]
+            train_on_batch(batch)
+    """
+    for _hdr, batch in stream(batch_size=batch_size, codec=codec, host=host, port=port, timeout=timeout):
+        yield batch
+
 def load_data(
     batch_size: int = 32,
     codec: str = "jpeg",

@@ -17,7 +17,7 @@ Usage:
             count += 1
 """
 
-from .client import load_data, stream, unpack_images, CodecType, RDTPPacketHeader
+from .client import load_data, load_batches, stream, unpack_images, CodecType, RDTPPacketHeader
 from .decorators import dataset
 
 __version__ = "1.0.0"
@@ -25,6 +25,7 @@ __author__ = "RenKairo Intelligence Lab"
 
 __all__ = [
     "load_data",
+    "load_batches",
     "stream",
     "unpack_images",
     "dataset",
