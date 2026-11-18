@@ -6,6 +6,8 @@
 
 import fs from 'fs';
 import path from 'path';
+import net from 'net';
+import zlib from 'zlib';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -59,8 +61,48 @@ class RDTPEngine {
 
     this.datasetFiles = [];
     this.simulationTimer = null;
+    this.remoteSocket = null;
     this.logs = [];
     this.maxLogs = 300;
+  }
+
+  packRDTPBatch(epochId, batchId, filePaths, codec = 'jpeg') {
+    const rawImages = [];
+    for (const fp of filePaths) {
+      try {
+        if (fs.existsSync(fp)) {
+          rawImages.push(fs.readFileSync(fp));
+        }
+      } catch (e) {}
+    }
+
+    let payloadLen = 0;
+    for (const img of rawImages) {
+      payloadLen += 4 + img.length;
+    }
+
+    const payload = Buffer.alloc(payloadLen);
+    let offset = 0;
+    for (const img of rawImages) {
+      payload.writeUInt32BE(img.length, offset);
+      offset += 4;
+      img.copy(payload, offset);
+      offset += img.length;
+    }
+
+    const checksum = zlib.crc32(payload) & 0xFFFFFFFF;
+    const header = Buffer.alloc(36);
+    header.writeUInt32BE(0x52445450, 0); // "RDTP" in ASCII
+    header.writeBigUInt64BE(BigInt(epochId), 4);
+    header.writeBigUInt64BE(BigInt(batchId), 12);
+    header.writeUInt32BE(rawImages.length, 20);
+    const codecVal = codec === 'raw_fp32' ? 0 : (codec === 'webp' ? 2 : 1);
+    header.writeUInt16BE(codecVal, 24);
+    header.writeUInt16BE(0, 26);
+    header.writeUInt32BE(payload.length, 28);
+    header.writeUInt32BE(checksum, 32);
+
+    return Buffer.concat([header, payload]);
   }
 
   scanDataset(dirPath) {
@@ -394,6 +436,65 @@ class RDTPEngine {
     let batchInEpoch = 0;
     let fileCursor = 0;
 
+    // Connect to real remote TCP server if remote execution target is chosen
+    if (this.remoteSocket) {
+      try { this.remoteSocket.destroy(); } catch (e) {}
+      this.remoteSocket = null;
+    }
+
+    let targetHost = '127.0.0.1';
+    let targetPort = 50051;
+    if (this.session.executionTarget === 'remote' && this.session.targetEndpoint) {
+      const parts = this.session.targetEndpoint.trim().split(':');
+      targetHost = parts[0] || '127.0.0.1';
+      targetPort = parseInt(parts[1], 10) || 50051;
+    } else {
+      targetHost = '127.0.0.1';
+      targetPort = 50051;
+    }
+
+    try {
+      const socket = net.createConnection({ host: targetHost, port: targetPort });
+      this.remoteSocket = socket;
+
+      socket.on('connect', () => {
+        this.appendLog(
+          'WAN_TRANSPORT',
+          `TCP Stream (${targetHost}:${targetPort})`,
+          `Connected to live RDTP Consumer at ${targetHost}:${targetPort}! Streaming real binary image batches...`,
+          1.8
+        );
+      });
+
+      socket.on('data', (chunk) => {
+        if (chunk.length >= 36) {
+          const magic = chunk.readUInt32BE(0);
+          const codec = chunk.readUInt16BE(24);
+          if (magic === 0x52445450 && codec === 5) { // CREDIT_ACK
+            this.telemetry.currentCredits = Math.min(this.session.bufferDepth, this.telemetry.currentCredits + 1);
+            this.telemetry.currentBufferOccupancy = Math.max(0, this.session.bufferDepth - this.telemetry.currentCredits);
+          }
+        }
+      });
+
+      socket.on('error', (err) => {
+        // Consumer not listening; fallback to local visual emulation
+        this.appendLog(
+          'WAN_TRANSPORT',
+          `TCP Stream (${targetHost}:${targetPort})`,
+          `Consumer daemon not listening (${err.code || err.message}). Streaming in local emulation mode.`,
+          0.8
+        );
+        this.remoteSocket = null;
+      });
+
+      socket.on('close', () => {
+        this.remoteSocket = null;
+      });
+    } catch (err) {
+      this.remoteSocket = null;
+    }
+
     // Run active telemetry pulse
     clearInterval(this.simulationTimer);
     this.simulationTimer = setInterval(() => {
@@ -437,13 +538,29 @@ class RDTPEngine {
         sampleNamesStr = slice.slice(0, 2).map(f => path.basename(f)).join(', ') + (slice.length > 2 ? ` (+${slice.length - 2} more)` : '');
       }
 
+      // Check sliding window flow control: if real consumer socket is connected and credits depleted, stall pipeline
+      if (this.remoteSocket && !this.remoteSocket.destroyed && this.telemetry.currentCredits <= 0) {
+        this.telemetry.pipelineState = 'BACKPRESSURE_STALL';
+        return;
+      }
+
+      // Dispatch real binary RDTP frame over live TCP socket if connected
+      if (this.remoteSocket && !this.remoteSocket.destroyed && batchFiles.length > 0) {
+        try {
+          const packet = this.packRDTPBatch(this.telemetry.currentEpoch, batchId, batchFiles, this.session.codec);
+          this.remoteSocket.write(packet);
+          this.telemetry.currentCredits = Math.max(0, this.telemetry.currentCredits - 1);
+          this.telemetry.currentBufferOccupancy = Math.max(0, this.session.bufferDepth - this.telemetry.currentCredits);
+        } catch (e) {}
+      } else if (!this.remoteSocket) {
+        // Jitter buffer occupancy in local visual emulation mode
+        const jitter = Math.floor(Math.random() * this.session.bufferDepth) + 1;
+        this.telemetry.currentBufferOccupancy = Math.min(this.session.bufferDepth, jitter);
+        this.telemetry.currentCredits = Math.max(1, this.session.bufferDepth - this.telemetry.currentBufferOccupancy);
+      }
+
       this.telemetry.totalBytesSent += batchWireBytes;
       this.telemetry.datasetProgressPct = Math.min(100, Math.round((batchInEpoch / totalBatchesInEpoch) * 100));
-
-      // Jitter buffer occupancy between 1 and bufferDepth
-      const jitter = Math.floor(Math.random() * this.session.bufferDepth) + 1;
-      this.telemetry.currentBufferOccupancy = Math.min(this.session.bufferDepth, jitter);
-      this.telemetry.currentCredits = Math.max(1, this.session.bufferDepth - this.telemetry.currentBufferOccupancy);
 
       // Accumulate idle GPU dollars saved (eliminated upload wait)
       this.telemetry.accumulatedIdleDollarsSaved += 0.0028;
@@ -536,6 +653,26 @@ class RDTPEngine {
           this.session.isActive = false;
           clearInterval(this.simulationTimer);
           this.telemetry.pipelineState = 'COMPLETED';
+
+          if (this.remoteSocket && !this.remoteSocket.destroyed) {
+            try {
+              const eofHeader = Buffer.alloc(36);
+              eofHeader.writeUInt32BE(0x52445450, 0); // "RDTP"
+              eofHeader.writeBigUInt64BE(BigInt(this.telemetry.currentEpoch), 4);
+              eofHeader.writeBigUInt64BE(BigInt(batchId), 12);
+              eofHeader.writeUInt32BE(0, 20);
+              eofHeader.writeUInt16BE(8, 24); // EPOCH_END (8)
+              eofHeader.writeUInt16BE(0, 26);
+              eofHeader.writeUInt32BE(0, 28);
+              eofHeader.writeUInt32BE(0, 32);
+              this.remoteSocket.write(eofHeader);
+              setTimeout(() => {
+                try { if (this.remoteSocket) this.remoteSocket.destroy(); } catch (e) {}
+                this.remoteSocket = null;
+              }, 250);
+            } catch (e) {}
+          }
+
           this.appendLog(
             'ACCELERATOR_KERNEL',
             'Training Complete',
@@ -556,6 +693,10 @@ class RDTPEngine {
   stopSession() {
     this.session.isActive = false;
     clearInterval(this.simulationTimer);
+    if (this.remoteSocket) {
+      try { this.remoteSocket.destroy(); } catch (e) {}
+      this.remoteSocket = null;
+    }
     this.telemetry.pipelineState = 'IDLE';
     this.telemetry.currentBufferOccupancy = 0;
     this.telemetry.currentCredits = this.session.bufferDepth;

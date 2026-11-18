@@ -26,7 +26,7 @@ from rdtp.protocol import (
     HEADER_SIZE,
 )
 from rdtp.producer import RDTPProducer, RDTPStreamDataset, RDTPStreamLoader
-from rdtp.consumer import RDTPConsumer
+from rdtp.consumer import RDTPConsumer, unpack_images
 from rdtp.telemetry import RDTPTelemetry, Theorem1Audit
 from rdtp.peripheral import PeripheralStreamCapture
 
@@ -41,6 +41,7 @@ __all__ = [
     "RDTPStreamDataset",
     "RDTPStreamLoader",
     "RDTPConsumer",
+    "unpack_images",
     "RDTPTelemetry",
     "Theorem1Audit",
     "PeripheralStreamCapture",
