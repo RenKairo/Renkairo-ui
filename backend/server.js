@@ -1000,7 +1000,7 @@ app.post(['/api/ssh/provision', '/api/workspace/provision'], async (req, res) =>
 // Remote Workspace File Browser & Editor Proxy
 // ----------------------------------------------------
 app.get('/api/remote/fs/tree', async (req, res) => {
-  const { workspaceId = 'usr_developer_01', subpath = '', serverUrl } = req.query;
+  const { workspaceId = 'usr_b1860126', subpath = '', serverUrl } = req.query;
   const targetBackend = serverUrl || 'http://localhost:8080';
 
   try {
@@ -1059,7 +1059,7 @@ app.get('/api/remote/fs/tree', async (req, res) => {
 });
 
 app.get('/api/remote/fs/file', async (req, res) => {
-  const { workspaceId = 'usr_developer_01', filePath, serverUrl } = req.query;
+  const { workspaceId = 'usr_b1860126', filePath, serverUrl } = req.query;
   if (!filePath) return res.status(400).json({ error: 'filePath is required' });
   const targetBackend = serverUrl || 'http://localhost:8080';
 
@@ -1084,6 +1084,35 @@ app.get('/api/remote/fs/file', async (req, res) => {
       size: st.size,
       modifiedAt: st.mtime.toISOString()
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/remote/fs/file', async (req, res) => {
+  const { workspaceId = 'usr_b1860126', path: filePath, content, serverUrl } = req.body;
+  if (!filePath || content === undefined) return res.status(400).json({ error: 'path and content required' });
+  const targetBackend = serverUrl || 'http://localhost:8080';
+
+  try {
+    const fetchRes = await fetch(`${targetBackend.replace(/\/+$/, '')}/workspace/${workspaceId}/file`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: filePath, content })
+    }).catch(() => null);
+    if (fetchRes && fetchRes.ok) {
+      const data = await fetchRes.json();
+      return res.json(data);
+    }
+  } catch (e) {}
+
+  try {
+    const home = os.homedir();
+    const full = path.resolve(home, '.renkairo', 'workspaces', workspaceId, filePath);
+    const parentDir = path.dirname(full);
+    if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir, { recursive: true });
+    fs.writeFileSync(full, content, 'utf-8');
+    res.json({ status: 'saved', path: filePath, size: content.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

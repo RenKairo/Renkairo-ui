@@ -92,7 +92,7 @@ interface IDEState {
   cursorPos: { line: number; col: number };
   setCursorPos: (line: number, col: number) => void;
   openFile: (path: string, name: string, line?: number) => Promise<void>;
-  openRemoteFile: (remotePath: string, name: string, content: string, size?: number) => Promise<void>;
+  openRemoteFile: (remotePath: string, name: string, content: string, size?: number, workspaceId?: string) => Promise<void>;
   closeTab: (id: string) => void;
   closeAllTabs: () => void;
   setActiveTabId: (id: string) => void;
@@ -444,9 +444,11 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     }
   },
 
-  openRemoteFile: async (remotePath: string, name: string, content: string, size?: number) => {
+  openRemoteFile: async (remotePath: string, name: string, content: string, size?: number, workspaceId?: string) => {
+    const ws = workspaceId || 'usr_b1860126';
+    const fullRemotePath = `remote://${ws}/${remotePath.replace(/^\/+/, '')}`;
     const { tabs } = get();
-    const existing = tabs.find((t) => t.path === `remote://${remotePath}`);
+    const existing = tabs.find((t) => t.path === fullRemotePath || t.path === `remote://${remotePath}`);
     if (existing) {
       set({ activeTabId: existing.id });
       return;
@@ -472,7 +474,7 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     const newTab: TabItem = {
       id: `remote_tab_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       title: `${name} (Server)`,
-      path: `remote://${remotePath}`,
+      path: fullRemotePath,
       content: content,
       isDirty: false,
       language,
@@ -528,15 +530,53 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     if (!activeTab) return;
 
     if (activeTab.path.startsWith('remote://')) {
-      const remotePath = activeTab.path.replace(/^remote:\/\//, '');
-      const backendUrl = remoteServerUrl || getBackendBaseUrl();
-      const res = await fetch(`${backendUrl.replace(/\/+$/, '')}/workspace/usr_developer_01/file`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: remotePath, content: activeTab.content })
-      }).catch(() => null);
+      const stripped = activeTab.path.replace(/^remote:\/\//, '');
+      let targetWorkspace = 'usr_b1860126';
+      let targetPath = stripped;
+      const slashIdx = stripped.indexOf('/');
+      if (slashIdx !== -1) {
+        targetWorkspace = stripped.substring(0, slashIdx);
+        targetPath = stripped.substring(slashIdx + 1);
+      }
 
-      if (res && res.ok) {
+      const backendUrl = remoteServerUrl || getBackendBaseUrl();
+      let saved = false;
+
+      // 1. Try direct Shiro backend endpoint
+      try {
+        const res = await fetch(`${backendUrl.replace(/\/+$/, '')}/workspace/${targetWorkspace}/file`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: targetPath, content: activeTab.content })
+        }).catch(() => null);
+
+        if (res && res.ok) {
+          saved = true;
+        }
+      } catch (e) {}
+
+      // 2. Fallback to local IDE backend proxy
+      if (!saved) {
+        try {
+          const apiBase = typeof window !== 'undefined' && window.location.protocol === 'file:' ? 'http://localhost:8000/api' : '/api';
+          const proxyRes = await fetch(`${apiBase}/remote/fs/file`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              workspaceId: targetWorkspace,
+              path: targetPath,
+              content: activeTab.content,
+              serverUrl: backendUrl
+            })
+          }).catch(() => null);
+
+          if (proxyRes && proxyRes.ok) {
+            saved = true;
+          }
+        } catch (e) {}
+      }
+
+      if (saved) {
         set({
           tabs: tabs.map((t) => (t.id === activeTabId ? { ...t, isDirty: false } : t))
         });
