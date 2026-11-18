@@ -1076,14 +1076,14 @@ class RDTPEngine {
 
 const BUILTIN_TEMPLATES = {
   counter: `"""
-RenKairo RDTP: Minimal On-Demand Remote Dataset Streamer
-Streams dataset images directly from RenKairo IDE without prior cloud uploading.
-Zero manual IP configuration required.
+RenKairo RDTP: Simultaneous Batch Streaming Counter
+Streams and processes dataset batches on-the-fly without waiting for upfront upload.
+Execution starts at 0.00s; network transfers happen simultaneously in the background.
 """
 import os
 import sys
+import time
 
-# Ensure local renkairo package is resolved
 for p in (os.path.dirname(os.path.abspath(__file__)), os.getcwd()):
     if p not in sys.path:
         sys.path.insert(0, p)
@@ -1091,18 +1091,55 @@ for p in (os.path.dirname(os.path.abspath(__file__)), os.getcwd()):
 try:
     import renkairo
 except ImportError:
-    print("⚠️ Local 'renkairo' package loading fallback...")
     sys.path.append(os.path.abspath("renkairo"))
     import renkairo
 
-print("🚀 [RenKairo Client] Requesting on-demand dataset from RenKairo IDE...")
+def get_batches(batch_size=32):
+    if hasattr(renkairo, "load_batches"):
+        yield from renkairo.load_batches(batch_size=batch_size)
+    elif hasattr(renkairo, "stream"):
+        for _hdr, batch in renkairo.stream(batch_size=batch_size):
+            yield batch
+    else:
+        batch = []
+        for img in renkairo.load_data(batch_size=batch_size):
+            batch.append(img)
+            if len(batch) >= batch_size:
+                yield batch
+                batch = []
+        if batch:
+            yield batch
+
+print("=" * 78)
+print("🚀 [RenKairo RDTP Engine] Simultaneous Real-Time Batch Streaming")
+print("⚡ Unlike Google Colab: ZERO upfront dataset upload wait time!")
+print("⚡ Execution starts NOW. Data transfers in batches SIMULTANEOUSLY.")
+print("=" * 78)
+
+start_time = time.perf_counter()
 total_images = 0
+total_bytes = 0
+batch_count = 0
 
-for img in renkairo.load_data():
-    total_images += 1
-    print(f"[{total_images:03d}] Received image: {len(img):,} bytes")
+for batch in get_batches(batch_size=32):
+    batch_count += 1
+    total_images += len(batch)
+    batch_bytes = sum(len(img) for img in batch)
+    total_bytes += batch_bytes
+    elapsed = time.perf_counter() - start_time
+    throughput = total_images / max(elapsed, 0.001)
 
-print(f"\\n🎉 [Complete] Counted {total_images} images streamed on-demand from RenKairo IDE!")
+    print(
+        f"[{elapsed:05.2f}s] 📦 Batch #{batch_count:02d} Ingested: "
+        f"{len(batch)} images ({batch_bytes / 1024:.1f} KiB) | "
+        f"Processed on-the-fly | Total: {total_images} imgs ({throughput:.1f} img/s)"
+    )
+
+total_elapsed = time.perf_counter() - start_time
+print("=" * 78)
+print(f"🎉 [Complete] Streamed & Processed {total_images} images across {batch_count} batches in {total_elapsed:.2f}s!")
+print("💡 Execution began at 0.00s; data transfer occurred simultaneously in batches.")
+print("=" * 78)
 `,
   vit: `"""
 RenKairo RDTP Template: Vision Transformer (ViT-B/16) Edge-to-Cloud Streaming Training.
