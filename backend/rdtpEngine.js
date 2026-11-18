@@ -62,8 +62,183 @@ class RDTPEngine {
     this.datasetFiles = [];
     this.simulationTimer = null;
     this.remoteSocket = null;
+    this.providerServer = null;
+    this.providerClients = new Set();
     this.logs = [];
     this.maxLogs = 300;
+
+    // Start on-demand RDTP provider daemon
+    this.initProviderServer(50051);
+  }
+
+  initProviderServer(port = 50051) {
+    if (this.providerServer) return;
+
+    try {
+      this.providerServer = net.createServer((socket) => {
+        const clientAddr = `${socket.remoteAddress}:${socket.remotePort}`;
+        this.providerClients.add(socket);
+
+        this.appendLog(
+          'WAN_TRANSPORT',
+          `Inbound Runtime (${clientAddr})`,
+          `Remote Python runtime connected to RenKairo IDE Provider. Waiting for on-demand pull request...`,
+          0.8
+        );
+
+        let activeBuffer = Buffer.alloc(0);
+
+        socket.on('data', (chunk) => {
+          activeBuffer = Buffer.concat([activeBuffer, chunk]);
+
+          while (activeBuffer.length >= 36) {
+            const magic = activeBuffer.readUInt32BE(0);
+            if (magic !== 0x52445450) {
+              activeBuffer = activeBuffer.slice(1);
+              continue;
+            }
+
+            const codec = activeBuffer.readUInt16BE(24);
+            const payloadLen = activeBuffer.readUInt32BE(28);
+            const totalFrameLen = 36 + payloadLen;
+
+            if (activeBuffer.length < totalFrameLen) {
+              break;
+            }
+
+            activeBuffer = activeBuffer.slice(totalFrameLen);
+
+            if (codec === 10) { // PULL_REQUEST
+              this.appendLog(
+                'WAN_TRANSPORT',
+                `On-Demand Pull Request`,
+                `Python runtime requested dataset stream. Streaming loaded IDE dataset...`,
+                1.5
+              );
+              this.handleClientPull(socket, 32);
+            } else if (codec === 5) { // CREDIT_ACK
+              this.telemetry.currentCredits = Math.min(this.session.bufferDepth, this.telemetry.currentCredits + 1);
+              this.telemetry.currentBufferOccupancy = Math.max(0, this.session.bufferDepth - this.telemetry.currentCredits);
+              if (socket._sendNextBatch) {
+                socket._sendNextBatch();
+              }
+            }
+          }
+        });
+
+        socket.on('error', () => {
+          this.providerClients.delete(socket);
+        });
+
+        socket.on('close', () => {
+          this.providerClients.delete(socket);
+        });
+      });
+
+      this.providerServer.on('error', (err) => {
+        if (err.code !== 'EADDRINUSE') {
+          console.warn('[RDTP Provider Server] error:', err.message);
+        }
+      });
+
+      this.providerServer.listen(port, '0.0.0.0', () => {
+        console.log(`[RDTP Provider Server] On-demand streaming daemon listening on 0.0.0.0:${port}`);
+      });
+    } catch (e) {
+      console.warn('[RDTP Provider Server] failed to start listener:', e.message);
+    }
+  }
+
+  handleClientPull(socket, requestedBatchSize) {
+    if (this.datasetFiles.length === 0) {
+      if (this.session.datasetPath && fs.existsSync(this.session.datasetPath)) {
+        this.scanDataset(this.session.datasetPath);
+      } else {
+        const sampleCifar = path.resolve(__dirname, '../datasets/sample_cifar_stream');
+        if (fs.existsSync(sampleCifar)) {
+          this.scanDataset(sampleCifar);
+        } else {
+          const defaultSampleDir = path.resolve(__dirname, '../datasets/sample_images');
+          this.generateSampleDataset(defaultSampleDir);
+        }
+      }
+    }
+
+    const batchSize = Math.max(1, requestedBatchSize || this.session.batchSize || 32);
+    const files = this.datasetFiles;
+    let fileCursor = 0;
+    let batchId = 0;
+    const epochId = 1;
+    let credits = this.session.bufferDepth;
+
+    this.session.isActive = true;
+    this.telemetry.pipelineState = 'STREAMING_WAN';
+    this.telemetry.currentCredits = credits;
+    this.telemetry.currentBufferOccupancy = 0;
+    this.telemetry.totalBatchesInEpoch = Math.max(1, Math.ceil(files.length / batchSize));
+
+    const sendBatch = () => {
+      if (socket.destroyed || !socket.writable) return;
+      if (fileCursor >= files.length) {
+        const eofHeader = Buffer.alloc(36);
+        eofHeader.writeUInt32BE(0x52445450, 0);
+        eofHeader.writeBigUInt64BE(BigInt(epochId), 4);
+        eofHeader.writeBigUInt64BE(BigInt(batchId), 12);
+        eofHeader.writeUInt32BE(0, 20);
+        eofHeader.writeUInt16BE(8, 24); // EPOCH_END (8)
+        eofHeader.writeUInt16BE(0, 26);
+        eofHeader.writeUInt32BE(0, 28);
+        eofHeader.writeUInt32BE(0, 32);
+        socket.write(eofHeader);
+        this.telemetry.pipelineState = 'COMPLETED';
+        this.session.isActive = false;
+        this.appendLog(
+          'ACCELERATOR_KERNEL',
+          'On-Demand Stream Complete',
+          `✅ Dispatched all ${files.length} images to remote runtime across ${batchId} batches.`,
+          1.0
+        );
+        return;
+      }
+
+      if (credits <= 0) {
+        this.telemetry.pipelineState = 'BACKPRESSURE_STALL';
+        return;
+      }
+
+      const slice = files.slice(fileCursor, fileCursor + batchSize);
+      fileCursor += slice.length;
+      batchId += 1;
+      credits -= 1;
+      this.telemetry.currentCredits = credits;
+      this.telemetry.currentBufferOccupancy = this.session.bufferDepth - credits;
+      this.telemetry.totalBatchesSent = batchId;
+      this.telemetry.currentBatchInEpoch = batchId;
+      this.telemetry.datasetProgressPct = Math.min(100, Math.round((fileCursor / files.length) * 100));
+
+      const packet = this.packRDTPBatch(epochId, batchId, slice, this.session.codec);
+      socket.write(packet);
+      this.telemetry.totalBytesSent += packet.length;
+
+      this.appendLog(
+        'EDGE_PREPROCESS',
+        'On-Demand Batch Dispatch',
+        `Dispatched Batch #${batchId} (${slice.length} samples, ${(packet.length / 1024).toFixed(1)} KiB) to remote consumer.`,
+        1.1
+      );
+    };
+
+    socket._sendNextBatch = () => {
+      credits = Math.min(this.session.bufferDepth, credits + 1);
+      this.telemetry.currentCredits = credits;
+      this.telemetry.currentBufferOccupancy = Math.max(0, this.session.bufferDepth - credits);
+      sendBatch();
+    };
+
+    // Pump initial window of N batches
+    while (credits > 0 && fileCursor < files.length) {
+      sendBatch();
+    }
   }
 
   packRDTPBatch(epochId, batchId, filePaths, codec = 'jpeg') {
@@ -697,6 +872,10 @@ class RDTPEngine {
       try { this.remoteSocket.destroy(); } catch (e) {}
       this.remoteSocket = null;
     }
+    for (const client of this.providerClients) {
+      try { client.destroy(); } catch (e) {}
+    }
+    this.providerClients.clear();
     this.telemetry.pipelineState = 'IDLE';
     this.telemetry.currentBufferOccupancy = 0;
     this.telemetry.currentCredits = this.session.bufferDepth;

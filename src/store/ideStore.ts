@@ -802,13 +802,29 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     }));
 
     try {
+      const envVars: Record<string, string> = {};
+      if (activeTab.content.includes('renkairo')) {
+        try {
+          const apiBase = typeof window !== 'undefined' && window.location.protocol === 'file:' ? 'http://localhost:8000/api' : '/api';
+          const hostRes = await fetch(`${apiBase}/rdtp/host-info`).catch(() => null);
+          if (hostRes && hostRes.ok) {
+            const hostInfo = await hostRes.json().catch(() => null);
+            if (hostInfo && hostInfo.preferredHost) {
+              envVars['RENKAIRO_IDE_HOST'] = hostInfo.preferredHost;
+              envVars['RENKAIRO_IDE_PORT'] = String(hostInfo.port || 50051);
+            }
+          }
+        } catch (e) {}
+      }
+
       const result = await executionService.runCode({
         code: activeTab.content,
         language: activeTab.language || 'auto',
         filePath: activeTab.path,
         workspaceId: get().workspacePath || 'ws-default',
         provider: 'DOCKER',
-        timeoutSeconds: 30
+        environmentVars: Object.keys(envVars).length > 0 ? envVars : undefined,
+        timeoutSeconds: 60
       });
 
       const finishTime = new Date().toLocaleTimeString();

@@ -7,6 +7,7 @@ export interface ExecutionRequestPayload {
   workspaceId?: string;
   provider?: string;
   useGpu?: boolean;
+  environmentVars?: Record<string, string>;
   timeoutSeconds?: number;
 }
 

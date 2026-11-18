@@ -36,6 +36,7 @@ class CodecType(IntEnum):
     HEARTBEAT_PONG = 7
     EPOCH_END = 8
     CHECKPOINT_STREAM = 9
+    PULL_REQUEST = 10
 
 @dataclass
 class RDTPPacketHeader:

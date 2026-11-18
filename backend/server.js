@@ -1198,6 +1198,35 @@ app.get('/api/rdtp/status', (req, res) => {
   }
 });
 
+app.get('/api/rdtp/host-info', (req, res) => {
+  try {
+    const interfaces = os.networkInterfaces();
+    let tailscaleIp = null;
+    let lanIp = null;
+
+    for (const name of Object.keys(interfaces)) {
+      for (const net of interfaces[name] || []) {
+        if (net.family === 'IPv4' && !net.internal) {
+          if (net.address.startsWith('100.')) {
+            tailscaleIp = net.address;
+          } else if (!lanIp) {
+            lanIp = net.address;
+          }
+        }
+      }
+    }
+
+    res.json({
+      tailscaleIp,
+      lanIp,
+      preferredHost: tailscaleIp || lanIp || '127.0.0.1',
+      port: 50051
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/rdtp/configure', (req, res) => {
   try {
     const status = rdtpEngine.configure(req.body);
