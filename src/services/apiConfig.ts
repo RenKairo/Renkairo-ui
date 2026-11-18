@@ -7,9 +7,21 @@ const listeners = new Set<BackendUrlChangeListener>();
 
 export function getBackendBaseUrl(): string {
   try {
-    const saved = localStorage.getItem(BACKEND_URL_STORAGE_KEY);
+    let saved = localStorage.getItem(BACKEND_URL_STORAGE_KEY);
     if (saved && saved.trim()) {
-      return saved.trim().replace(/\/+$/, '');
+      let normalized = saved.trim().replace(/\/+$/, '');
+      if (!/^https?:\/\//i.test(normalized)) {
+        normalized = `http://${normalized}`;
+      }
+      try {
+        const u = new URL(normalized);
+        if (!u.port) {
+          u.port = '8080';
+          normalized = u.toString().replace(/\/+$/, '');
+          localStorage.setItem(BACKEND_URL_STORAGE_KEY, normalized);
+        }
+      } catch (e) {}
+      return normalized;
     }
   } catch (e) {}
   return DEFAULT_BACKEND_URL;
@@ -24,6 +36,14 @@ export function setBackendBaseUrl(rawUrl: string): string {
     normalized = `http://${normalized}`;
   }
   normalized = normalized.replace(/\/+$/, '');
+
+  try {
+    const u = new URL(normalized);
+    if (!u.port) {
+      u.port = '8080';
+      normalized = u.toString().replace(/\/+$/, '');
+    }
+  } catch (e) {}
 
   try {
     localStorage.setItem(BACKEND_URL_STORAGE_KEY, normalized);

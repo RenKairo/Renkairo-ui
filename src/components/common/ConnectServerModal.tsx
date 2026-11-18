@@ -72,9 +72,9 @@ export const ConnectServerModal: React.FC = () => {
   const [httpPort, setHttpPort] = useState(() => {
     try {
       const u = new URL(currentSavedBackendUrl);
-      return u.port || (u.hostname === 'localhost' || u.hostname === '127.0.0.1' ? '8080' : '');
+      return u.port || '8080';
     } catch {
-      return '';
+      return '8080';
     }
   });
   const [httpTesting, setHttpTesting] = useState(false);
@@ -157,10 +157,8 @@ export const ConnectServerModal: React.FC = () => {
 
   // Clean and construct HTTP Target URL
   const cleanHttpHost = httpHost.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/:\d+$/, '');
-  const cleanHttpPort = httpPort.trim();
-  const constructedHttpUrl = cleanHttpPort 
-    ? `${httpProtocol}://${cleanHttpHost || 'localhost'}:${cleanHttpPort}`
-    : `${httpProtocol}://${cleanHttpHost || 'localhost'}`;
+  const cleanHttpPort = httpPort.trim() || '8080';
+  const constructedHttpUrl = `${httpProtocol}://${cleanHttpHost || 'localhost'}:${cleanHttpPort}`;
 
   // Helper when user pastes full URL into host box
   const handleHttpHostChange = (val: string) => {
@@ -170,7 +168,7 @@ export const ConnectServerModal: React.FC = () => {
         const u = new URL(clean);
         setHttpProtocol(u.protocol.replace(':', '') as 'http' | 'https');
         setHttpHost(u.hostname);
-        setHttpPort(u.port || '');
+        setHttpPort(u.port || '8080');
         return;
       } catch (e) {}
     }
@@ -178,11 +176,8 @@ export const ConnectServerModal: React.FC = () => {
     if (clean.includes(':')) {
       const parts = clean.split(':');
       setHttpHost(parts[0]);
-      setHttpPort(parts[1] || '');
+      setHttpPort(parts[1] || '8080');
       return;
-    }
-    if (clean.includes('.') && httpPort === '8080') {
-      setHttpPort('');
     }
     setHttpHost(clean);
   };

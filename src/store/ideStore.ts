@@ -594,14 +594,27 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     }
   })(),
   setRemoteServerConnected: (connected, url, name) => {
+    let normalizedUrl = url;
     try {
       localStorage.setItem('renkairo_remote_server_connected', String(connected));
-      if (url) localStorage.setItem('renkairo_backend_url', url);
+      if (normalizedUrl) {
+        let trimmed = normalizedUrl.trim();
+        if (!/^https?:\/\//i.test(trimmed)) trimmed = `http://${trimmed}`;
+        try {
+          const u = new URL(trimmed);
+          if (!u.port) {
+            u.port = '8080';
+            trimmed = u.toString().replace(/\/+$/, '');
+          }
+        } catch (e) {}
+        normalizedUrl = trimmed;
+        localStorage.setItem('renkairo_backend_url', normalizedUrl);
+      }
       if (name) localStorage.setItem('renkairo_remote_server_name', name);
     } catch (e) {}
     set((state) => ({
       isRemoteServerConnected: connected,
-      remoteServerUrl: url !== undefined ? url : state.remoteServerUrl,
+      remoteServerUrl: normalizedUrl !== undefined ? normalizedUrl : state.remoteServerUrl,
       remoteServerName: name !== undefined ? name : state.remoteServerName,
       // If disconnected, fallback to local execution
       remoteExecutionMode: connected ? state.remoteExecutionMode : 'local'
