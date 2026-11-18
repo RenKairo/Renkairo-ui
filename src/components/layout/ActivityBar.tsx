@@ -1,6 +1,7 @@
 import React from 'react';
 import { 
   FolderTree, 
+  Server,
   Search, 
   GitBranch, 
   Users, 
@@ -12,12 +13,13 @@ import { useGitStore } from '../../store/gitStore';
 import { ActivityView } from '../../types/ide';
 
 export const ActivityBar: React.FC = () => {
-  const { activeActivity, setActiveActivity } = useIDEStore();
+  const { activeActivity, setActiveActivity, isRemoteServerConnected } = useIDEStore();
   const { gitStatus } = useGitStore();
   const gitChangesCount = gitStatus?.totalChanges || 0;
 
   const topNavItems: { id: ActivityView; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'explorer', label: 'Explorer', icon: FolderTree },
+    { id: 'remote', label: 'Server Files', icon: Server },
     { id: 'search', label: 'Search', icon: Search },
     { id: 'git', label: 'Source Control', icon: GitBranch },
     { id: 'rdtp', label: 'RDTP ML Studio', icon: Zap },

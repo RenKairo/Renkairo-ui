@@ -997,6 +997,99 @@ app.post(['/api/ssh/provision', '/api/workspace/provision'], async (req, res) =>
 });
 
 // ----------------------------------------------------
+// Remote Workspace File Browser & Editor Proxy
+// ----------------------------------------------------
+app.get('/api/remote/fs/tree', async (req, res) => {
+  const { workspaceId = 'usr_developer_01', subpath = '', serverUrl } = req.query;
+  const targetBackend = serverUrl || 'http://localhost:8080';
+
+  try {
+    const fetchRes = await fetch(`${targetBackend.replace(/\/+$/, '')}/workspace/${workspaceId}/files?path=${encodeURIComponent(subpath)}`).catch(() => null);
+    if (fetchRes && fetchRes.ok) {
+      const data = await fetchRes.json();
+      return res.json(data);
+    }
+  } catch (e) {}
+
+  // Local fallback: read from local workspaces directory if present
+  try {
+    const home = os.homedir();
+    const wsBase = path.join(home, '.renkairo', 'workspaces', workspaceId);
+    const targetDir = subpath ? path.resolve(wsBase, subpath) : wsBase;
+
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    const dirents = fs.readdirSync(targetDir, { withFileTypes: true });
+    const files = dirents
+      .filter(d => !d.name.startsWith('.renkairo') && d.name !== '.bin')
+      .map(d => {
+        const full = path.join(targetDir, d.name);
+        const isDir = d.isDirectory();
+        let size = 0;
+        let modified = new Date().toISOString();
+        try {
+          const st = fs.statSync(full);
+          size = st.size;
+          modified = st.mtime.toISOString();
+        } catch (e) {}
+
+        const rel = path.relative(wsBase, full).replace(/\\/g, '/');
+        const ext = d.name.includes('.') ? d.name.split('.').pop().toLowerCase() : '';
+        return {
+          name: d.name,
+          path: rel,
+          is_dir: isDir,
+          size,
+          extension: ext,
+          modifiedAt: modified
+        };
+      })
+      .sort((a, b) => (a.is_dir === b.is_dir ? a.name.localeCompare(b.name) : (a.is_dir ? -1 : 1)));
+
+    return res.json({
+      workspaceId,
+      currentPath: subpath,
+      files
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/remote/fs/file', async (req, res) => {
+  const { workspaceId = 'usr_developer_01', filePath, serverUrl } = req.query;
+  if (!filePath) return res.status(400).json({ error: 'filePath is required' });
+  const targetBackend = serverUrl || 'http://localhost:8080';
+
+  try {
+    const fetchRes = await fetch(`${targetBackend.replace(/\/+$/, '')}/workspace/${workspaceId}/file?path=${encodeURIComponent(filePath)}`).catch(() => null);
+    if (fetchRes && fetchRes.ok) {
+      const data = await fetchRes.json();
+      return res.json(data);
+    }
+  } catch (e) {}
+
+  try {
+    const home = os.homedir();
+    const full = path.resolve(home, '.renkairo', 'workspaces', workspaceId, filePath);
+    if (!fs.existsSync(full)) return res.status(404).json({ error: 'File not found' });
+    const content = fs.readFileSync(full, 'utf-8');
+    const st = fs.statSync(full);
+    res.json({
+      name: path.basename(full),
+      path: filePath,
+      content,
+      size: st.size,
+      modifiedAt: st.mtime.toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------
 // Real Git Engine REST Endpoints
 // ----------------------------------------------------
 

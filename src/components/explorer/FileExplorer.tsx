@@ -13,7 +13,8 @@ import {
   FolderTree,
   FolderSync,
   Loader2,
-  Sparkles
+  Sparkles,
+  Server
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useGitStore } from '../../store/gitStore';
@@ -357,7 +358,9 @@ export const FileExplorer: React.FC = () => {
     createNewFile,
     createNewFolder,
     deleteNode,
-    moveNode
+    moveNode,
+    isRemoteServerConnected,
+    setActiveActivity
   } = useIDEStore();
 
   const [creatingIn, setCreatingIn] = useState<{ parentPath: string; isDir: boolean } | null>(null);
@@ -472,7 +475,19 @@ export const FileExplorer: React.FC = () => {
         <>
           {/* Header Bar above root with Action Buttons */}
           <div className="h-9 px-3 border-b border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-muted)] font-semibold tracking-wider bg-[var(--bg-panel)]">
-            <span className="truncate">EXPLORER</span>
+            <div className="flex items-center space-x-2 truncate">
+              <span className="truncate">EXPLORER</span>
+              {isRemoteServerConnected && (
+                <button
+                  onClick={() => setActiveActivity('remote')}
+                  className="px-1.5 py-0.5 rounded text-[9px] bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/30 hover:bg-[var(--accent-cyan)]/20 transition-colors flex items-center space-x-1 cursor-pointer font-sans"
+                  title="Browse files on remote server"
+                >
+                  <Server className="w-2.5 h-2.5" />
+                  <span>Server Files</span>
+                </button>
+              )}
+            </div>
             
             <div className="flex items-center space-x-1">
               {/* Change Folder Scope Button */}

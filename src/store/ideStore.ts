@@ -15,6 +15,7 @@ import {
 } from '../services/fileSystem';
 import { fetchMetrics } from '../services/api';
 import { executionService, ExecutionResponseResult } from '../services/executionService';
+import { getBackendBaseUrl } from '../services/apiConfig';
 
 const applyThemeClass = (theme: ThemeMode) => {
   try {
@@ -91,6 +92,7 @@ interface IDEState {
   cursorPos: { line: number; col: number };
   setCursorPos: (line: number, col: number) => void;
   openFile: (path: string, name: string, line?: number) => Promise<void>;
+  openRemoteFile: (remotePath: string, name: string, content: string, size?: number) => Promise<void>;
   closeTab: (id: string) => void;
   closeAllTabs: () => void;
   setActiveTabId: (id: string) => void;
@@ -442,6 +444,52 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     }
   },
 
+  openRemoteFile: async (remotePath: string, name: string, content: string, size?: number) => {
+    const { tabs } = get();
+    const existing = tabs.find((t) => t.path === `remote://${remotePath}`);
+    if (existing) {
+      set({ activeTabId: existing.id });
+      return;
+    }
+
+    let language = 'plaintext';
+    const lower = name.toLowerCase();
+    if (lower.endsWith('.py')) language = 'python';
+    else if (lower.endsWith('.ts') || lower.endsWith('.tsx')) language = 'typescript';
+    else if (lower.endsWith('.js') || lower.endsWith('.jsx') || lower.endsWith('.cjs') || lower.endsWith('.mjs')) language = 'javascript';
+    else if (lower.endsWith('.json')) language = 'json';
+    else if (lower.endsWith('.yml') || lower.endsWith('.yaml')) language = 'yaml';
+    else if (lower.endsWith('.md')) language = 'markdown';
+    else if (lower.endsWith('.css') || lower.endsWith('.scss')) language = 'css';
+    else if (lower.endsWith('.html')) language = 'html';
+    else if (lower.endsWith('.sh') || lower.endsWith('.bash')) language = 'shell';
+    else if (lower.endsWith('.sql')) language = 'sql';
+    else if (lower.endsWith('.rs')) language = 'rust';
+    else if (lower.endsWith('.go')) language = 'go';
+    else if (lower.endsWith('.java')) language = 'java';
+    else if (lower.endsWith('.c') || lower.endsWith('.cpp') || lower.endsWith('.h')) language = 'cpp';
+
+    const newTab: TabItem = {
+      id: `remote_tab_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      title: `${name} (Server)`,
+      path: `remote://${remotePath}`,
+      content: content,
+      isDirty: false,
+      language,
+      size: size || content.length,
+      isBinary: false,
+      tier: 'small',
+      truncated: false,
+      totalSize: size || content.length,
+      mimeType: 'text/plain'
+    };
+
+    set({
+      tabs: [...tabs, newTab],
+      activeTabId: newTab.id
+    });
+  },
+
   closeTab: (id) => {
     const { tabs, activeTabId } = get();
     const remaining = tabs.filter((t) => t.id !== id);
@@ -475,9 +523,26 @@ export const useIDEStore = create<IDEState>((set, get) => ({
   },
 
   saveCurrentFile: async () => {
-    const { tabs, activeTabId } = get();
+    const { tabs, activeTabId, remoteServerUrl } = get();
     const activeTab = tabs.find((t) => t.id === activeTabId);
     if (!activeTab) return;
+
+    if (activeTab.path.startsWith('remote://')) {
+      const remotePath = activeTab.path.replace(/^remote:\/\//, '');
+      const backendUrl = remoteServerUrl || getBackendBaseUrl();
+      const res = await fetch(`${backendUrl.replace(/\/+$/, '')}/workspace/usr_developer_01/file`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: remotePath, content: activeTab.content })
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        set({
+          tabs: tabs.map((t) => (t.id === activeTabId ? { ...t, isDirty: false } : t))
+        });
+      }
+      return;
+    }
 
     const success = await writeFile(activeTab.path, activeTab.content);
     if (success) {

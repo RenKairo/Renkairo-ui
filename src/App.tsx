@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { TopCommandBar } from './components/layout/TopCommandBar';
 import { ActivityBar } from './components/layout/ActivityBar';
 import { FileExplorer } from './components/explorer/FileExplorer';
+import { ServerFilesPanel } from './components/activity/ServerFilesPanel';
 import { SearchPanel } from './components/activity/SearchPanel';
 import { SourceControlPanel } from './components/activity/SourceControlPanel';
 import { TeamPanel } from './components/activity/TeamPanel';
@@ -64,6 +65,7 @@ export const App: React.FC = () => {
   const renderActivityPanel = () => {
     switch (activeActivity) {
       case 'explorer': return <FileExplorer />;
+      case 'remote': return <ServerFilesPanel />;
       case 'search': return <SearchPanel />;
       case 'git': return <SourceControlPanel />;
       case 'team': return <TeamPanel />;
