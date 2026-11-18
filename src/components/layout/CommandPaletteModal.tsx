@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileCode, Terminal, Save, FolderOpen, RotateCw, Image, FolderSync, Moon, Sun, Server } from 'lucide-react';
+import { Search, FileCode, Terminal, Save, FolderOpen, Image, FolderSync, Moon, Sun, Maximize } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { ToriiIcon } from '../common/ToriiIcon';
+import { toggleFullScreen } from '../../hooks/useFullScreen';
 
 export const CommandPaletteModal: React.FC = () => {
   const { 
@@ -16,9 +17,7 @@ export const CommandPaletteModal: React.FC = () => {
     setWallpaperOpacity,
     openFolder,
     changeScopeFolder,
-    refreshTree,
-    fileTree,
-    setConnectServerModalOpen
+    fileTree
   } = useIDEStore();
 
   const [query, setQuery] = useState('');
@@ -54,19 +53,9 @@ export const CommandPaletteModal: React.FC = () => {
     { id: 'toggle_theme', title: `Preferences: Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Theme`, category: 'Appearance', icon: theme === 'dark' ? Sun : Moon, action: () => toggleTheme() },
     { id: 'open_folder', title: 'File: Open Folder From Local Machine...', category: 'Workspace', icon: FolderOpen, action: () => openFolder() },
     { id: 'change_scope', title: 'File: Change Folder Scope...', category: 'Workspace', icon: FolderSync, action: () => changeScopeFolder() },
-    { id: 'refresh_tree', title: 'View: Refresh File Explorer', category: 'Explorer', icon: RotateCw, action: () => refreshTree() },
     { id: 'save', title: 'File: Save Current File', category: 'Action', icon: Save, action: () => saveCurrentFile() },
+    { id: 'toggle_fullscreen', title: 'View: Toggle Full Screen (F11)', category: 'View', icon: Maximize, action: () => toggleFullScreen() },
     { id: 'new_terminal', title: 'Terminal: Open Terminal Session', category: 'Action', icon: Terminal, action: () => setActiveTerminalTab('TERMINAL') },
-    { 
-      id: 'connect_server', 
-      title: 'Remote: Connect to Server (SSH)...', 
-      category: 'Remote', 
-      icon: Server, 
-      action: () => {
-        setCommandPaletteOpen(false);
-        setConnectServerModalOpen(true);
-      } 
-    },
     { id: 'wallpaper_opacity', title: `Toggle Wallpaper Opacity (${wallpaperOpacity}%)`, category: 'Aesthetics', icon: Image, action: () => setWallpaperOpacity(wallpaperOpacity >= 40 ? 15 : wallpaperOpacity + 10) }
   ];
 
@@ -102,9 +91,9 @@ export const CommandPaletteModal: React.FC = () => {
         {/* Search Header */}
         <div className="p-3 border-b border-[var(--border-color)] flex items-center space-x-3 bg-[var(--bg-card)]">
           <div className="w-5 h-5 rounded bg-[var(--bg-panel)] border border-[var(--border-color)] flex items-center justify-center shrink-0 p-0.5">
-            <ToriiIcon color="var(--accent-coral)" className="w-3.5 h-3.5 drop-shadow-[0_0_4px_var(--glow-coral)]" />
+            <ToriiIcon color="var(--accent-coral)" className="w-3.5 h-3.5" />
           </div>
-          <Search className="w-4 h-4 text-[var(--accent-cyan)] shrink-0" />
+          <Search className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
           <input
             type="text"
             autoFocus
@@ -137,7 +126,7 @@ export const CommandPaletteModal: React.FC = () => {
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`w-full px-3 py-2.5 rounded-lg flex items-center justify-between text-xs transition-colors ${
-                    isSelected ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--accent-cyan)]/40 font-medium' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                    isSelected ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--accent-coral)]/40 font-medium' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                   }`}
                 >
                   <div className="flex items-center space-x-3">

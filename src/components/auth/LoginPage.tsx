@@ -105,39 +105,30 @@ export const LoginPage: React.FC = () => {
           <div className="flex items-center space-x-3">
             {/* Torii Gate Emblem Box */}
             <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-700/80 flex items-center justify-center p-1.5 shadow-md">
-              <ToriiIcon color="#e11d48" className="w-5 h-5 drop-shadow-[0_0_8px_rgba(225,29,72,0.8)]" />
+              <ToriiIcon color="#e11d48" className="w-5 h-5" />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5 font-mono">
                 RenKairo <span className="text-[#e11d48] font-extrabold">IDE</span>
               </h1>
-              <p className="text-[11px] text-zinc-400 font-mono tracking-wider">
-                Build · Train · Deploy · Anywhere
-              </p>
             </div>
           </div>
         </div>
 
-        {/* --- Middle Left: Hero Copy --- */}
+        {/* --- Middle Left: Clean Minimal Brand Message --- */}
         <div className="relative z-10 my-auto max-w-md">
-          <h2 className="text-3xl font-extrabold tracking-tight text-white leading-[1.25] mb-4">
-            Your Gateway to <br />
-            <span className="text-white font-extrabold">
-              Next-Gen AI Engineering
-            </span>
+          <h2 className="text-2xl font-bold tracking-tight text-white leading-snug">
+            Code & Cloud <br />
+            Workspace
           </h2>
-          <p className="text-sm text-zinc-400 font-normal leading-relaxed">
-            Cloud power. Local freedom.<br />
-            All in one place.
-          </p>
         </div>
 
-        {/* --- Bottom Left: Quote --- */}
+        {/* --- Bottom Left --- */}
         <div className="relative z-10 pt-6 border-t border-zinc-800/80">
           <div className="flex items-center space-x-2">
-            <span className="w-6 h-[2px] bg-[#e11d48]" />
-            <p className="text-xs text-zinc-400 font-serif italic tracking-wide">
-              “Ideas today. Intelligent tomorrow.”
+            <span className="w-4 h-[2px] bg-[#e11d48]" />
+            <p className="text-xs text-zinc-400 font-mono">
+              RenKairo Studio
             </p>
           </div>
         </div>
@@ -180,7 +171,7 @@ export const LoginPage: React.FC = () => {
             {/* Logged in state view */}
             {isAuthenticated && user ? (
               <div className="space-y-6 text-center py-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#e11d48] to-rose-500 text-white font-bold font-mono text-2xl flex items-center justify-center mx-auto shadow-md">
+                <div className="w-16 h-16 rounded-full bg-[var(--accent-coral)] text-white font-bold font-mono text-2xl flex items-center justify-center mx-auto shadow-md">
                   {user.username.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -216,13 +207,11 @@ export const LoginPage: React.FC = () => {
               <div>
                 {/* Card Title & Subtitle */}
                 <div className="mb-6">
-                  <h3 className="text-2xl font-bold text-zinc-900 tracking-tight">
-                    {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">
+                    {mode === 'login' ? 'Sign In' : 'Create Account'}
                   </h3>
                   <p className="text-xs text-zinc-500 mt-1 font-normal">
-                    {mode === 'login' 
-                      ? 'Login to continue to RenKairo IDE' 
-                      : 'Register for RenKairo developer access'}
+                    {mode === 'login' ? 'Sign in to your account' : 'Enter your details to register'}
                   </p>
                   <div className="mt-2.5 flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-zinc-100/90 border border-zinc-200 text-[11px] font-mono">
                     <div className="flex items-center space-x-1.5 text-zinc-700 truncate">

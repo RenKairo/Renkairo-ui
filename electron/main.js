@@ -15,7 +15,7 @@ if (process.env.ELECTRON_RUN_AS_NODE) {
   await new Promise(() => {});
 }
 
-const { app, BrowserWindow, ipcMain, dialog, shell, desktopCapturer, session, utilityProcess } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, desktopCapturer, session, utilityProcess, Menu } = require('electron');
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -172,7 +172,8 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 640,
     backgroundColor: '#0B0D11',
-    title: 'RenKairo IDE - Next-Gen Cloud & AI Engineering Canvas',
+    title: 'RenKairo IDE',
+    autoHideMenuBar: true,
     icon: iconPath,
     show: false,
     webPreferences: {
@@ -791,6 +792,7 @@ ipcMain.handle('git:clone', async (event, { url, targetPath, directoryName }) =>
 
 // App Lifecycle
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.renkairo.ide');
   }

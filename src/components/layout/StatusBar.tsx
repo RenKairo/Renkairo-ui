@@ -2,12 +2,8 @@ import React from 'react';
 import { 
   GitBranch, 
   RotateCw, 
-  AlertCircle, 
-  AlertTriangle, 
-  CheckCheck,
-  Terminal,
-  Loader2,
-  FolderOpen,
+  Loader2, 
+  FolderOpen, 
   Server
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
@@ -16,16 +12,13 @@ import { ToriiIcon } from '../common/ToriiIcon';
 import { getBackendBaseUrl, subscribeBackendUrlChange } from '../../services/apiConfig';
 
 export const StatusBar: React.FC = () => {
-  const { cursorPos, problems, rootName, isFolderOpening, setActiveActivity, setConnectServerModalOpen } = useIDEStore();
-  const { gitStatus, isSyncing, sync, refreshGitStatus } = useGitStore();
+  const { cursorPos, rootName, isFolderOpening, setActiveActivity } = useIDEStore();
+  const { gitStatus, isSyncing, sync } = useGitStore();
   const [backendUrl, setBackendUrl] = React.useState(getBackendBaseUrl);
 
   React.useEffect(() => {
     return subscribeBackendUrlChange((url) => setBackendUrl(url));
   }, []);
-  
-  const errorCount = problems.filter(p => p.severity === 'error').length;
-  const warningCount = problems.filter(p => p.severity === 'warning').length;
 
   const isRepo = gitStatus?.isRepo;
   const branchName = gitStatus?.branch || '';
@@ -34,16 +27,16 @@ export const StatusBar: React.FC = () => {
 
   return (
     <footer className="h-6 bg-[var(--bg-panel)] border-t border-[var(--border-color)] px-3 flex items-center justify-between text-[11px] text-[var(--text-muted)] select-none z-30 font-sans transition-colors duration-150">
-      {/* Left: Branch & Problems Counter / Live Status */}
+      {/* Left: Brand & Live Git / Workspace Status */}
       <div className="flex items-center space-x-3">
         {/* Brand Icon Tag */}
         <div className="flex items-center space-x-1.5 pr-2.5 border-r border-[var(--border-color)] group cursor-default">
-          <ToriiIcon color="var(--accent-coral)" className="w-3.5 h-3.5 group-hover:drop-shadow-[0_0_4px_var(--glow-coral)] transition-all" />
+          <ToriiIcon color="var(--accent-coral)" className="w-3.5 h-3.5" />
           <span className="font-mono text-[10px] text-[var(--text-primary)] font-bold tracking-tight">RENKAIRO</span>
         </div>
 
         {isFolderOpening ? (
-          <div className="flex items-center space-x-1.5 text-[var(--accent-cyan)] font-mono animate-pulse">
+          <div className="flex items-center space-x-1.5 text-[var(--accent-coral)] font-mono">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             <span>Opening workspace...</span>
           </div>
@@ -61,7 +54,7 @@ export const StatusBar: React.FC = () => {
                 <button 
                   onClick={() => setActiveActivity('git')}
                   title={`Current Git Branch: ${branchName}. Click to open Source Control.`}
-                  className="flex items-center space-x-1 hover:text-[var(--text-primary)] transition-colors group"
+                  className="flex items-center space-x-1 hover:text-[var(--text-primary)] transition-colors group cursor-pointer"
                 >
                   <GitBranch className="w-3.5 h-3.5 text-[var(--accent-coral)] group-hover:scale-110 transition-transform" />
                   <span className="font-mono font-semibold text-[var(--text-primary)]">{branchName}</span>
@@ -72,29 +65,17 @@ export const StatusBar: React.FC = () => {
                   onClick={sync}
                   disabled={isSyncing}
                   title={`Synchronize Changes (↓ ${behind}, ↑ ${ahead}). Click to sync.`}
-                  className="flex items-center space-x-1 hover:text-[var(--accent-cyan)] transition-colors font-mono text-[10px] text-[var(--text-muted)]"
+                  className="flex items-center space-x-1 hover:text-[var(--text-primary)] transition-colors font-mono text-[10px] text-[var(--text-muted)] cursor-pointer"
                 >
-                  <RotateCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-[var(--accent-cyan)]' : ''}`} />
+                  <RotateCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-[var(--accent-coral)]' : ''}`} />
                   {(ahead > 0 || behind > 0) && (
-                    <span className="text-[var(--accent-cyan)] font-semibold">
+                    <span className="text-[var(--text-primary)] font-semibold">
                       {behind > 0 && `↓${behind}`} {ahead > 0 && `↑${ahead}`}
                     </span>
                   )}
                 </button>
               </div>
             )}
-
-            {/* Problems Badges */}
-            <div className="flex items-center space-x-2 pl-2 border-l border-[var(--border-color)]">
-              <div className="flex items-center space-x-0.5 text-rose-500">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span className="font-semibold">{errorCount}</span>
-              </div>
-              <div className="flex items-center space-x-0.5 text-amber-500">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span className="font-semibold">{warningCount}</span>
-              </div>
-            </div>
           </>
         )}
       </div>
@@ -102,30 +83,14 @@ export const StatusBar: React.FC = () => {
       {/* Right: Environment & Cursor Meta */}
       <div className="flex items-center space-x-4 font-mono text-[10px]">
         <span>Ln {cursorPos.line}, Col {cursorPos.col}</span>
-        <span className="hidden sm:inline">Spaces: 4</span>
-        <span className="hidden sm:inline">UTF-8</span>
-        <span className="hidden sm:inline">LF</span>
         
-        {/* Remote Shiro Backend Indicator */}
-        <button
-          onClick={() => setConnectServerModalOpen(true)}
-          title={`Active Shiro Backend: ${backendUrl}. Click to change remote server.`}
-          className="flex items-center space-x-1 text-[var(--accent-coral)] hover:text-white transition-colors cursor-pointer group px-1 py-0.5 rounded hover:bg-[var(--bg-card)]"
+        {/* Remote Shiro Backend Indicator (Read-Only) */}
+        <div
+          title={`Active Shiro Backend: ${backendUrl}`}
+          className="flex items-center space-x-1 text-[var(--accent-coral)] px-1 py-0.5 select-none"
         >
-          <Server className="w-3 h-3 group-hover:scale-110 transition-transform" />
+          <Server className="w-3 h-3 text-[var(--accent-coral)] shrink-0" />
           <span className="truncate max-w-[140px] font-mono">{backendUrl.replace(/^https?:\/\//i, '')}</span>
-        </button>
-
-        {/* Environment Indicator */}
-        <div className="flex items-center space-x-1 text-[var(--accent-cyan)]">
-          <Terminal className="w-3 h-3" />
-          <span>Local Engine</span>
-        </div>
-
-        {/* Status Formatter */}
-        <div className="flex items-center space-x-1 text-emerald-500 font-medium">
-          <CheckCheck className="w-3.5 h-3.5" />
-          <span>Ready</span>
         </div>
       </div>
     </footer>

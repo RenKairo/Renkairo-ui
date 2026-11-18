@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -13,7 +13,8 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 640,
     backgroundColor: '#0B0D11',
-    title: 'RenKairo IDE - Next-Gen Cloud & AI Engineering Canvas',
+    title: 'RenKairo IDE',
+    autoHideMenuBar: true,
     icon: iconPath,
     show: true,
     webPreferences: {
@@ -113,6 +114,7 @@ ipcMain.handle('shell:openPath', async (event, fullPath) => {
 });
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.renkairo.ide');
   }

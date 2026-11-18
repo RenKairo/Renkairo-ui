@@ -39,8 +39,8 @@ export const SettingsPanel: React.FC = () => {
               onClick={() => setTheme('dark')}
               className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer transition-all shadow-sm ${
                 theme === 'dark' 
-                  ? 'bg-[var(--bg-card)] border-[var(--accent-coral)] shadow-[0_0_12px_var(--glow-coral)]' 
-                  : 'bg-[var(--bg-card)] border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50'
+                  ? 'bg-[var(--bg-card)] border-[var(--accent-coral)] shadow-sm' 
+                  : 'bg-[var(--bg-card)] border-[var(--border-color)] hover:border-[var(--accent-coral)]/50'
               }`}
             >
               <div className="flex items-center space-x-2.5">
@@ -53,7 +53,7 @@ export const SettingsPanel: React.FC = () => {
                 </div>
                 <div>
                   <div className="font-semibold text-xs text-[var(--text-primary)]">
-                    East-Asian Cyber Dark
+                    RenKairo Dark
                   </div>
                   <div className="text-[10px] text-[var(--text-muted)]">
                     Obsidian & Torii Coral Crimson
@@ -68,8 +68,8 @@ export const SettingsPanel: React.FC = () => {
               onClick={() => setTheme('light')}
               className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer transition-all shadow-sm ${
                 theme === 'light' 
-                  ? 'bg-[var(--bg-card)] border-[var(--accent-coral)] shadow-[0_0_12px_var(--glow-coral)]' 
-                  : 'bg-[var(--bg-card)] border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50'
+                  ? 'bg-[var(--bg-card)] border-[var(--accent-coral)] shadow-sm' 
+                  : 'bg-[var(--bg-card)] border-[var(--border-color)] hover:border-[var(--accent-coral)]/50'
               }`}
             >
               <div className="flex items-center space-x-2.5">
@@ -82,10 +82,10 @@ export const SettingsPanel: React.FC = () => {
                 </div>
                 <div>
                   <div className="font-semibold text-xs text-[var(--text-primary)]">
-                    Kyoto Porcelain Light
+                    RenKairo Light
                   </div>
                   <div className="text-[10px] text-[var(--text-muted)]">
-                    Clean Canvas & Sapphire Indigo
+                    Clean Canvas & Minimalist White
                   </div>
                 </div>
               </div>
@@ -142,7 +142,7 @@ export const SettingsPanel: React.FC = () => {
             max="50"
             value={wallpaperOpacity}
             onChange={(e) => setWallpaperOpacity(Number(e.target.value))}
-            className="w-full accent-[var(--accent-cyan)] cursor-pointer"
+            className="w-full accent-[var(--accent-coral)] cursor-pointer"
           />
         </div>
 
@@ -225,7 +225,7 @@ export const SettingsPanel: React.FC = () => {
         <div className="border-t border-[var(--border-color)] pt-3">
           <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-3 flex items-center space-x-3 group shadow-sm">
             <div className="w-9 h-9 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] flex items-center justify-center shrink-0 p-1.5 shadow-sm">
-              <ToriiIcon color="var(--accent-coral)" className="w-6 h-6 drop-shadow-[0_0_8px_var(--glow-coral)] group-hover:scale-110 transition-transform" />
+              <ToriiIcon color="var(--accent-coral)" className="w-6 h-6" />
             </div>
             <div className="overflow-hidden">
               <div className="font-bold text-[var(--text-primary)] text-xs tracking-wide font-mono">RenKairo IDE</div>

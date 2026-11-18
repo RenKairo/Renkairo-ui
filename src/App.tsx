@@ -4,7 +4,6 @@ import { ActivityBar } from './components/layout/ActivityBar';
 import { FileExplorer } from './components/explorer/FileExplorer';
 import { SearchPanel } from './components/activity/SearchPanel';
 import { SourceControlPanel } from './components/activity/SourceControlPanel';
-import { RemotePanel } from './components/activity/RemotePanel';
 import { TeamPanel } from './components/activity/TeamPanel';
 import { SettingsPanel } from './components/activity/SettingsPanel';
 import { RDTPStudioPanel } from './components/activity/RDTPStudioPanel';
@@ -17,8 +16,11 @@ import { AuthModal } from './components/common/AuthModal';
 import { useIDEStore } from './store/ideStore';
 import { useAuthStore } from './store/authStore';
 import { fileWatcher } from './services/fileWatcher';
+import { useFullScreen } from './hooks/useFullScreen';
 
 export const App: React.FC = () => {
+  useFullScreen();
+
   const { 
     activeActivity, 
     leftSidebarWidth, 
@@ -64,7 +66,6 @@ export const App: React.FC = () => {
       case 'explorer': return <FileExplorer />;
       case 'search': return <SearchPanel />;
       case 'git': return <SourceControlPanel />;
-      case 'remote': return <RemotePanel />;
       case 'team': return <TeamPanel />;
       case 'rdtp': return <RDTPStudioPanel />;
       case 'settings': return <SettingsPanel />;
@@ -93,10 +94,10 @@ export const App: React.FC = () => {
             {/* Left-to-Center Resize Handle */}
             <div
               onMouseDown={handleLeftResizeMouseDown}
-              className="w-2 h-full absolute top-0 -right-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
+              className="w-2 h-full absolute top-0 -right-1 z-30 cursor-col-resize flex items-center justify-center group hover:bg-[var(--accent-coral)]/20 active:bg-[var(--accent-coral)]/40 transition-colors"
               title="Drag to resize left panel"
             >
-              <div className="w-0.5 h-12 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-cyan)] group-active:bg-[var(--accent-coral)] transition-colors" />
+              <div className="w-0.5 h-12 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-coral)] group-active:bg-[var(--accent-coral)] transition-colors" />
             </div>
           </div>
         )}

@@ -3,12 +3,9 @@ import Editor, { DiffEditor } from '@monaco-editor/react';
 import { 
   X, 
   SplitSquareHorizontal, 
-  MoreHorizontal, 
   ChevronRight, 
   FolderOpen, 
-  FolderSync, 
   Loader2, 
-  HardDrive, 
   Binary, 
   Zap, 
   AlertTriangle,
@@ -24,7 +21,6 @@ import { useIDEStore } from '../../store/ideStore';
 import { useGitStore } from '../../store/gitStore';
 import { openExternalTerminal } from '../../services/api';
 import { getMonacoOptionsForTier, formatFileSize } from '../../services/largeFileService';
-import { ToriiIcon } from '../common/ToriiIcon';
 
 export const EditorCanvas: React.FC = () => {
   const { 
@@ -42,8 +38,6 @@ export const EditorCanvas: React.FC = () => {
     fontSize, 
     tabSize, 
     minimapEnabled, 
-    openFolder, 
-    changeScopeFolder, 
     workspacePath, 
     rootName, 
     isFolderOpening, 
@@ -102,7 +96,7 @@ export const EditorCanvas: React.FC = () => {
       <div 
         className="absolute inset-0 pointer-events-none z-0 transition-all duration-300 bg-center bg-no-repeat bg-fixed"
         style={{ 
-          opacity: theme === 'light' ? 0.7 : (wallpaperOpacity ?? 50) / 100,
+          opacity: !activeTab ? Math.max((wallpaperOpacity ?? 50) / 100, 0.75) : (theme === 'light' ? 0.7 : (wallpaperOpacity ?? 50) / 100),
           backgroundImage: theme === 'light' ? `url('./wallpaper-pagoda.jpg')` : `url('./wallpaper-dark-pagoda.jpg')`,
           backgroundSize: 'cover'
         }}
@@ -129,11 +123,11 @@ export const EditorCanvas: React.FC = () => {
                   }`}
                 >
                   {isActive && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent-coral)] cyber-glow-coral"></div>
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent-coral)]"></div>
                   )}
 
                   {tab.isDiff && (
-                    <SplitSquareHorizontal className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0" />
+                    <SplitSquareHorizontal className="w-3.5 h-3.5 text-[var(--accent-coral)] shrink-0" />
                   )}
 
                   <span className="font-mono text-[11px] truncate">{tab.title}</span>
@@ -154,41 +148,6 @@ export const EditorCanvas: React.FC = () => {
                 </div>
               );
             })}
-          </div>
-
-          {/* Tab Bar Actions */}
-          <div className="flex items-center space-x-1 text-[var(--text-muted)] pr-2">
-            {/* Run Code Button */}
-            <button 
-              onClick={() => runActiveFileCode()} 
-              disabled={isExecutingCode}
-              title="Run Code via Shiro HTTP Execution Engine (Java, Python, Node, C++)" 
-              className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/20 rounded flex items-center space-x-1.5 font-mono text-[11px] font-semibold transition-all focus:outline-none disabled:opacity-50 cursor-pointer"
-            >
-              {isExecutingCode ? (
-                <Loader2 className="w-3 h-3 text-emerald-500 animate-spin" />
-              ) : (
-                <span className="text-emerald-500">▶</span>
-              )}
-              <span>{isExecutingCode ? 'Running...' : 'Run Code'}</span>
-            </button>
-
-            {/* Open Windows Terminal Button */}
-            <button 
-              onClick={() => openExternalTerminal()} 
-              title="Open Windows Terminal App on Desktop" 
-              className="px-2 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)]/50 text-[var(--accent-cyan)] hover:text-[var(--text-primary)] rounded flex items-center space-x-1 font-mono text-[11px] transition-all focus:outline-none"
-            >
-              <span>🖥️</span>
-              <span className="hidden sm:inline">Windows Terminal</span>
-            </button>
-
-            <button title="Split Editor" className="p-1 hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded transition-colors">
-              <SplitSquareHorizontal className="w-3.5 h-3.5" />
-            </button>
-            <button title="More Actions" className="p-1 hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded transition-colors">
-              <MoreHorizontal className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
       )}
@@ -213,17 +172,10 @@ export const EditorCanvas: React.FC = () => {
             )}
 
             {activeTab.language && !activeTab.isBinary && (
-              <span className="text-[9px] bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] px-1.5 py-0.5 rounded font-bold uppercase font-mono">
+              <span className="text-[9px] bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] px-1.5 py-0.5 rounded font-mono uppercase">
                 {activeTab.language}
               </span>
             )}
-          </div>
-
-          <div className="flex items-center space-x-2 text-[10px] text-[var(--text-muted)]">
-            <span className="flex items-center space-x-1">
-              <HardDrive className="w-3 h-3 text-[var(--text-muted)]" />
-              <span>Ctrl+S to save</span>
-            </span>
           </div>
         </div>
       )}
@@ -232,7 +184,7 @@ export const EditorCanvas: React.FC = () => {
       {activeTab && activeTab.isDiff && (
         <div className="h-8 bg-[var(--bg-panel)] border-b border-[var(--border-color)] px-4 flex items-center justify-between text-[11px] font-mono text-[var(--text-secondary)] select-none z-10">
           <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1 text-[var(--accent-cyan)] font-semibold">
+            <div className="flex items-center space-x-1 text-[var(--accent-coral)] font-semibold">
               <SplitSquareHorizontal className="w-3.5 h-3.5" />
               <span>DIFF</span>
             </div>
@@ -329,41 +281,36 @@ export const EditorCanvas: React.FC = () => {
         {/* 1. Folder Opening Animation */}
         {isFolderOpening ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200">
-            <div className="w-20 h-20 rounded-3xl bg-[var(--bg-card)] border border-[var(--accent-cyan)]/40 flex items-center justify-center mb-6 shadow-2xl relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-t from-[var(--accent-cyan)]/20 via-[var(--accent-coral)]/10 to-transparent animate-pulse"></div>
-              <FolderOpen className="w-10 h-10 text-[var(--accent-cyan)] z-10 animate-bounce" />
+            <div className="w-12 h-12 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center mb-3 shadow-sm">
+              <FolderOpen className="w-6 h-6 text-[var(--accent-coral)]" />
             </div>
 
-            <div className="flex items-center space-x-2 mb-2 font-mono">
-              <Loader2 className="w-4 h-4 animate-spin text-[var(--accent-cyan)]" />
-              <h2 className="text-base font-bold text-[var(--text-primary)] tracking-wider">OPENING WORKSPACE...</h2>
+            <div className="flex items-center space-x-2 mb-3 font-mono">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent-coral)]" />
+              <h2 className="text-xs font-bold text-[var(--text-primary)] tracking-wider">OPENING WORKSPACE...</h2>
             </div>
-            
-            <p className="text-xs text-[var(--text-muted)] font-mono mb-6 max-w-sm">
-              Connecting and parsing local files from your computer
-            </p>
 
-            <div className="w-48 h-1.5 bg-[var(--bg-card)] rounded-full overflow-hidden border border-[var(--border-color)]">
-              <div className="h-full bg-gradient-to-r from-[var(--accent-cyan)] via-[var(--accent-coral)] to-[var(--accent-cyan)] animate-pulse w-full"></div>
+            <div className="w-36 h-1 bg-[var(--bg-card)] rounded-full overflow-hidden border border-[var(--border-color)]">
+              <div className="h-full bg-[var(--accent-coral)] animate-pulse w-full"></div>
             </div>
           </div>
         ) : fileLoadingProgress ? (
           /* 2. Non-blocking Chunked Stream Progress for Large Files */
           <div className="h-full flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-150">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--bg-card)] border border-[var(--accent-cyan)]/40 flex items-center justify-center mb-4 shadow-xl">
-              <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-cyan)]" />
+            <div className="w-12 h-12 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center mb-3 shadow-sm">
+              <Loader2 className="w-5 h-5 animate-spin text-[var(--accent-coral)]" />
             </div>
 
-            <h3 className="text-sm font-bold text-[var(--text-primary)] font-mono mb-1">
-              STREAMING FILE ({fileLoadingProgress.percent}%)
+            <h3 className="text-xs font-bold text-[var(--text-primary)] font-mono mb-1">
+              STREAMING ({fileLoadingProgress.percent}%)
             </h3>
-            <p className="text-xs text-[var(--text-muted)] font-mono mb-4">
+            <p className="text-[10px] text-[var(--text-muted)] font-mono mb-3">
               {formatFileSize(fileLoadingProgress.bytesLoaded)} / {formatFileSize(fileLoadingProgress.totalBytes)}
             </p>
 
-            <div className="w-64 h-2 bg-[var(--bg-card)] rounded-full overflow-hidden border border-[var(--border-color)]">
+            <div className="w-48 h-1 bg-[var(--bg-card)] rounded-full overflow-hidden border border-[var(--border-color)]">
               <div 
-                className="h-full bg-gradient-to-r from-[var(--accent-cyan)] to-emerald-400 transition-all duration-100"
+                className="h-full bg-[var(--accent-coral)] transition-all duration-100"
                 style={{ width: `${fileLoadingProgress.percent}%` }}
               ></div>
             </div>
@@ -371,23 +318,20 @@ export const EditorCanvas: React.FC = () => {
         ) : activeTab?.isBinary ? (
           /* 3. High-Performance Binary File Guardrail Card */
           <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] select-none p-6 animate-in fade-in duration-200">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center mb-4 shadow-2xl">
-              <Binary className="w-8 h-8 text-[var(--accent-cyan)]" />
+            <div className="w-12 h-12 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center mb-3 shadow-sm">
+              <Binary className="w-6 h-6 text-[var(--text-muted)]" />
             </div>
 
-            <h2 className="text-base font-bold text-[var(--text-primary)] tracking-wide mb-1 font-mono">{activeTab.title}</h2>
-            <p className="text-xs text-[var(--text-muted)] mb-2 font-mono">
-              Binary file ({formatFileSize(activeTab.size || 0)})
-            </p>
-            <p className="text-xs text-[var(--text-secondary)] mb-6 font-mono text-center max-w-sm">
-              This file contains binary data and cannot be displayed as text.
+            <h2 className="text-xs font-bold text-[var(--text-primary)] tracking-wide mb-1 font-mono">{activeTab.title}</h2>
+            <p className="text-[11px] text-[var(--text-muted)] mb-4 font-mono">
+              Binary file ({formatFileSize(activeTab.size || 0)}) • Cannot be displayed as text
             </p>
 
             <button
               onClick={() => openExternalTerminal()}
-              className="px-4 py-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--text-primary)] font-semibold text-xs rounded-xl transition-all flex items-center space-x-2 font-mono shadow-sm"
+              className="px-3 py-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--text-primary)] font-medium text-xs rounded-lg transition-all flex items-center space-x-1.5 font-mono shadow-sm cursor-pointer"
             >
-              <span>Inspect in Terminal</span>
+              <span>Open in Terminal</span>
             </button>
           </div>
         ) : activeTab?.isDiff ? (
@@ -399,6 +343,7 @@ export const EditorCanvas: React.FC = () => {
             modified={activeTab.diffModified ?? ''}
             theme={theme === 'dark' ? 'vs-dark' : 'vs'}
             options={{
+              fontFamily: "'Space Mono', monospace",
               readOnly: true,
               renderSideBySide: diffSideBySide,
               fontSize: fontSize,
@@ -458,40 +403,8 @@ export const EditorCanvas: React.FC = () => {
             }}
           />
         ) : (
-          /* 6. Empty Start State */
-          <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] select-none p-6">
-            {/* Japanese Torii Emblem */}
-            <div className="w-16 h-16 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center mb-4 shadow-2xl relative overflow-hidden group p-3">
-              <div className="absolute inset-0 bg-gradient-to-t from-[var(--accent-coral)]/20 to-transparent"></div>
-              <ToriiIcon color="var(--accent-coral)" className="w-10 h-10 z-10 drop-shadow-[0_0_12px_var(--glow-coral)] group-hover:scale-105 transition-transform" />
-            </div>
-
-            <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-wide mb-1 font-mono">RenKairo IDE</h2>
-            <p className="text-xs text-[var(--text-muted)] mb-6 font-mono text-center">
-              {workspacePath ? `Active Scope: ${rootName}` : 'No folder opened yet'}
-            </p>
-
-            {/* Simple Clean Open Folder Button */}
-            {!workspacePath ? (
-              <button
-                onClick={openFolder}
-                className="px-6 py-2.5 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral-hover)] text-white font-semibold text-xs rounded-xl transition-all shadow-lg shadow-[var(--accent-coral)]/20 flex items-center space-x-2 font-mono group cursor-pointer"
-              >
-                <FolderOpen className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span>Open Folder From Local Machine</span>
-              </button>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={changeScopeFolder}
-                  className="px-4 py-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--accent-cyan)] hover:text-[var(--text-primary)] font-semibold text-xs rounded-xl transition-all flex items-center space-x-2 font-mono shadow-sm"
-                >
-                  <FolderSync className="w-4 h-4" />
-                  <span>Change Folder Scope</span>
-                </button>
-              </div>
-            )}
-          </div>
+          /* Empty Editor Stage - Transparent to show wallpaper image */
+          <div className="h-full w-full flex items-center justify-center select-none" />
         )}
       </div>
     </div>

@@ -463,7 +463,7 @@ export const TerminalPanel: React.FC = () => {
       container.innerHTML = '';
 
       const term = new XTerm({
-        fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+        fontFamily: "'Space Mono', monospace",
         fontSize: 12,
         cursorBlink: true,
         cursorStyle: 'block',
@@ -718,13 +718,13 @@ export const TerminalPanel: React.FC = () => {
       }}
       className={`bg-[var(--bg-panel)] border-t border-[var(--border-color)] flex flex-col select-none z-20 relative transition-colors duration-150`}
     >
-      {/* ⚡ Top Drag Resize Handle */}
+      {/* Top Drag Resize Handle */}
       <div
         onMouseDown={handleMouseDownResize}
-        className="h-2 w-full -top-1 absolute left-0 right-0 z-30 cursor-row-resize flex items-center justify-center group hover:bg-[var(--accent-cyan)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
+        className="h-2 w-full -top-1 absolute left-0 right-0 z-30 cursor-row-resize flex items-center justify-center group hover:bg-[var(--accent-coral)]/30 active:bg-[var(--accent-coral)]/50 transition-colors"
         title="Drag to resize terminal height"
       >
-        <div className="h-0.5 w-10 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-cyan)] group-active:bg-[var(--accent-coral)] transition-colors" />
+        <div className="h-0.5 w-10 rounded-full bg-[var(--border-color)] group-hover:bg-[var(--accent-coral)] group-active:bg-[var(--accent-coral)] transition-colors" />
       </div>
 
       {/* Floating Copy Notification Toast */}
@@ -755,7 +755,7 @@ export const TerminalPanel: React.FC = () => {
                   </span>
                 )}
                 {isActive && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent-coral)] cyber-glow-coral"></div>
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent-coral)]"></div>
                 )}
               </button>
             );
@@ -764,17 +764,17 @@ export const TerminalPanel: React.FC = () => {
 
         {/* Terminal Controls */}
         <div className="flex items-center space-x-2 text-[var(--text-muted)]">
-          {/* ⚡ Compact Root vs Full Path Toggle Button */}
+          {/* Compact Root vs Full Path Toggle Button */}
           <button
             onClick={toggleCompactPath}
             title={terminalCompactPath ? "Showing Root Only (Linux/macOS style) - Click for Full Path" : "Showing Full Path - Click for Root Only (Linux/macOS style)"}
             className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-all flex items-center space-x-1 ${
               terminalCompactPath 
-                ? 'bg-[var(--accent-cyan)]/15 border-[var(--accent-cyan)]/50 text-[var(--accent-cyan)] shadow-sm font-semibold' 
+                ? 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-primary)] shadow-sm font-semibold' 
                 : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
-            <FolderTree className={`w-3 h-3 ${terminalCompactPath ? 'text-[var(--accent-cyan)]' : 'text-[var(--text-muted)]'}`} />
+            <FolderTree className="w-3 h-3 text-[var(--text-muted)]" />
             <span className="hidden md:inline">
               {terminalCompactPath ? 'Root Path' : 'Full Path'}
             </span>
@@ -782,7 +782,7 @@ export const TerminalPanel: React.FC = () => {
 
           {/* Shell Profile Selector Dropdown */}
           <div className="flex items-center space-x-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded px-1.5 py-0.5 text-[10px] font-mono text-[var(--text-secondary)]">
-            <Terminal className="w-3 h-3 text-[var(--accent-cyan)]" />
+            <Terminal className="w-3 h-3 text-[var(--accent-coral)]" />
             <select
               value={shellType}
               onChange={(e) => {
@@ -796,19 +796,19 @@ export const TerminalPanel: React.FC = () => {
               }}
               className="bg-transparent text-[var(--text-primary)] focus:outline-none font-mono cursor-pointer"
             >
-              <option value="powershell" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">⚙️ PowerShell</option>
-              <option value="cmd" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">💻 Command Prompt (CMD)</option>
-              <option value="python" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🐍 Python REPL</option>
-              <option value="node" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🟢 Node.js REPL</option>
-              <option value="jshell" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">☕ Java REPL (jshell)</option>
-              <option value="bash" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🐧 Git Bash / WSL</option>
-              <option value="ssh" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">🌐 Remote SSH Server (LAN)...</option>
+              <option value="powershell" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">PowerShell</option>
+              <option value="cmd" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Command Prompt (CMD)</option>
+              <option value="python" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Python REPL</option>
+              <option value="node" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Node.js REPL</option>
+              <option value="jshell" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Java REPL (jshell)</option>
+              <option value="bash" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Git Bash / WSL</option>
+              <option value="ssh" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">Remote SSH Server...</option>
             </select>
           </div>
 
-          <button onClick={() => createNewSession(shellType, workspacePath, terminalCompactPath)} title="New Terminal Session" className="p-1 hover:text-[var(--text-primary)] transition-colors flex items-center space-x-1">
-            <Plus className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="text-[10px] font-mono text-emerald-500 font-semibold hidden sm:inline">New Terminal</span>
+          <button onClick={() => createNewSession(shellType, workspacePath, terminalCompactPath)} title="New Terminal Session" className="p-1 hover:text-[var(--text-primary)] transition-colors flex items-center space-x-1 cursor-pointer">
+            <Plus className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
+            <span className="text-[10px] font-mono text-[var(--text-primary)] font-medium hidden sm:inline">New Terminal</span>
           </button>
 
           <button onClick={clearActiveTerminal} title="Clear Console" className="p-1 hover:text-[var(--text-primary)] transition-colors">
@@ -839,7 +839,7 @@ export const TerminalPanel: React.FC = () => {
                         ? 'bg-[var(--bg-panel)] text-[var(--accent-coral)] border-[var(--accent-coral)]/50 font-semibold shadow-sm'
                         : isRemote
                         ? 'bg-[var(--bg-panel)] text-emerald-400 border-emerald-500/50 font-semibold shadow-sm'
-                        : 'bg-[var(--bg-panel)] text-[var(--accent-cyan)] border-[var(--accent-cyan)]/40 font-semibold shadow-sm' 
+                        : 'bg-[var(--bg-panel)] text-[var(--text-primary)] border-[var(--border-color)] font-semibold shadow-sm' 
                       : 'bg-transparent text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                   }`}
                 >
@@ -848,7 +848,7 @@ export const TerminalPanel: React.FC = () => {
                   ) : isRemote ? (
                     <Globe className={`w-3 h-3 ${isActive ? 'text-emerald-400' : 'text-[var(--text-subtle)]'}`} />
                   ) : (
-                    <Terminal className={`w-3 h-3 ${isActive ? 'text-[var(--accent-cyan)]' : 'text-[var(--text-subtle)]'}`} />
+                    <Terminal className={`w-3 h-3 ${isActive ? 'text-[var(--accent-coral)]' : 'text-[var(--text-subtle)]'}`} />
                   )}
                   <span className="truncate max-w-[140px]">{sess.name}</span>
                   <button
@@ -879,11 +879,11 @@ export const TerminalPanel: React.FC = () => {
                 ) : (
                   <>
                     <span className="text-[var(--text-subtle)]">CWD:</span>
-                    <span className="text-[var(--accent-cyan)] font-semibold max-w-[280px] truncate" title={activeSessionCwd || 'Workspace'}>
+                    <span className="text-[var(--text-primary)] font-semibold max-w-[280px] truncate" title={activeSessionCwd || 'Workspace'}>
                       {activeSession?.executionMode === 'remote' ? '[Remote Linux] ~' : getFormattedCwd(activeSessionCwd)}
                     </span>
 
-                    {/* ⚡ Execution Target Toggle (Local Terminal vs Shiro Linux Backend) */}
+                    {/* Execution Target Toggle (Local Terminal vs Shiro Linux Backend) */}
                     <button
                       type="button"
                       disabled={!isRemoteServerConnected}
@@ -900,21 +900,18 @@ export const TerminalPanel: React.FC = () => {
                           ? 'opacity-40 bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)] cursor-not-allowed'
                           : activeSession?.executionMode === 'remote'
                           ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-400 font-semibold shadow-sm hover:bg-emerald-500/25 cursor-pointer animate-in fade-in'
-                          : 'bg-[var(--accent-cyan)]/15 border-[var(--accent-cyan)]/50 text-[var(--accent-cyan)] font-semibold hover:bg-[var(--accent-cyan)]/25 cursor-pointer'
+                          : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-secondary)] font-semibold hover:text-[var(--text-primary)] cursor-pointer'
                       }`}
                     >
                       {activeSession?.executionMode === 'remote' ? (
                         <>
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                          </span>
+                          <span className="inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                           <Globe className="w-3 h-3 text-emerald-400" />
                           <span className="truncate max-w-[130px]">Remote: {remoteServerName || 'Shiro'}</span>
                         </>
                       ) : (
                         <>
-                          <Laptop className="w-3 h-3 text-[var(--accent-cyan)]" />
+                          <Laptop className="w-3 h-3 text-[var(--text-muted)]" />
                           <span>Local</span>
                           {!isRemoteServerConnected && <span className="text-[9px] opacity-75">(Offline)</span>}
                         </>
@@ -937,7 +934,7 @@ export const TerminalPanel: React.FC = () => {
                 <span>No active terminal sessions.</span>
                 <button 
                   onClick={() => createNewSession(shellType, workspacePath, terminalCompactPath)}
-                  className="px-2 py-1 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--accent-cyan)] rounded text-xs shadow-sm font-semibold"
+                  className="px-2 py-1 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--accent-coral)] rounded text-xs shadow-sm font-semibold"
                 >
                   + Create Terminal
                 </button>
@@ -1009,14 +1006,8 @@ export const TerminalPanel: React.FC = () => {
             {/* Output Log Stream */}
             <div className="flex-1 overflow-y-auto p-3 space-y-1 bg-[var(--bg-base)]">
               {executionLogs.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] text-xs space-y-2 select-none">
-                  <div className="p-2 rounded-full bg-[var(--bg-card)] border border-[var(--border-color)]">
-                    <Play className="w-4 h-4 text-emerald-500" />
-                  </div>
-                  <span>No execution output yet.</span>
-                  <span className="text-[10px] text-[var(--text-subtle)]">
-                    Click <strong className="text-emerald-400">▶ Run Code</strong> on the editor toolbar to execute your Java, Python, Node, or C++ file via Shiro.
-                  </span>
+                <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] text-xs select-none">
+                  <span>No output yet.</span>
                 </div>
               ) : (
                 executionLogs.map((log, idx) => {
@@ -1029,7 +1020,7 @@ export const TerminalPanel: React.FC = () => {
                         isError
                           ? 'text-rose-400 bg-rose-500/5 p-1 rounded border border-rose-500/20'
                           : isInfo
-                          ? 'text-[var(--accent-cyan)] font-medium'
+                          ? 'text-[var(--text-primary)] font-medium'
                           : 'text-[var(--text-secondary)]'
                       }`}
                     >
@@ -1064,12 +1055,9 @@ export const TerminalPanel: React.FC = () => {
             {/* Ports Toolbar */}
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2">
               <div className="flex items-center space-x-2">
-                <Server className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
+                <Server className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
                 <span className="font-semibold text-[var(--text-primary)]">
-                  FORWARDED RUNNER PORTS ({forwardedPorts.length})
-                </span>
-                <span className="text-[10px] text-[var(--text-muted)]">
-                  • Mapped to your laptop's localhost
+                  PORTS ({forwardedPorts.length})
                 </span>
               </div>
 
@@ -1082,14 +1070,14 @@ export const TerminalPanel: React.FC = () => {
                     placeholder="Port (e.g. 3000)"
                     min={1}
                     max={65535}
-                    className="w-28 px-2 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded text-[11px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]"
+                    className="w-28 px-2 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded text-[11px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-coral)]"
                   />
                   <button
                     type="submit"
                     disabled={isForwardingManual || !manualPortInput}
                     className="flex items-center space-x-1 px-2.5 py-1 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--text-primary)] rounded text-[11px] transition-colors disabled:opacity-50 cursor-pointer"
                   >
-                    {isForwardingManual ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3 text-[var(--accent-cyan)]" />}
+                    {isForwardingManual ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3 text-[var(--accent-coral)]" />}
                     <span>Forward</span>
                   </button>
                 </form>
@@ -1100,7 +1088,7 @@ export const TerminalPanel: React.FC = () => {
                   title="Scan remote host for listening ports"
                   className="flex items-center space-x-1 px-2.5 py-1 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-[var(--text-primary)] rounded text-[11px] transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  <RefreshCw className={`w-3 h-3 text-[var(--accent-cyan)] ${isScanningPorts ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3 h-3 text-[var(--accent-coral)] ${isScanningPorts ? 'animate-spin' : ''}`} />
                   <span>Scan</span>
                 </button>
               </div>
@@ -1122,7 +1110,7 @@ export const TerminalPanel: React.FC = () => {
                 <tbody className="text-[var(--text-secondary)] divide-y divide-[var(--border-color)]/60">
                   {forwardedPorts.map((p) => (
                     <tr key={p.remotePort} className="hover:bg-[var(--bg-card)]/40 transition-colors">
-                      <td className="py-2 text-[var(--accent-cyan)] font-bold">
+                      <td className="py-2 text-[var(--accent-coral)] font-bold">
                         <span>{p.localPort}</span>
                         {p.hasCollision && (
                           <span className="ml-1.5 text-[9px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1 py-0.2 rounded font-normal">
@@ -1141,7 +1129,7 @@ export const TerminalPanel: React.FC = () => {
                         <button
                           onClick={() => openExternalUrl(p.url)}
                           title="Open in your laptop's default browser"
-                          className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 hover:underline cursor-pointer group"
+                          className="flex items-center space-x-1 text-[var(--text-primary)] hover:text-[var(--accent-coral)] hover:underline cursor-pointer group"
                         >
                           <span>{p.url}</span>
                           <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100" />
@@ -1152,7 +1140,7 @@ export const TerminalPanel: React.FC = () => {
                           <button
                             onClick={() => openExternalUrl(p.url)}
                             title="Open in browser"
-                            className="p-1 hover:text-[var(--accent-cyan)] text-[var(--text-muted)] transition-colors cursor-pointer"
+                            className="p-1 hover:text-[var(--accent-coral)] text-[var(--text-muted)] transition-colors cursor-pointer"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </button>
@@ -1162,7 +1150,7 @@ export const TerminalPanel: React.FC = () => {
                               showCopiedToast(`Copied ${p.url} to clipboard!`);
                             }}
                             title="Copy URL"
-                            className="p-1 hover:text-[var(--accent-cyan)] text-[var(--text-muted)] transition-colors cursor-pointer"
+                            className="p-1 hover:text-[var(--accent-coral)] text-[var(--text-muted)] transition-colors cursor-pointer"
                           >
                             <Copy className="w-3.5 h-3.5" />
                           </button>

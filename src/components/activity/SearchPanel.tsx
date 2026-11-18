@@ -33,7 +33,7 @@ function HighlightedSnippet({ text, matchIndices }: { text: string; matchIndices
     parts.push(
       <mark
         key={i}
-        className="bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] font-bold rounded px-0.5 select-none"
+        className="bg-[var(--accent-coral)]/20 text-[var(--accent-coral)] font-bold rounded px-0.5 select-none"
       >
         {text.substring(start, end)}
       </mark>
@@ -50,13 +50,12 @@ function HighlightedSnippet({ text, matchIndices }: { text: string; matchIndices
 
 function getFileIcon(filePath: string) {
   const lower = filePath.toLowerCase();
-  if (lower.endsWith('.json')) return <FileJson className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
+  if (lower.endsWith('.json')) return <FileJson className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />;
   if (lower.endsWith('.ts') || lower.endsWith('.tsx') || lower.endsWith('.js') || lower.endsWith('.jsx')) {
-    return <FileCode className="w-3.5 h-3.5 text-[var(--accent-cyan)] shrink-0" />;
+    return <FileCode className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />;
   }
-  if (lower.endsWith('.py')) return <FileCode className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
-  if (lower.endsWith('.css') || lower.endsWith('.html') || lower.endsWith('.scss')) {
-    return <FileCode className="w-3.5 h-3.5 text-rose-500 shrink-0" />;
+  if (lower.endsWith('.py') || lower.endsWith('.css') || lower.endsWith('.html') || lower.endsWith('.scss')) {
+    return <FileCode className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />;
   }
   return <FileText className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />;
 }
@@ -186,7 +185,7 @@ export const SearchPanel: React.FC = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search in files..."
-            className="w-full h-8 bg-[var(--bg-input)] border border-[var(--border-color)] rounded pl-8 pr-20 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] font-mono shadow-sm"
+            className="w-full h-8 bg-[var(--bg-input)] border border-[var(--border-color)] rounded pl-8 pr-20 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-coral)] font-mono shadow-sm"
           />
           <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 pointer-events-none" />
 
@@ -207,7 +206,7 @@ export const SearchPanel: React.FC = () => {
               title="Match Case (Aa)"
               className={`p-1 rounded text-[10px] font-mono font-bold transition-all ${
                 isCaseSensitive 
-                  ? 'bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/40 shadow-sm' 
+                  ? 'bg-[var(--accent-coral)]/20 text-[var(--accent-coral)] border border-[var(--accent-coral)]/40 shadow-sm' 
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'
               }`}
             >
@@ -219,7 +218,7 @@ export const SearchPanel: React.FC = () => {
               title="Match Whole Word (\b)"
               className={`px-1 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
                 isWholeWord 
-                  ? 'bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/40 shadow-sm' 
+                  ? 'bg-[var(--accent-coral)]/20 text-[var(--accent-coral)] border border-[var(--accent-coral)]/40 shadow-sm' 
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent'
               }`}
             >
@@ -241,7 +240,7 @@ export const SearchPanel: React.FC = () => {
         </div>
 
         {/* Files to Include Filter */}
-        <div className="flex items-center space-x-1.5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 focus-within:border-[var(--accent-cyan)] shadow-sm">
+        <div className="flex items-center space-x-1.5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded px-2 focus-within:border-[var(--accent-coral)] shadow-sm">
           <Filter className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
           <input
             type="text"
@@ -266,7 +265,7 @@ export const SearchPanel: React.FC = () => {
             <span className="font-bold">Error:</span> {error}
           </div>
         ) : isSearching ? (
-          <div className="p-3 flex items-center justify-center space-x-2 text-xs text-[var(--accent-cyan)]">
+          <div className="p-3 flex items-center justify-center space-x-2 text-xs text-[var(--accent-coral)]">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>Searching codebase...</span>
           </div>
@@ -318,7 +317,7 @@ export const SearchPanel: React.FC = () => {
                   </span>
                 </div>
 
-                <span className="text-[10px] bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--accent-cyan)] font-bold px-1.5 py-0.5 rounded shrink-0 shadow-sm">
+                <span className="text-[10px] bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] font-bold px-1.5 py-0.5 rounded shrink-0 shadow-sm">
                   {result.matches.length}
                 </span>
               </button>
@@ -332,7 +331,7 @@ export const SearchPanel: React.FC = () => {
                       onClick={() => openFile(result.path, fileName, m.line)}
                       className="w-full text-left p-1 rounded hover:bg-[var(--bg-hover)] text-[11px] font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-start space-x-2 transition-colors border border-transparent hover:border-[var(--border-color)] group"
                     >
-                      <span className="text-[var(--text-subtle)] text-[10px] shrink-0 font-mono w-7 text-right group-hover:text-[var(--accent-cyan)]">
+                      <span className="text-[var(--text-subtle)] text-[10px] shrink-0 font-mono w-7 text-right group-hover:text-[var(--accent-coral)]">
                         {m.line}:
                       </span>
                       <div className="truncate text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] flex-1 leading-tight">

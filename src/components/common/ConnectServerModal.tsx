@@ -4,12 +4,10 @@ import {
   X, 
   Terminal, 
   Wifi, 
-  ShieldCheck, 
   Copy, 
   Check, 
   ArrowRight, 
   Clock, 
-  Laptop, 
   UserCheck, 
   AlertTriangle, 
   LogIn, 
@@ -18,7 +16,9 @@ import {
   Loader2,
   Activity,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { useAuthStore } from '../../store/authStore';
@@ -203,18 +203,15 @@ export const ConnectServerModal: React.FC = () => {
     setHttpTestResult(result);
 
     if (result.serverReachable || result.ok) {
-      // Save backend URL in config & localStorage so all future API calls point here
       setBackendBaseUrl(constructedHttpUrl);
       setRemoteServerConnected(true, constructedHttpUrl, cleanHttpHost || 'Shiro Linux Server');
 
-      // Update recent HTTP hosts
-      const updated = [constructedHttpUrl, ...recentHttpHosts.filter((h) => h !== constructedHttpUrl)].slice(0, 6);
+      const updated = [constructedHttpUrl, ...recentHttpHosts.filter((h) => h !== constructedHttpUrl)].slice(0, 5);
       setRecentHttpHosts(updated);
       try {
         localStorage.setItem(RECENT_HTTP_HOSTS_STORAGE_KEY, JSON.stringify(updated));
       } catch (err) {}
 
-      // Automatically close modal after brief confirmation if token is valid
       if (result.tokenValid) {
         setTimeout(() => {
           setConnectServerModalOpen(false);
@@ -229,17 +226,15 @@ export const ConnectServerModal: React.FC = () => {
     setIsDemoLoggingIn(true);
     setDemoLoginError(null);
     try {
-      // Save backend URL first so authService.login posts directly to this server
       setBackendBaseUrl(constructedHttpUrl);
       setRemoteServerConnected(true, constructedHttpUrl, cleanHttpHost || 'Shiro Linux Server');
       await authService.login('developer@renkairo.io', 'renkairo2026');
 
-      // Verify connection with new real token
       const newToken = useAuthStore.getState().token;
       const res = await testBackendHttpConnection(constructedHttpUrl, newToken);
       setHttpTestResult(res);
 
-      const updated = [constructedHttpUrl, ...recentHttpHosts.filter((h) => h !== constructedHttpUrl)].slice(0, 6);
+      const updated = [constructedHttpUrl, ...recentHttpHosts.filter((h) => h !== constructedHttpUrl)].slice(0, 5);
       setRecentHttpHosts(updated);
       try {
         localStorage.setItem(RECENT_HTTP_HOSTS_STORAGE_KEY, JSON.stringify(updated));
@@ -288,7 +283,7 @@ export const ConnectServerModal: React.FC = () => {
     setIsProvisioning(true);
     setProvisionError(null);
 
-    const updated = [targetSshHost, ...recentSshHosts.filter((h) => h !== targetSshHost)].slice(0, 6);
+    const updated = [targetSshHost, ...recentSshHosts.filter((h) => h !== targetSshHost)].slice(0, 5);
     setRecentSshHosts(updated);
     try {
       localStorage.setItem(RECENT_SSH_HOSTS_STORAGE_KEY, JSON.stringify(updated));
@@ -298,7 +293,6 @@ export const ConnectServerModal: React.FC = () => {
     const apiBase = isFileProtocol ? 'http://localhost:8000/api' : '/api';
 
     try {
-      // 1. Issue HTTP Provisioning Request to backend
       const response = await fetch(`${apiBase}/ssh/provision`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -352,159 +346,127 @@ export const ConnectServerModal: React.FC = () => {
     }
   };
 
-
   return (
     <div 
-      className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-start justify-center pt-14 sm:pt-20 px-4 select-none animate-in fade-in duration-150"
+      className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none animate-in fade-in duration-200"
       onClick={() => setConnectServerModalOpen(false)}
     >
       <div 
-        className="w-full max-w-lg bg-[var(--bg-panel)] border border-[var(--border-color)] rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col"
+        className="w-full max-w-lg bg-[var(--bg-panel)] border border-[var(--border-color)] rounded-2xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Header */}
-        <div className="px-4 py-3 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-card)]">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] flex items-center justify-center relative overflow-hidden group p-1 shadow-sm">
-              <div className="absolute inset-0 bg-gradient-to-t from-[var(--accent-coral)]/20 to-transparent opacity-60"></div>
-              <ToriiIcon color="var(--accent-coral)" className="w-4 h-4 z-10 drop-shadow-[0_0_6px_var(--glow-coral)]" />
+        {/* --- Header --- */}
+        <div className="px-5 py-4 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-card)]">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)] flex items-center justify-center p-1.5 shadow-sm">
+              <ToriiIcon color="var(--accent-coral)" className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center space-x-2 font-mono">
-                <span>Connect Remote Server</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-cyan)]/15 border border-[var(--accent-cyan)]/40 text-[var(--accent-cyan)] font-mono font-bold">
-                  {connectionMode === 'http' ? 'HTTP / Shiro Backend' : 'SSH Shell'}
-                </span>
+              <h3 className="text-sm font-bold text-[var(--text-primary)] leading-tight tracking-wide">
+                Connect Server
               </h3>
-              <p className="text-[11px] text-[var(--text-muted)]">
-                {connectionMode === 'http' 
-                  ? 'Connect RenKairo UI directly to remote Shiro backend APIs & workspaces'
-                  : 'Launch an interactive SSH terminal in the bottom panel'}
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                Target Shiro backend API or remote terminal shell
               </p>
             </div>
           </div>
 
-          <button
-            onClick={() => setConnectServerModalOpen(false)}
-            className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-            title="Close (Esc)"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <span className="text-[10px] text-[var(--text-subtle)] px-1.5 py-0.5 rounded border border-[var(--border-color)] bg-[var(--bg-base)]">
+              ESC
+            </span>
+            <button
+              onClick={() => setConnectServerModalOpen(false)}
+              className="w-7 h-7 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors cursor-pointer"
+              title="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Protocol Selector Tabs (HTTP Method vs SSH Terminal) */}
-        <div className="flex border-b border-[var(--border-color)] bg-[var(--bg-base)] px-4 pt-2">
-          <button
-            type="button"
-            onClick={() => setConnectionMode('http')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-mono font-semibold border-b-2 transition-all cursor-pointer ${
-              connectionMode === 'http'
-                ? 'border-[var(--accent-cyan)] text-[var(--accent-cyan)] bg-[var(--bg-panel)] rounded-t'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>HTTP Backend {cleanHttpPort ? `(Port ${cleanHttpPort})` : '(REST API)'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setConnectionMode('ssh')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-mono font-semibold border-b-2 transition-all cursor-pointer ${
-              connectionMode === 'ssh'
-                ? 'border-[var(--accent-coral)] text-[var(--accent-coral)] bg-[var(--bg-panel)] rounded-t'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <Terminal className="w-3.5 h-3.5" />
-            <span>SSH Shell (Port 22)</span>
-          </button>
+        {/* --- Segmented Mode Switcher --- */}
+        <div className="px-5 pt-3.5 pb-1">
+          <div className="p-1 bg-[var(--bg-base)] border border-[var(--border-color)] rounded-xl grid grid-cols-2 gap-1">
+            <button
+              type="button"
+              onClick={() => setConnectionMode('http')}
+              className={`flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                connectionMode === 'http'
+                  ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm border border-[var(--border-color)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Globe className={`w-3.5 h-3.5 ${connectionMode === 'http' ? 'text-[var(--accent-coral)]' : ''}`} />
+              <span>HTTP REST API</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setConnectionMode('ssh')}
+              className={`flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                connectionMode === 'ssh'
+                  ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm border border-[var(--border-color)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Terminal className={`w-3.5 h-3.5 ${connectionMode === 'ssh' ? 'text-[var(--accent-coral)]' : ''}`} />
+              <span>SSH Shell (Port 22)</span>
+            </button>
+          </div>
         </div>
 
-        {/* ---------------------------------------------------------------- */}
-        {/* TAB 1: HTTP BACKEND CONNECTION (OPTION 2: DIRECT HTTP REST API)  */}
-        {/* ---------------------------------------------------------------- */}
+        {/* ================================================================ */}
+        {/* TAB 1: HTTP BACKEND (REST API)                                   */}
+        {/* ================================================================ */}
         {connectionMode === 'http' && (
-          <form onSubmit={handleConnectHttp} className="p-4 space-y-4 text-xs font-sans">
-            {/* Account Authentication Status Banner */}
+          <form onSubmit={handleConnectHttp} className="p-5 space-y-4 text-xs">
+            {/* Account Status Pill */}
             {isAuthenticated && authUser ? (
-              (authToken === 'renkairo-mock-jwt-token-local-dev-mode' || authToken === 'renkairo-shiro-secret-token') ? (
-                <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs font-mono">
-                  <div className="flex items-center space-x-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                    <div>
-                      <span className="text-[var(--text-primary)] font-semibold">{authUser.username}</span>
-                      <span className="text-amber-400 text-[10px] ml-1.5">(Mock Token Detected)</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-1.5">
-                    <button
-                      type="button"
-                      onClick={() => logout()}
-                      className="px-2 py-1 rounded bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-rose-500 text-[var(--text-secondary)] hover:text-rose-400 text-[10px] font-semibold transition-colors cursor-pointer"
-                    >
-                      Sign Out
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleQuickDemoLogin}
-                      disabled={isDemoLoggingIn}
-                      className="px-2.5 py-1 rounded bg-[var(--accent-coral)] text-white text-[10px] font-semibold hover:opacity-90 transition-opacity flex items-center space-x-1"
-                    >
-                      {isDemoLoggingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogIn className="w-3 h-3" />}
-                      <span>Sign in as Developer</span>
-                    </button>
+              <div className="p-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-between shadow-sm">
+                <div className="flex items-center space-x-2.5 min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <div className="truncate text-xs">
+                    <span className="text-[var(--text-primary)] font-semibold">{authUser.username}</span>
+                    <span className="text-[var(--text-muted)] text-[10px] ml-1.5 font-normal">
+                      ({authUser.role || 'DEVELOPER'})
+                    </span>
                   </div>
                 </div>
-              ) : (
-                <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs font-mono">
-                  <div className="flex items-center space-x-2">
-                    <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <div className="truncate">
-                      <span className="text-[var(--text-primary)] font-semibold">{authUser.username}</span>
-                      <span className="text-[var(--text-muted)] text-[10px] ml-1.5">({authUser.role || 'DEVELOPER'})</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 shrink-0">
-                    <div className="flex items-center space-x-1 text-[10px] text-emerald-400 font-semibold">
-                      <KeyRound className="w-3 h-3" />
-                      <span>Authenticated JWT</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => logout()}
-                      className="px-2 py-0.5 rounded bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-rose-500 text-[var(--text-muted)] hover:text-rose-400 text-[10px] transition-colors cursor-pointer"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
-              )
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="px-2 py-1 rounded-lg text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer shrink-0"
+                >
+                  Sign Out
+                </button>
+              </div>
             ) : (
-              <div className="p-2.5 rounded-lg bg-[var(--bg-base)] border border-[var(--border-color)] flex items-center justify-between text-xs">
+              <div className="p-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-between shadow-sm">
                 <div className="flex items-center space-x-2 text-[var(--text-muted)]">
-                  <KeyRound className="w-4 h-4 text-[var(--accent-cyan)] shrink-0" />
+                  <KeyRound className="w-3.5 h-3.5 text-[var(--accent-coral)] shrink-0" />
                   <span className="text-[11px]">Unauthenticated Session</span>
                 </div>
                 <button
                   type="button"
                   onClick={handleQuickDemoLogin}
                   disabled={isDemoLoggingIn}
-                  className="px-2.5 py-1 rounded bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] text-[10px] font-mono font-semibold hover:bg-[var(--accent-cyan)]/30 transition-colors flex items-center space-x-1"
+                  className="px-2.5 py-1 rounded-lg bg-[var(--accent-coral)]/15 border border-[var(--accent-coral)]/30 text-[var(--accent-coral)] text-[10px] font-semibold hover:bg-[var(--accent-coral)]/25 transition-colors flex items-center space-x-1 cursor-pointer disabled:opacity-50 shrink-0"
                 >
                   {isDemoLoggingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogIn className="w-3 h-3" />}
-                  <span>Quick Demo Sign In</span>
+                  <span>Developer Sign In</span>
                 </button>
               </div>
             )}
 
-            {/* Target Server Host & Port Grid */}
-            <div className="grid grid-cols-4 gap-3">
-              {/* Protocol */}
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider font-mono">
-                  Protocol
-                </label>
+            {/* Seamless Unified Address Bar Group */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                Server Endpoint Address
+              </label>
+
+              <div className="flex rounded-xl overflow-hidden border border-[var(--border-color)] focus-within:border-[var(--accent-coral)] focus-within:ring-1 focus-within:ring-[var(--accent-coral)]/40 transition-all shadow-sm bg-[var(--bg-input)]">
+                {/* Protocol selector */}
                 <select
                   value={httpProtocol}
                   onChange={(e) => {
@@ -514,72 +476,42 @@ export const ConnectServerModal: React.FC = () => {
                       setHttpPort('');
                     }
                   }}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-2.5 py-2 text-xs font-mono text-[var(--text-primary)] focus:outline-none shadow-sm cursor-pointer"
+                  className="bg-[var(--bg-card)] border-r border-[var(--border-color)] px-2.5 py-2 text-xs text-[var(--text-secondary)] focus:outline-none cursor-pointer select-none shrink-0"
                 >
                   <option value="http">http://</option>
                   <option value="https">https://</option>
                 </select>
-              </div>
 
-              {/* Host / IP */}
-              <div className="col-span-2 space-y-1.5">
-                <label className="block text-[11px] font-semibold text-[var(--text-primary)] uppercase tracking-wider font-mono">
-                  Remote Host / IP <span className="text-[var(--accent-coral)]">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={httpHost}
-                    onChange={(e) => handleHttpHostChange(e.target.value)}
-                    placeholder="e.g. 192.168.1.120 or hostname.duckdns.org"
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-primary)] placeholder-[var(--text-subtle)] focus:outline-none shadow-sm pr-8 transition-colors"
-                  />
-                  <Globe className="w-4 h-4 text-[var(--accent-cyan)] absolute right-2.5 top-2.5 pointer-events-none opacity-80" />
-                </div>
-              </div>
-
-              {/* Port */}
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider font-mono">
-                  Port <span className="text-[10px] font-normal opacity-70">(optional)</span>
-                </label>
+                {/* Host / IP input */}
                 <input
+                  ref={inputRef}
                   type="text"
-                  value={httpPort}
-                  onChange={(e) => setHttpPort(e.target.value)}
-                  placeholder="optional"
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-primary)] focus:outline-none shadow-sm transition-colors text-center font-bold"
+                  value={httpHost}
+                  onChange={(e) => handleHttpHostChange(e.target.value)}
+                  placeholder="192.168.1.120 or hostname"
+                  className="flex-1 bg-transparent px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-subtle)] focus:outline-none min-w-0"
                 />
-              </div>
-            </div>
 
-            {/* Live HTTP Endpoint & Auth Header Preview */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] font-mono uppercase font-semibold">
-                <span>Active HTTP Endpoint Target</span>
-                <span className="text-[var(--accent-cyan)]">REST / JSON</span>
-              </div>
-              <div className="p-2.5 bg-[var(--bg-base)] border border-[var(--border-color)] rounded-lg font-mono text-[11px] text-[var(--accent-cyan)] shadow-inner break-all space-y-1">
-                <div className="flex items-center space-x-1.5">
-                  <span className="text-emerald-400 font-bold">API:</span>
-                  <span className="text-[var(--text-primary)] font-semibold">{constructedHttpUrl}</span>
+                {/* Port separator & port input */}
+                <div className="flex items-center bg-[var(--bg-card)] border-l border-[var(--border-color)] px-2.5 shrink-0">
+                  <span className="text-[var(--text-subtle)] text-xs mr-1">:</span>
+                  <input
+                    type="text"
+                    value={httpPort}
+                    onChange={(e) => setHttpPort(e.target.value)}
+                    placeholder="8080"
+                    className="w-14 bg-transparent py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-subtle)] focus:outline-none text-center font-bold"
+                  />
                 </div>
-                {isAuthenticated && authToken && (
-                  <div className="text-[10px] text-[var(--text-muted)] truncate">
-                    <span className="text-amber-400 font-semibold">Header: </span>
-                    <span>Authorization: Bearer {authToken.substring(0, 18)}...</span>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Quick Select Recent Backend URLs */}
+            {/* Recent Servers Chips */}
             {recentHttpHosts.length > 0 && (
               <div className="space-y-1.5">
-                <div className="flex items-center space-x-1.5 text-[10px] text-[var(--text-muted)] font-mono uppercase font-semibold">
-                  <Clock className="w-3 h-3 text-[var(--text-subtle)]" />
-                  <span>Recent Backend Servers</span>
+                <div className="flex items-center space-x-1.5 text-[10px] text-[var(--text-subtle)] uppercase tracking-wider font-semibold">
+                  <Clock className="w-3 h-3" />
+                  <span>Recent Servers</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {recentHttpHosts.map((recent) => (
@@ -587,140 +519,110 @@ export const ConnectServerModal: React.FC = () => {
                       key={recent}
                       type="button"
                       onClick={() => handleHttpHostChange(recent)}
-                      className={`px-2 py-1 rounded text-[10px] font-mono border transition-all flex items-center space-x-1 cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-lg text-[10px] border transition-all flex items-center space-x-1.5 cursor-pointer ${
                         constructedHttpUrl === recent
-                          ? 'bg-[var(--accent-cyan)]/20 border-[var(--accent-cyan)] text-[var(--accent-cyan)] font-semibold'
-                          : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--accent-cyan)]/50 hover:text-[var(--text-primary)]'
+                          ? 'bg-[var(--accent-coral)]/15 border-[var(--accent-coral)]/50 text-[var(--accent-coral)] font-semibold'
+                          : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--text-muted)] hover:text-[var(--text-primary)]'
                       }`}
                     >
-                      <Globe className="w-3 h-3 text-[var(--text-subtle)]" />
-                      <span>{recent}</span>
+                      <Globe className="w-2.5 h-2.5 opacity-60" />
+                      <span className="truncate max-w-[200px]">{recent.replace(/^https?:\/\//i, '')}</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Test Connection Result Alert */}
+            {/* Target URL Preview */}
+            <div className="p-2.5 bg-[var(--bg-base)] border border-[var(--border-color)] rounded-xl flex items-center justify-between text-[11px] shadow-inner">
+              <div className="flex items-center space-x-2 truncate pr-2">
+                <span className="text-[var(--text-subtle)] select-none font-bold">API</span>
+                <span className="text-[var(--text-primary)] font-semibold truncate">{constructedHttpUrl}</span>
+              </div>
+              <span className="text-[9px] text-[var(--text-subtle)] px-1.5 py-0.5 rounded bg-[var(--bg-card)] border border-[var(--border-color)] shrink-0">
+                REST / JSON
+              </span>
+            </div>
+
+            {/* Connection Test Status Banner */}
             {httpTestResult && (
-              <div className={`p-3 rounded-lg border text-xs font-mono flex flex-col space-y-2 animate-in fade-in duration-150 ${
+              <div className={`p-3 rounded-xl border text-xs flex items-start space-x-2.5 animate-in fade-in duration-150 ${
                 httpTestResult.serverReachable
                   ? httpTestResult.tokenValid 
-                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' 
-                    : 'bg-amber-500/10 border-amber-500/40 text-amber-300'
-                  : 'bg-rose-500/10 border-rose-500/40 text-rose-400'
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
               }`}>
-                <div className="flex items-start space-x-2">
-                  {httpTestResult.serverReachable ? (
-                    httpTestResult.tokenValid ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                    )
+                {httpTestResult.serverReachable ? (
+                  httpTestResult.tokenValid ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                  )}
-                  <div className="space-y-0.5 flex-1">
-                    <p className="font-semibold">
-                      {httpTestResult.serverReachable
-                        ? (httpTestResult.tokenValid ? 'Connection Verified & Authenticated!' : `Server Online${cleanHttpPort ? ` (${cleanHttpPort})` : ''} — Authentication Needed`)
-                        : 'Connection Failed'}
-                    </p>
-                    <p className="text-[11px] opacity-90 leading-relaxed">
-                      {httpTestResult.serverReachable
-                        ? httpTestResult.message || `Shiro Backend reached at ${httpTestResult.serverUrl} (${httpTestResult.latencyMs}ms latency).`
-                        : httpTestResult.error}
-                    </p>
-                  </div>
-                </div>
-
-                {/* If server is reachable but token is not authenticated, show direct action buttons */}
-                {httpTestResult.serverReachable && !httpTestResult.tokenValid && (
-                  <div className="pt-2 border-t border-amber-500/20 flex flex-wrap items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBackendBaseUrl(constructedHttpUrl);
-                        setConnectServerModalOpen(false);
-                        setAuthModalOpen(true);
-                      }}
-                      className="px-2.5 py-1 rounded text-[11px] border border-amber-500/40 text-amber-200 hover:bg-amber-500/20 transition-colors"
-                    >
-                      Sign In / Register
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleQuickDemoLogin}
-                      disabled={isDemoLoggingIn}
-                      className="px-2.5 py-1 rounded bg-[var(--accent-coral)] text-white text-[11px] font-semibold hover:opacity-90 transition-opacity flex items-center space-x-1 shadow-sm"
-                    >
-                      {isDemoLoggingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogIn className="w-3 h-3" />}
-                      <span>Quick Sign In (developer)</span>
-                    </button>
-                  </div>
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  )
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 )}
+                <div className="flex-1 space-y-0.5 min-w-0">
+                  <div className="font-semibold text-xs flex items-center justify-between">
+                    <span>
+                      {httpTestResult.serverReachable
+                        ? (httpTestResult.tokenValid ? 'Connected & Authenticated' : 'Server Online (Sign In Required)')
+                        : 'Connection Failed'}
+                    </span>
+                    {httpTestResult.latencyMs && (
+                      <span className="text-[10px] opacity-75 font-normal">{httpTestResult.latencyMs}ms</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] opacity-80 leading-relaxed break-words">
+                    {httpTestResult.serverReachable
+                      ? httpTestResult.message || `Shiro Backend responding at ${httpTestResult.serverUrl}`
+                      : httpTestResult.error}
+                  </p>
+                </div>
               </div>
             )}
 
             {/* Demo Login Error Banner */}
             {demoLoginError && (
-              <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{demoLoginError}</span>
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center space-x-2">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-[11px]">{demoLoginError}</span>
               </div>
             )}
 
-            {/* Helpful Explanation Pill */}
-            <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 flex items-start space-x-2 text-[11px] text-[var(--text-muted)]">
-              <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <p className="text-[var(--text-secondary)] font-medium">Direct HTTP / REST Architecture</p>
-                <p className="text-[10px] text-[var(--text-muted)]">
-                  Sends HTTP web requests and JWT headers directly to the remote server{cleanHttpPort ? ` on port ${cleanHttpPort}` : ''}. No SSH tunnel or command-line forwarding is required.
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-2 border-t border-[var(--border-color)]">
-              <button
-                type="button"
-                onClick={handleQuickDemoLogin}
-                disabled={isDemoLoggingIn || !cleanHttpHost}
-                title="Quickly authenticate using the remote server's seeded developer account"
-                className="px-2.5 py-1.5 rounded-lg border border-[var(--border-color)] hover:border-[var(--accent-cyan)] text-[var(--accent-cyan)] transition-colors font-mono text-[11px] flex items-center space-x-1.5 hover:bg-[var(--bg-card)] cursor-pointer disabled:opacity-50"
-              >
-                {isDemoLoggingIn ? <Loader2 className="w-3 h-3 animate-spin" /> : <KeyRound className="w-3 h-3" />}
-                <span>Demo Sign In (developer@renkairo.io)</span>
-              </button>
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-between pt-3 border-t border-[var(--border-color)]">
+              <span className="text-[10px] text-[var(--text-subtle)]">
+                Shiro Port 8080
+              </span>
 
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
                   onClick={() => setConnectServerModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors font-medium text-xs cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors font-medium text-xs cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!cleanHttpHost || httpTesting}
-                  className={`px-4 py-1.5 rounded-lg flex items-center space-x-2 text-xs font-semibold shadow-md transition-all font-mono ${
+                  className={`px-4 py-1.5 rounded-xl flex items-center space-x-2 text-xs font-semibold shadow-md transition-all ${
                     cleanHttpHost && !httpTesting
-                      ? 'bg-gradient-to-r from-[var(--accent-coral)] to-[var(--accent-cyan)] text-white hover:opacity-95 active:scale-98 cursor-pointer' 
+                      ? 'bg-[var(--accent-coral)] hover:bg-[var(--accent-coral-hover)] text-white active:scale-98 cursor-pointer' 
                       : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-subtle)] cursor-not-allowed'
                   }`}
                 >
                   {httpTesting ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Testing & Connecting...</span>
+                      <span>Testing...</span>
                     </>
                   ) : (
                     <>
                       <Activity className="w-3.5 h-3.5" />
-                      <span>Save & Connect {cleanHttpPort ? `(Port ${cleanHttpPort})` : ''}</span>
-                      <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                      <span>Save & Connect</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </>
                   )}
                 </button>
@@ -729,36 +631,33 @@ export const ConnectServerModal: React.FC = () => {
           </form>
         )}
 
-        {/* ---------------------------------------------------------------- */}
+        {/* ================================================================ */}
         {/* TAB 2: SSH TERMINAL SHELL (PORT 22)                              */}
-        {/* ---------------------------------------------------------------- */}
+        {/* ================================================================ */}
         {connectionMode === 'ssh' && (
-          <form onSubmit={handleConnectSsh} className="p-4 space-y-4 text-xs font-sans">
-            {/* Account Status */}
+          <form onSubmit={handleConnectSsh} className="p-5 space-y-4 text-xs">
+            {/* Account Status Pill */}
             {isAuthenticated && authUser ? (
-              <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs font-mono">
-                <div className="flex items-center space-x-2">
-                  <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <div className="truncate">
+              <div className="p-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-between shadow-sm">
+                <div className="flex items-center space-x-2.5 min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <div className="truncate text-xs">
                     <span className="text-[var(--text-primary)] font-semibold">{authUser.username}</span>
-                    <span className="text-[var(--text-muted)] text-[10px] ml-1.5">({authUser.role || 'DEVELOPER'})</span>
+                    <span className="text-[var(--text-muted)] text-[10px] ml-1.5 font-normal">
+                      ({authUser.role || 'DEVELOPER'})
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center space-x-1 text-[10px] text-emerald-400 font-semibold shrink-0">
-                  <KeyRound className="w-3 h-3" />
-                  <span>Shiro JWT Active</span>
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Session Active</span>
                 </div>
               </div>
             ) : (
-              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start justify-between space-x-3">
-                <div className="flex items-start space-x-2.5">
-                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-amber-500">Sign In Required</p>
-                    <p className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                      You must be signed in to a RenKairo account to establish SSH connections. Anonymous connections are restricted.
-                    </p>
-                  </div>
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between shadow-sm">
+                <div className="flex items-center space-x-2 text-amber-400">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-[11px] font-medium">Authentication recommended</span>
                 </div>
                 <button
                   type="button"
@@ -766,177 +665,157 @@ export const ConnectServerModal: React.FC = () => {
                     setConnectServerModalOpen(false);
                     setAuthModalOpen(true);
                   }}
-                  className="px-2.5 py-1.5 rounded-lg bg-[var(--accent-coral)] hover:bg-[var(--accent-coral)]/90 text-white font-semibold text-xs flex items-center space-x-1.5 shrink-0 shadow-sm transition-all cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-[var(--accent-coral)] text-white text-[10px] font-semibold hover:bg-[var(--accent-coral-hover)] transition-colors flex items-center space-x-1 cursor-pointer shrink-0"
                 >
-                  <LogIn className="w-3.5 h-3.5" />
+                  <LogIn className="w-3 h-3" />
                   <span>Sign In</span>
                 </button>
               </div>
             )}
 
-            {/* Target Host Input */}
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-semibold text-[var(--text-primary)] uppercase tracking-wider font-mono">
-                SSH Server IP / Hostname <span className="text-[var(--accent-coral)]">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={sshHost}
-                  onChange={(e) => setSshHost(e.target.value)}
-                  placeholder="e.g. 192.168.1.120 or hostname.local (Port 22)"
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-primary)] placeholder-[var(--text-subtle)] focus:outline-none shadow-sm pr-9 transition-colors"
-                />
-                <Wifi className="w-4 h-4 text-[var(--accent-cyan)] absolute right-3 top-2.5 pointer-events-none opacity-80" />
-              </div>
-            </div>
-
-            {/* User & Port Grid */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2 space-y-1.5">
-                <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider font-mono">
-                  Linux SSH User
+            {/* Host & Port Row */}
+            <div className="grid grid-cols-4 gap-2.5">
+              <div className="col-span-3 space-y-1.5">
+                <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                  Server Host / IP
                 </label>
-                <input
-                  type="text"
-                  value={sshUser}
-                  onChange={(e) => setSshUser(e.target.value)}
-                  placeholder="Azhar"
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-primary)] focus:outline-none shadow-sm transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={sshHost}
+                    onChange={(e) => setSshHost(e.target.value)}
+                    placeholder="192.168.1.120"
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-coral)] focus:ring-1 focus:ring-[var(--accent-coral)]/40 rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-subtle)] focus:outline-none shadow-sm pr-8 transition-all"
+                  />
+                  <Wifi className="w-3.5 h-3.5 text-[var(--text-subtle)] absolute right-2.5 top-2.5 pointer-events-none" />
+                </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider font-mono">
-                  SSH Port
+                <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider text-center">
+                  Port
                 </label>
                 <input
                   type="text"
                   value={sshPort}
                   onChange={(e) => setSshPort(e.target.value)}
                   placeholder="22"
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-primary)] focus:outline-none shadow-sm transition-colors text-center font-bold"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-coral)] focus:ring-1 focus:ring-[var(--accent-coral)]/40 rounded-xl px-2 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-subtle)] focus:outline-none shadow-sm text-center font-bold transition-all"
                 />
               </div>
             </div>
 
-            {/* Password Credentials */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* User & Password Row */}
+            <div className="grid grid-cols-2 gap-2.5">
               <div className="space-y-1.5">
-                <label className="block text-[11px] font-semibold text-[var(--text-primary)] uppercase tracking-wider font-mono">
-                  Workspace Scope Name
+                <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                  Linux User
                 </label>
                 <input
                   type="text"
-                  value={sshWorkspaceName}
-                  onChange={(e) => setSshWorkspaceName(e.target.value)}
-                  placeholder="default"
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--accent-cyan)] focus:outline-none shadow-sm transition-colors"
+                  value={sshUser}
+                  onChange={(e) => setSshUser(e.target.value)}
+                  placeholder="Azhar"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-coral)] focus:ring-1 focus:ring-[var(--accent-coral)]/40 rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none shadow-sm transition-all"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider font-mono">
-                  Server Password (Optional)
+                <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                  Password <span className="opacity-60 font-normal">(Optional)</span>
                 </label>
                 <input
                   type="password"
                   value={sshPassword}
                   onChange={(e) => setSshPassword(e.target.value)}
-                  placeholder="Auto-inject password"
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-cyan)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-primary)] focus:outline-none shadow-sm transition-colors"
+                  placeholder="Password"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-coral)] focus:ring-1 focus:ring-[var(--accent-coral)]/40 rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none shadow-sm transition-all"
                 />
               </div>
             </div>
 
-            {/* Command Preview */}
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] font-mono uppercase font-semibold">
-                <span className="flex items-center space-x-1">
-                  <Terminal className="w-3 h-3 text-[var(--accent-coral)]" />
-                  <span>Executed CLI Command</span>
-                </span>
-                {targetSshHost && (
-                  <button
-                    type="button"
-                    onClick={copyCommand}
-                    className="hover:text-[var(--accent-cyan)] flex items-center space-x-1 transition-colors cursor-pointer"
-                  >
-                    {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
-                  </button>
-                )}
+            {/* Workspace Scope */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                Workspace Scope Name
+              </label>
+              <input
+                type="text"
+                value={sshWorkspaceName}
+                onChange={(e) => setSshWorkspaceName(e.target.value)}
+                placeholder="default"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[var(--accent-coral)] focus:ring-1 focus:ring-[var(--accent-coral)]/40 rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none shadow-sm transition-all"
+              />
+            </div>
+
+            {/* CLI Command Preview Box */}
+            <div className="p-2.5 bg-[var(--bg-base)] border border-[var(--border-color)] rounded-xl flex items-center justify-between text-[11px] shadow-inner">
+              <div className="flex items-center space-x-2 truncate pr-2">
+                <span className="text-[var(--text-subtle)] select-none font-bold">$</span>
+                <span className="text-[var(--text-primary)] font-semibold truncate font-mono">{sshCommand}</span>
               </div>
-
-              <div className="p-2.5 bg-[var(--bg-base)] border border-[var(--border-color)] rounded-lg font-mono text-[11px] text-[var(--accent-cyan)] shadow-inner truncate">
-                <span className="text-[var(--text-subtle)] mr-2 select-none">$</span>
-                <span className="font-semibold text-emerald-400">ssh </span>
-                {targetSshPort !== '22' && (
-                  <span className="text-amber-400">-p {targetSshPort} </span>
-                )}
-                <span className="text-[var(--accent-coral)] font-bold">{targetSshUser}</span>
-                <span className="text-[var(--text-subtle)]">@</span>
-                <span className="text-[var(--accent-cyan)] font-semibold">
-                  {targetSshHost || <span className="text-[var(--text-subtle)]">[ipaddress]</span>}
-                </span>
-              </div>
-            </div>
-
-          {/* Provisioning Error Banner */}
-          {provisionError && (
-            <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-2.5 text-[11px] text-rose-400 font-mono flex items-start space-x-2">
-              <span className="shrink-0 text-rose-400 font-bold">⚠️</span>
-              <div className="flex-1 break-words">{provisionError}</div>
-            </div>
-          )}
-
-          {/* Helpful Information Pill */}
-          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2.5 flex items-start space-x-2 text-[11px] text-[var(--text-muted)]">
-            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <p className="text-[var(--text-secondary)] font-medium">HTTP Workspace Isolation & Provisioning</p>
-              <p className="text-[10px] text-[var(--text-muted)]">
-                The backend provisions <code className="text-[var(--accent-cyan)] font-mono">~/.renkairo/workspaces/{sshWorkspaceName || 'default'}</code> over HTTP before opening the interactive SSH terminal.
-              </p>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end space-x-2 pt-2 border-t border-[var(--border-color)]">
-            <button
-              type="button"
-              disabled={isProvisioning}
-              onClick={() => setConnectServerModalOpen(false)}
-              className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors font-medium text-xs disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!targetSshHost || isProvisioning}
-              className={`px-4 py-1.5 rounded-lg flex items-center space-x-2 text-xs font-semibold shadow-md transition-all font-mono ${
-                targetSshHost && !isProvisioning
-                  ? 'bg-gradient-to-r from-[var(--accent-coral)] to-[var(--accent-cyan)] text-white hover:opacity-95 active:scale-98 cursor-pointer' 
-                  : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-subtle)] cursor-not-allowed'
-              }`}
-            >
-              {isProvisioning ? (
-                <>
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                  <span>Provisioning Workspace...</span>
-                </>
-              ) : (
-                <>
-                  <Server className="w-3.5 h-3.5" />
-                  <span>Connect & Open Terminal</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-                </>
+              {targetSshHost && (
+                <button
+                  type="button"
+                  onClick={copyCommand}
+                  className="px-2 py-0.5 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)] transition-colors flex items-center space-x-1 cursor-pointer shrink-0"
+                  title="Copy command"
+                >
+                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
               )}
-            </button>
-          </div>
-        </form>
-      )}
+            </div>
 
+            {/* Provisioning Error Banner */}
+            {provisionError && (
+              <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-2.5 text-[11px] text-rose-400 flex items-start space-x-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                <span className="flex-1 break-words">{provisionError}</span>
+              </div>
+            )}
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-between pt-3 border-t border-[var(--border-color)]">
+              <span className="text-[10px] text-[var(--text-subtle)]">
+                Direct SSH (Port 22)
+              </span>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  disabled={isProvisioning}
+                  onClick={() => setConnectServerModalOpen(false)}
+                  className="px-3.5 py-1.5 rounded-xl border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors font-medium text-xs disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!targetSshHost || isProvisioning}
+                  className={`px-4 py-1.5 rounded-xl flex items-center space-x-2 text-xs font-semibold shadow-md transition-all ${
+                    targetSshHost && !isProvisioning
+                      ? 'bg-[var(--accent-coral)] hover:bg-[var(--accent-coral-hover)] text-white active:scale-98 cursor-pointer' 
+                      : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-subtle)] cursor-not-allowed'
+                  }`}
+                >
+                  {isProvisioning ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Provisioning...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Server className="w-3.5 h-3.5" />
+                      <span>Connect Terminal</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
