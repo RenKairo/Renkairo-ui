@@ -104,11 +104,60 @@ export function removeFileFromVirtualTree(targetRelPath: string): void {
 // ----------------------------------------------------
 // 1. Open Local Folder Picker (Native Node.js Electron)
 // ----------------------------------------------------
-export async function openLocalFolderPicker(): Promise<{
+export async function openLocalFolderPicker(explicitPath?: string): Promise<{
   name: string;
   path: string;
   tree: FileNode[];
 } | null> {
+  // 0. Explicit directory path provided: load that folder directly into workspace
+  if (explicitPath) {
+    activeWorkspacePath = explicitPath;
+    inMemoryFileStore.clear();
+    const rootName = explicitPath.split(/[/\\]/).filter(Boolean).pop() || explicitPath;
+
+    // 0a. Try Native Electron Node.js File System Provider
+    if (typeof window !== 'undefined' && window.electronAPI?.fs?.readDirectoryTree) {
+      try {
+        const tree = await window.electronAPI.fs.readDirectoryTree(explicitPath);
+        currentVirtualTree = tree || [];
+        return {
+          name: rootName,
+          path: explicitPath,
+          tree: currentVirtualTree
+        };
+      } catch (err) {
+        console.error('[Native FS] Failed reading directory tree from explicit path:', err);
+      }
+    }
+
+    // 0b. Try HTTP Backend Fallback (POST /api/fs/workspace)
+    try {
+      const apiBase = typeof window !== 'undefined' && window.location.protocol === 'file:' ? 'http://localhost:8000/api' : '/api';
+      const res = await fetch(`${apiBase}/fs/workspace`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: explicitPath })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        currentVirtualTree = data.tree || [];
+        return {
+          name: data.rootName || rootName,
+          path: data.workspace || explicitPath,
+          tree: currentVirtualTree
+        };
+      }
+    } catch (err) {
+      console.error('[Web FS] Failed setting workspace via backend:', err);
+    }
+
+    return {
+      name: rootName,
+      path: explicitPath,
+      tree: []
+    };
+  }
+
   // 1. Native Electron Node.js File System Provider (Primary & Default)
   if (typeof window !== 'undefined' && window.electronAPI?.fs?.selectFolder) {
     try {
@@ -133,10 +182,11 @@ export async function openLocalFolderPicker(): Promise<{
   // 2. Native Electron Dialog fallback
   if (typeof window !== 'undefined' && window.electronAPI?.openDirectoryDialog) {
     try {
-      const selectedPath = await window.electronAPI.openDirectoryDialog();
-      if (selectedPath) {
+      const selected = await window.electronAPI.openDirectoryDialog();
+      if (selected) {
+        const selectedPath = Array.isArray(selected) ? selected[0] : selected;
         activeWorkspacePath = selectedPath;
-        const rootName = selectedPath.split(/[/\\]/).pop() || selectedPath;
+        const rootName = selectedPath.split(/[/\\]/).filter(Boolean).pop() || selectedPath;
         const tree = await refreshDirectoryTree();
         return {
           name: rootName,

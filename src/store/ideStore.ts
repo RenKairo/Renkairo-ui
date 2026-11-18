@@ -13,7 +13,7 @@ import {
   renameItem, 
   writeFile 
 } from '../services/fileSystem';
-import { fetchMetrics } from '../services/api';
+import { fetchMetrics, changeWorkspace } from '../services/api';
 import { executionService, ExecutionResponseResult } from '../services/executionService';
 import { getBackendBaseUrl } from '../services/apiConfig';
 
@@ -73,8 +73,8 @@ interface IDEState {
   fileLoadingProgress: { path: string; percent: number; bytesLoaded: number; totalBytes: number } | null;
 
   // Folder Opening & Scope Switching
-  openFolder: () => Promise<void>;
-  changeScopeFolder: () => Promise<void>;
+  openFolder: (targetPath?: string) => Promise<{ name: string; path: string; tree: FileNode[] } | null>;
+  changeScopeFolder: (targetPath?: string) => Promise<void>;
   refreshTree: () => Promise<void>;
   expandFolder: (dirRelPath: string) => Promise<void>;
 
@@ -208,10 +208,11 @@ export const useIDEStore = create<IDEState>((set, get) => ({
   isFolderOpening: false,
   fileLoadingProgress: null,
 
-  openFolder: async () => {
+  openFolder: async (targetPath?: string) => {
     set({ isFolderOpening: true });
     try {
-      const result = await openLocalFolderPicker();
+      const pathArg = typeof targetPath === 'string' ? targetPath : undefined;
+      const result = await openLocalFolderPicker(pathArg);
       if (result) {
         set({
           workspacePath: result.path,
@@ -222,16 +223,21 @@ export const useIDEStore = create<IDEState>((set, get) => ({
           activeTabId: null
         });
         triggerGitRefresh();
+        // Sync active workspace with local backend server if running
+        changeWorkspace(result.path).catch(() => {});
+        return result;
       }
+      return null;
     } finally {
       set({ isFolderOpening: false });
     }
   },
 
-  changeScopeFolder: async () => {
+  changeScopeFolder: async (targetPath?: string) => {
     set({ isFolderOpening: true });
     try {
-      const result = await openLocalFolderPicker();
+      const pathArg = typeof targetPath === 'string' ? targetPath : undefined;
+      const result = await openLocalFolderPicker(pathArg);
       if (result) {
         set({
           workspacePath: result.path,
@@ -242,6 +248,7 @@ export const useIDEStore = create<IDEState>((set, get) => ({
           activeTabId: null
         });
         triggerGitRefresh();
+        changeWorkspace(result.path).catch(() => {});
       }
     } finally {
       set({ isFolderOpening: false });

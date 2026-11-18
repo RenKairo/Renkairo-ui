@@ -463,7 +463,7 @@ export const FileExplorer: React.FC = () => {
           <h3 className="text-xs font-semibold text-[var(--text-primary)] mb-3 font-mono uppercase tracking-wider">No Folder Opened</h3>
           
           <button
-            onClick={openFolder}
+            onClick={() => openFolder()}
             className="w-full py-2 bg-[var(--accent-coral)] hover:bg-[var(--accent-coral-hover)] text-white font-semibold text-xs rounded-lg transition-all shadow-sm flex items-center justify-center space-x-2 font-mono cursor-pointer"
           >
             <FolderOpen className="w-4 h-4" />
@@ -492,7 +492,7 @@ export const FileExplorer: React.FC = () => {
             <div className="flex items-center space-x-1">
               {/* Change Folder Scope Button */}
               <button 
-                onClick={changeScopeFolder} 
+                onClick={() => changeScopeFolder()} 
                 title="Change Folder Scope / Open Another Folder" 
                 className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded transition-colors flex items-center space-x-1"
               >

@@ -15,7 +15,10 @@ import {
   Activity,
   FileCode,
   SlidersHorizontal,
-  ArrowRight
+  ArrowRight,
+  FolderSync,
+  FolderTree,
+  Loader2
 } from 'lucide-react';
 import { useIDEStore } from '../../store/ideStore';
 import { ToriiIcon } from '../common/ToriiIcon';
@@ -24,7 +27,15 @@ import { Theorem1AuditResult, RDTPSessionConfig, RDTPTelemetryData } from '../..
 const API_BASE = typeof window !== 'undefined' && window.location.protocol === 'file:' ? 'http://localhost:8000/api' : '/api';
 
 export const RDTPStudioPanel: React.FC = () => {
-  const { openFile, setIsRightSidebarOpen, setActiveRightTab } = useIDEStore();
+  const { 
+    workspacePath, 
+    rootName, 
+    openFolder, 
+    setActiveActivity, 
+    openFile, 
+    setIsRightSidebarOpen, 
+    setActiveRightTab 
+  } = useIDEStore();
 
   const [session, setSession] = useState<RDTPSessionConfig>({
     isActive: false,
@@ -120,6 +131,7 @@ export const RDTPStudioPanel: React.FC = () => {
           setSession(data.session);
           if (data.session.datasetPath && !datasetPath) {
             setDatasetPath(data.session.datasetPath);
+            handleScanDataset(data.session.datasetPath);
           }
         }
         if (data.theorem1) setAudit(data.theorem1);
@@ -137,6 +149,14 @@ export const RDTPStudioPanel: React.FC = () => {
     const interval = setInterval(fetchStatus, 2500);
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-sync with currently active IDE workspace if datasetPath is not set
+  useEffect(() => {
+    if (workspacePath && !datasetPath) {
+      setDatasetPath(workspacePath);
+      handleScanDataset(workspacePath);
+    }
+  }, [workspacePath]);
 
   const handleAudit = async (configOverride?: Partial<RDTPSessionConfig>) => {
     const updated = { ...session, ...configOverride };
@@ -177,7 +197,7 @@ export const RDTPStudioPanel: React.FC = () => {
   };
 
   const handleScanDataset = async (pathToScan: string) => {
-    if (!pathToScan.trim()) return;
+    if (!pathToScan || !pathToScan.trim()) return;
     setIsScanningDataset(true);
     try {
       const res = await fetch(`${API_BASE}/rdtp/dataset/scan`, {
@@ -199,25 +219,25 @@ export const RDTPStudioPanel: React.FC = () => {
     }
   };
 
+  // Loads folder into IDE workspace (codebase explorer) AND streams it via RDTP
   const handleBrowseFolder = async () => {
-    const electron = (window as any).electronAPI;
-    if (electron && electron.openDirectoryDialog) {
-      try {
-        const selected = await electron.openDirectoryDialog();
-        if (selected && selected.length > 0) {
-          const folder = selected[0];
-          setDatasetPath(folder);
-          await handleScanDataset(folder);
-        }
-      } catch (err) {
-        console.error('Failed to open directory dialog:', err);
+    try {
+      const result = await openFolder();
+      if (result && result.path) {
+        setDatasetPath(result.path);
+        await handleScanDataset(result.path);
+        await handleConfigChange({ datasetPath: result.path });
       }
-    } else {
-      const userPath = prompt('Enter absolute path to your dataset folder:', datasetPath || 'C:\\datasets\\sample_images');
-      if (userPath) {
-        setDatasetPath(userPath);
-        await handleScanDataset(userPath);
-      }
+    } catch (err) {
+      console.error('Failed to open folder into workspace:', err);
+    }
+  };
+
+  const handleUseCurrentWorkspace = async () => {
+    if (workspacePath) {
+      setDatasetPath(workspacePath);
+      await handleScanDataset(workspacePath);
+      await handleConfigChange({ datasetPath: workspacePath });
     }
   };
 
@@ -235,6 +255,8 @@ export const RDTPStudioPanel: React.FC = () => {
         if (data.path) {
           setDatasetPath(data.path);
           handleConfigChange({ datasetPath: data.path });
+          // Also load the sample dataset folder into the IDE workspace tree!
+          await openFolder(data.path);
         }
       }
     } catch (err) {
@@ -324,60 +346,133 @@ export const RDTPStudioPanel: React.FC = () => {
       )}
 
       <div className="p-3.5 space-y-3.5">
-        {/* 2. Dataset Selection (Human-Readable Card) */}
-        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-3 space-y-2 shadow-xs">
+        {/* 2. Dataset Selection (Unified with IDE Workspace) */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-3 space-y-2.5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[var(--text-primary)] flex items-center space-x-1.5">
               <Folder className="w-3.5 h-3.5 text-amber-400" />
-              <span>Dataset</span>
+              <span>Workspace Dataset</span>
             </span>
-            {datasetScan?.valid && (
-              <button
-                onClick={handleBrowseFolder}
-                className="text-[10px] text-[var(--accent-cyan)] hover:underline cursor-pointer bg-transparent border-0 p-0 font-medium"
-              >
-                Change
-              </button>
-            )}
+            <div className="flex items-center space-x-2">
+              {datasetScan?.valid && (
+                <button
+                  onClick={handleBrowseFolder}
+                  className="text-[10px] text-[var(--accent-coral)] hover:underline cursor-pointer bg-transparent border-0 p-0 font-medium flex items-center space-x-1"
+                  title="Choose and load a different folder into the IDE"
+                >
+                  <FolderSync className="w-3 h-3" />
+                  <span>Change Folder</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {datasetScan && datasetScan.valid ? (
-            <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-              <div className="flex items-center space-x-2 truncate">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <div className="truncate">
-                  <div className="text-[11px] font-medium text-emerald-300 truncate">
-                    {datasetScan.fileCount} images ready
+            <div className="space-y-2">
+              <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 truncate">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <div className="truncate">
+                      <div className="text-[11px] font-medium text-emerald-300 truncate">
+                        {datasetScan.fileCount} images indexed
+                      </div>
+                      <div className="text-[9px] text-[var(--text-muted)] truncate">
+                        {datasetScan.totalSizeFormatted} • direct disk stream
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-[9px] text-[var(--text-muted)] truncate">
-                    {datasetScan.totalSizeFormatted} • direct disk stream
-                  </div>
+                  <button
+                    onClick={() => handleScanDataset(datasetPath)}
+                    disabled={isScanningDataset}
+                    className="p-1 text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-500/20 rounded transition-colors"
+                    title="Re-scan directory"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isScanningDataset ? 'animate-spin' : ''}`} />
+                  </button>
                 </div>
+
+                <div className="text-[9px] font-mono text-[var(--text-muted)] truncate bg-[var(--bg-base)]/60 px-1.5 py-1 rounded border border-[var(--border-color)]/40 flex items-center justify-between" title={datasetPath}>
+                  <span className="truncate">{datasetPath}</span>
+                </div>
+              </div>
+
+              {/* IDE Workspace Integration Bar */}
+              <div className="flex items-center justify-between text-[10px] px-1">
+                {workspacePath === datasetPath ? (
+                  <span className="text-emerald-400/90 flex items-center space-x-1 font-mono text-[9px]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>Loaded in Workspace</span>
+                  </span>
+                ) : (
+                  <span className="text-[var(--text-muted)] text-[9px] truncate max-w-[140px]">
+                    Workspace: {rootName || 'None'}
+                  </span>
+                )}
+
+                <button
+                  onClick={() => setActiveActivity('explorer')}
+                  className="text-[10px] text-[var(--accent-coral)] hover:underline flex items-center space-x-1 cursor-pointer bg-transparent border-0 p-0 font-medium"
+                >
+                  <FolderTree className="w-3 h-3" />
+                  <span>View in Explorer</span>
+                </button>
               </div>
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-                Choose a folder on your computer, or test with our sample images:
-              </p>
-              <div className="grid grid-cols-2 gap-1.5">
-                <button
-                  onClick={handleBrowseFolder}
-                  className="py-1.5 px-2 rounded-lg bg-[var(--bg-base)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)] text-[10px] font-medium text-[var(--text-primary)] flex items-center justify-center space-x-1 cursor-pointer transition-colors"
-                >
-                  <FolderOpen className="w-3 h-3 text-[var(--accent-cyan)]" />
-                  <span>Choose Folder</span>
-                </button>
+              {isScanningDataset ? (
+                <div className="p-3 rounded-lg bg-[var(--bg-base)] border border-[var(--border-color)] flex items-center justify-center space-x-2 text-[11px] text-[var(--text-muted)] font-mono">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent-coral)]" />
+                  <span>Scanning dataset folder...</span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+                    Choose a folder on your computer to load as your workspace codebase & dataset, or test with demo data:
+                  </p>
 
-                <button
-                  onClick={handleGenerateSampleDataset}
-                  disabled={isGeneratingDataset}
-                  className="py-1.5 px-2 rounded-lg bg-[var(--accent-coral)]/10 border border-[var(--accent-coral)]/30 hover:bg-[var(--accent-coral)]/20 text-[10px] font-medium text-[var(--accent-coral)] flex items-center justify-center space-x-1 cursor-pointer transition-colors"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>{isGeneratingDataset ? 'Creating...' : 'Use Demo Data'}</span>
-                </button>
-              </div>
+                  {/* If user already has an IDE workspace loaded, offer 1-click option */}
+                  {workspacePath && workspacePath !== datasetPath && (
+                    <button
+                      onClick={handleUseCurrentWorkspace}
+                      className="w-full py-1.5 px-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-[10px] font-medium text-emerald-300 flex items-center justify-between cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center space-x-1.5 truncate">
+                        <FolderTree className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="truncate">Use IDE Workspace: <b>{rootName || 'Project'}</b></span>
+                      </div>
+                      <ArrowRight className="w-3 h-3 shrink-0 ml-1" />
+                    </button>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={handleBrowseFolder}
+                      className="py-1.5 px-2 rounded-lg bg-[var(--bg-base)] border border-[var(--border-color)] hover:border-[var(--accent-coral)] text-[10px] font-medium text-[var(--text-primary)] flex items-center justify-center space-x-1 cursor-pointer transition-colors shadow-xs"
+                    >
+                      <FolderOpen className="w-3 h-3 text-[var(--accent-coral)]" />
+                      <span>Choose Folder</span>
+                    </button>
+
+                    <button
+                      onClick={handleGenerateSampleDataset}
+                      disabled={isGeneratingDataset}
+                      className="py-1.5 px-2 rounded-lg bg-[var(--accent-coral)]/10 border border-[var(--accent-coral)]/30 hover:bg-[var(--accent-coral)]/20 text-[10px] font-medium text-[var(--accent-coral)] flex items-center justify-center space-x-1 cursor-pointer transition-colors"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>{isGeneratingDataset ? 'Creating...' : 'Use Demo Data'}</span>
+                    </button>
+                  </div>
+
+                  {datasetScan && !datasetScan.valid && datasetPath && (
+                    <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[9px] flex items-center space-x-1.5">
+                      <AlertTriangle className="w-3 h-3 shrink-0 text-amber-400" />
+                      <span>No images found (.jpg, .png, .npy). Select a folder with images or use Demo Data.</span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -616,6 +711,7 @@ export const RDTPStudioPanel: React.FC = () => {
                 )}
                 <div className="space-y-1">
                   {[
+                    { id: 'counter', title: 'counter.py (Minimal On-Demand)' },
                     { id: 'vit', title: 'train_vit_rdtp.py' },
                     { id: 'resnet', title: 'train_resnet_rdtp.py' },
                     { id: 'consumer', title: 'rdtp_consumer_worker.py' },

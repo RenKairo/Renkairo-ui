@@ -1020,6 +1020,7 @@ class RDTPEngine {
 
   scaffoldTemplate(templateName, targetDir) {
     const filenameMap = {
+      counter: 'counter.py',
       vit: 'train_vit_rdtp.py',
       resnet: 'train_resnet_rdtp.py',
       webcam: 'train_webcam_active_learning.py',
@@ -1030,6 +1031,7 @@ class RDTPEngine {
     // Internal bundled paths within RenKairo backend (portable across builds and Electron packages)
     const templatesDir = path.join(__dirname, 'rdtp', 'templates');
     const sdkDir = path.join(__dirname, 'rdtp', 'sdk', 'rdtp');
+    const sdkRenkairoDir = path.join(__dirname, 'rdtp', 'sdk', 'renkairo');
     const sourcePath = path.join(templatesDir, sourceFile);
     const destPath = path.join(targetDir, sourceFile);
 
@@ -1038,14 +1040,23 @@ class RDTPEngine {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    // 2. Also copy the rdtp python package directly into workspace if not present
-    // so user can immediately run `python train_vit_rdtp.py` with zero pip installation
+    // 2. Also copy the rdtp & renkairo python packages directly into workspace if not present
+    // so user can immediately run `python train_vit_rdtp.py` or `python counter.py` with zero pip installation
     const destSdkDir = path.join(targetDir, 'rdtp');
     if (!fs.existsSync(destSdkDir) && fs.existsSync(sdkDir)) {
       try {
         fs.cpSync(sdkDir, destSdkDir, { recursive: true });
       } catch (e) {
-        console.warn('[RDTP Scaffolder] Could not copy bundled SDK into workspace:', e.message);
+        console.warn('[RDTP Scaffolder] Could not copy bundled rdtp SDK into workspace:', e.message);
+      }
+    }
+
+    const destRenkairoDir = path.join(targetDir, 'renkairo');
+    if (!fs.existsSync(destRenkairoDir) && fs.existsSync(sdkRenkairoDir)) {
+      try {
+        fs.cpSync(sdkRenkairoDir, destRenkairoDir, { recursive: true });
+      } catch (e) {
+        console.warn('[RDTP Scaffolder] Could not copy bundled renkairo SDK into workspace:', e.message);
       }
     }
 
@@ -1064,6 +1075,35 @@ class RDTPEngine {
 }
 
 const BUILTIN_TEMPLATES = {
+  counter: `"""
+RenKairo RDTP: Minimal On-Demand Remote Dataset Streamer
+Streams dataset images directly from RenKairo IDE without prior cloud uploading.
+Zero manual IP configuration required.
+"""
+import os
+import sys
+
+# Ensure local renkairo package is resolved
+for p in (os.path.dirname(os.path.abspath(__file__)), os.getcwd()):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+try:
+    import renkairo
+except ImportError:
+    print("⚠️ Local 'renkairo' package loading fallback...")
+    sys.path.append(os.path.abspath("renkairo"))
+    import renkairo
+
+print("🚀 [RenKairo Client] Requesting on-demand dataset from RenKairo IDE...")
+total_images = 0
+
+for img in renkairo.load_data():
+    total_images += 1
+    print(f"[{total_images:03d}] Received image: {len(img):,} bytes")
+
+print(f"\\n🎉 [Complete] Counted {total_images} images streamed on-demand from RenKairo IDE!")
+`,
   vit: `"""
 RenKairo RDTP Template: Vision Transformer (ViT-B/16) Edge-to-Cloud Streaming Training.
 """
