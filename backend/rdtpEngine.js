@@ -98,6 +98,7 @@ class RDTPEngine {
               continue;
             }
 
+            const sampleCount = activeBuffer.readUInt32BE(20);
             const codec = activeBuffer.readUInt16BE(24);
             const payloadLen = activeBuffer.readUInt32BE(28);
             const totalFrameLen = 36 + payloadLen;
@@ -109,13 +110,14 @@ class RDTPEngine {
             activeBuffer = activeBuffer.slice(totalFrameLen);
 
             if (codec === 10) { // PULL_REQUEST
+              const batchSize = sampleCount > 0 ? sampleCount : (this.session.batchSize || 4);
               this.appendLog(
                 'WAN_TRANSPORT',
                 `On-Demand Pull Request`,
-                `Python runtime requested dataset stream. Streaming loaded IDE dataset...`,
+                `Python runtime requested dataset stream (batch_size=${batchSize}). Streaming loaded IDE dataset...`,
                 1.5
               );
-              this.handleClientPull(socket, 32);
+              this.handleClientPull(socket, batchSize);
             } else if (codec === 5) { // CREDIT_ACK
               this.telemetry.currentCredits = Math.min(this.session.bufferDepth, this.telemetry.currentCredits + 1);
               this.telemetry.currentBufferOccupancy = Math.max(0, this.session.bufferDepth - this.telemetry.currentCredits);
@@ -164,12 +166,12 @@ class RDTPEngine {
       }
     }
 
-    const batchSize = Math.max(1, requestedBatchSize || this.session.batchSize || 32);
+    const batchSize = Math.max(1, requestedBatchSize || this.session.batchSize || 4);
     const files = this.datasetFiles;
     let fileCursor = 0;
     let batchId = 0;
     const epochId = 1;
-    let credits = this.session.bufferDepth;
+    let credits = 1; // Strict 1-by-1 simultaneous batch pacing
 
     this.session.isActive = true;
     this.telemetry.pipelineState = 'STREAMING_WAN';
@@ -229,9 +231,9 @@ class RDTPEngine {
     };
 
     socket._sendNextBatch = () => {
-      credits = Math.min(this.session.bufferDepth, credits + 1);
+      credits = 1;
       this.telemetry.currentCredits = credits;
-      this.telemetry.currentBufferOccupancy = Math.max(0, this.session.bufferDepth - credits);
+      this.telemetry.currentBufferOccupancy = 0;
       sendBatch();
     };
 
@@ -265,7 +267,7 @@ class RDTPEngine {
       offset += img.length;
     }
 
-    const checksum = zlib.crc32(payload) & 0xFFFFFFFF;
+    const checksum = (zlib.crc32(payload)) >>> 0;
     const header = Buffer.alloc(36);
     header.writeUInt32BE(0x52445450, 0); // "RDTP" in ASCII
     header.writeBigUInt64BE(BigInt(epochId), 4);

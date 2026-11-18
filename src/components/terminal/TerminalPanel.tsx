@@ -124,6 +124,16 @@ export const TerminalPanel: React.FC = () => {
   const [manualPortInput, setManualPortInput] = useState('');
   const [isForwardingManual, setIsForwardingManual] = useState(false);
   const [isScanningPorts, setIsScanningPorts] = useState(false);
+  const [ideHost, setIdeHost] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/rdtp/host-info')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.preferredHost) setIdeHost(data.preferredHost);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchForwardedPorts();
@@ -503,6 +513,9 @@ export const TerminalPanel: React.FC = () => {
         const userId = useAuthStore.getState().user?.userId || 'usr_b1860126';
         const cleanSessionId = session.id.replace(/[^a-zA-Z0-9_-]/g, '_');
         wsUrl = `${wsProto}//${host}/ws/terminal?shell=bash&user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(cleanSessionId)}&ide_port=50051`;
+        if (ideHost) {
+          wsUrl += `&ide_host=${encodeURIComponent(ideHost)}`;
+        }
         if (authToken) {
           wsUrl += `&token=${encodeURIComponent(authToken)}`;
         }

@@ -215,7 +215,8 @@ def stream(
             pass
 
 def load_batches(
-    batch_size: int = 32,
+    batch_size: int = 4,
+    save_dir: Optional[str] = None,
     codec: str = "jpeg",
     host: Optional[str] = None,
     port: Optional[int] = None,
@@ -223,19 +224,23 @@ def load_batches(
 ) -> Iterator[List[bytes]]:
     """
     On-demand generator that yields batches of images directly from the RenKairo IDE dataset.
-    
-    Usage:
-        import renkairo
-
-        for batch in renkairo.load_batches(batch_size=32):
-            # batch is a list of image bytes [img1, img2, ...]
-            train_on_batch(batch)
+    Optionally persists images to save_dir on disk in real time.
     """
+    if save_dir:
+        os.makedirs(save_dir, exist_ok=True)
+    img_counter = 0
     for _hdr, batch in stream(batch_size=batch_size, codec=codec, host=host, port=port, timeout=timeout):
+        if save_dir:
+            for img in batch:
+                img_counter += 1
+                ext = "png" if img.startswith(b"\x89PNG") else "jpg"
+                with open(os.path.join(save_dir, f"img_{img_counter:03d}.{ext}"), "wb") as f:
+                    f.write(img)
         yield batch
 
 def load_data(
-    batch_size: int = 32,
+    batch_size: int = 4,
+    save_dir: Optional[str] = None,
     codec: str = "jpeg",
     host: Optional[str] = None,
     port: Optional[int] = None,
@@ -243,13 +248,7 @@ def load_data(
 ) -> Iterator[bytes]:
     """
     On-demand generator that yields individual raw image bytes directly from the RenKairo IDE dataset.
-    
-    Usage:
-        import renkairo
-
-        for img in renkairo.load_data():
-            process(img)
     """
-    for _hdr, batch in stream(batch_size=batch_size, codec=codec, host=host, port=port, timeout=timeout):
+    for batch in load_batches(batch_size=batch_size, save_dir=save_dir, codec=codec, host=host, port=port, timeout=timeout):
         for img in batch:
             yield img
